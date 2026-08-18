@@ -1,0 +1,13 @@
+{
+    "simulation": {
+        "window_width": 800,
+        "window_height": 600,
+        "fps": 60,
+        "max_steps": 1000
+    },
+    "training": {
+        "total_timesteps": 300000,
+        "learning_rate": 0.0003,
+        "gamma": 0.99
+    }
+}

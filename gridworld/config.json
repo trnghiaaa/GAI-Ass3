@@ -1,0 +1,19 @@
+{
+    "training": {
+        "episodes": 1000,
+        "alpha": 0.1,
+        "gamma": 0.99,
+        "epsilon_start": 1.0,
+        "epsilon_end": 0.01
+    },
+    "monster": {
+        "move_chance": 0.4
+    },
+    "intrinsic": {
+        "reward_strength": 1.0
+    },
+    "rendering": {
+        "cell_size": 60,
+        "fps": 10
+    }
+}
