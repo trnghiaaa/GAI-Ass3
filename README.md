@@ -25,3 +25,19 @@ python -m gridworld.play --level 0
 - **Arrow Keys** : Move (Up / Down / Left / Right)
 - **R** : Reset the current level
 - **ESC / Q** : Quit game window
+
+---
+
+## 3. Training & Evaluating Q-Learning (Part I - Task 1)
+
+### Train Q-Learning Agent:
+```bash
+python -m gridworld.train --level 0 --agent qlearning --episodes 500
+```
+- Saved model weights are placed in `models/gridworld/level0_qlearning.pkl`
+- Reward history and training plots are saved in `logs/gridworld/`
+
+### Visually Evaluate Trained Agent:
+```bash
+python -m gridworld.evaluate --level 0 --agent qlearning --episodes 3 --fps 6
+```

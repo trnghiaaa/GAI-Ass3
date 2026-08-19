@@ -1,1 +1,3 @@
-# Agents package initialization (will export QLearningAgent and SARSAAgent once implemented)
+from .q_learning import QLearningAgent
+
+__all__ = ["QLearningAgent"]
