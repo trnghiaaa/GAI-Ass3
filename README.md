@@ -28,16 +28,26 @@ python -m gridworld.play --level 0
 
 ---
 
-## 3. Training & Evaluating Q-Learning (Part I - Task 1)
+## 3. Training & Evaluating Agents (Part I)
 
-### Train Q-Learning Agent:
+### Task 1: Q-Learning (Level 0)
 ```bash
+# Train Q-Learning on Level 0
 python -m gridworld.train --level 0 --agent qlearning --episodes 500
-```
-- Saved model weights are placed in `models/gridworld/level0_qlearning.pkl`
-- Reward history and training plots are saved in `logs/gridworld/`
 
-### Visually Evaluate Trained Agent:
-```bash
+# Visual Evaluation
 python -m gridworld.evaluate --level 0 --agent qlearning --episodes 3 --fps 6
 ```
+
+### Task 2: SARSA vs Q-Learning Comparison (Level 1 - Fire Corridor)
+```bash
+# Train SARSA on Level 1
+python -m gridworld.train --level 1 --agent sarsa --episodes 1000
+
+# Visually Evaluate SARSA
+python -m gridworld.evaluate --level 1 --agent sarsa --episodes 3 --fps 6
+
+# Run full side-by-side comparison with comparative plot generation:
+python -m gridworld.compare --level 1 --episodes 1000
+```
+- Outputs comparison plot to `logs/gridworld/level1_comparison_qlearning_vs_sarsa.png`.
