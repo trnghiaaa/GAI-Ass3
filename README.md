@@ -25,3 +25,41 @@ python -m gridworld.play --level 0
 - **Arrow Keys** : Move (Up / Down / Left / Right)
 - **R** : Reset the current level
 - **ESC / Q** : Quit game window
+
+---
+
+## 3. Part II Action Arena
+
+The Part II environment is a continuous-coordinate Pygame combat arena. To
+play it manually with direct directional movement:
+
+```bash
+python -m arena.play --control-style direct
+```
+
+Use `WASD` or the arrow keys to move and `Space` to auto-aim and fire. To try
+rotation and thrust controls instead:
+
+```bash
+python -m arena.play --control-style rotation
+```
+
+For rotation controls, use `W` to thrust, `A`/`D` to rotate, and `Space` to
+fire in the ship's current direction. In both modes, `R` restarts an episode
+and `Esc` quits.
+
+The arena currently provides:
+
+- A damageable player ship with continuous movement and projectile firing
+- Damageable enemy spawners that periodically create hostiles
+- Enemies that continuously steer toward and damage the player on contact
+- Projectile collisions with separate enemy and spawner health bars
+- Increasing phases after all active spawners are destroyed
+- Episode endings for player destruction and the configured maximum step count
+- Headless, human-window, and RGB-array rendering modes
+
+Run the focused mechanics tests with:
+
+```bash
+python -m unittest discover -s tests -v
+```

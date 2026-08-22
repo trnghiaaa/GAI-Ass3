@@ -2,8 +2,59 @@
     "simulation": {
         "window_width": 800,
         "window_height": 600,
+        "hud_height": 74,
         "fps": 60,
-        "max_steps": 1000
+        "max_steps": 1800
+    },
+    "player": {
+        "radius": 18,
+        "max_health": 100,
+        "direct_speed": 250,
+        "thrust_acceleration": 520,
+        "rotation_speed_degrees": 220,
+        "max_speed": 280,
+        "drag": 0.985,
+        "fire_cooldown_seconds": 0.22
+    },
+    "projectile": {
+        "radius": 4,
+        "speed": 580,
+        "damage": 25,
+        "lifetime_seconds": 1.8
+    },
+    "enemy": {
+        "radius": 15,
+        "max_health": 50,
+        "speed": 72,
+        "contact_damage": 14,
+        "attack_cooldown_seconds": 0.75,
+        "contact_knockback": 16,
+        "maximum_active": 18
+    },
+    "spawner": {
+        "radius": 28,
+        "max_health": 100,
+        "spawn_interval_seconds": 2.2,
+        "edge_margin": 72
+    },
+    "phase": {
+        "initial_spawners": 2,
+        "spawners_added_per_phase": 1,
+        "maximum_spawners": 5,
+        "transition_seconds": 1.0,
+        "enemy_health_growth": 0.12,
+        "enemy_speed_growth": 0.08,
+        "spawner_health_growth": 0.15,
+        "spawn_rate_growth": 0.12,
+        "observation_phase_cap": 10
+    },
+    "rewards": {
+        "survival": 0.001,
+        "enemy_destroyed": 2.0,
+        "spawner_destroyed": 8.0,
+        "phase_advanced": 15.0,
+        "damage_taken_per_hp": -0.05,
+        "death": -20.0
     },
     "training": {
         "total_timesteps": 300000,
