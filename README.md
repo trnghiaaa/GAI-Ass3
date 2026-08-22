@@ -9,8 +9,9 @@ This repository contains the complete implementation for **Assignment 3: Reinfor
 2. [Interactive Manual Play (Gridworld)](#2-interactive-manual-play-gridworld)
 3. [Task 1: Basic Q-Learning (Level 0)](#3-task-1-basic-q-learning-level-0)
 4. [Task 2: SARSA & Hazard Comparison (Level 1)](#4-task-2-sarsa--hazard-comparison-level-1)
-5. [Understanding Generated Files (`models/` & `logs/`)](#5-understanding-generated-files-models--logs)
-6. [Command Reference Summary](#6-command-reference-summary)
+5. [Task 3: Key & Chest Mechanics (Levels 2 & 3)](#5-task-3-key--chest-mechanics-levels-2--3)
+6. [Understanding Generated Files (`models/` & `logs/`)](#6-understanding-generated-files-models--logs)
+7. [Command Reference Summary](#7-command-reference-summary)
 
 ---
 
@@ -35,7 +36,8 @@ python -m gridworld.play --level 0
 ### Try Different Level Mechanics:
 - `--level 0` : **Basic Apples** — Navigate around rocks to collect apples (+1 reward).
 - `--level 1` : **Fire Hazards** — Fire tiles (`F`) along the bottom cause instant death on contact.
-- `--level 2` : **Key & Chest** — Pick up yellow key (`K`) first to unlock the chest (`C`) for +2 reward.
+- `--level 2` : **Key & Chest (Simple)** — Pick up yellow key (`K`) first to unlock chest (`C`) for +2 reward.
+- `--level 3` : **Key & Chest (Labyrinth)** — Navigate complex rock corridors to get key, chest, and apples.
 - `--level 4` : **Monsters** — Red monsters (`M`) move with a 40% probability after every player move.
 
 ### Keyboard Controls:
@@ -51,47 +53,13 @@ python -m gridworld.play --level 0
 
 Task 1 implements tabular **off-policy Q-Learning** with $\epsilon$-greedy exploration, linear decay, and random tie-breaking.
 
-### A. Training Options
-
-#### 1. Standard Fast Headless Training (Default):
-Trains headlessly in the background (~1-2 seconds) using settings from `config.json`:
+### Training & Evaluation Commands:
 ```bash
-python -m gridworld.train --level 0 --agent qlearning
-```
-
-#### 2. Custom Episode Count:
-Train for a specific number of episodes (e.g. 500 or 1000):
-```bash
+# Train Q-Learning on Level 0 (500 episodes)
 python -m gridworld.train --level 0 --agent qlearning --episodes 500
-```
 
-#### 3. Live Visual Training (Watch the AI learn in real-time):
-Opens the Pygame window during training to visualize exploration and learning:
-*(Tip: Keep episodes low, e.g. 50, since visual rendering is slower)*
-```bash
-python -m gridworld.train --level 0 --agent qlearning --episodes 50 --render
-```
-
----
-
-### B. Visual Evaluation Options
-
-Evaluation loads the trained Q-table with exploration turned off ($\epsilon = 0.0$) to demonstrate the optimal greedy policy.
-
-#### 1. Standard Evaluation (3 games at 6 FPS):
-```bash
-python -m gridworld.evaluate --level 0 --agent qlearning
-```
-
-#### 2. Slow-Motion Inspection (2 FPS):
-Useful for observing every individual decision step-by-step:
-```bash
-python -m gridworld.evaluate --level 0 --agent qlearning --fps 2
-```
-
-#### 3. Fast Replay (5 games at 15 FPS):
-```bash
-python -m gridworld.evaluate --level 0 --agent qlearning --episodes 5 --fps 15
+# Visual Evaluation in Pygame (3 games at 6 FPS)
+python -m gridworld.evaluate --level 0 --agent qlearning --episodes 3 --fps 6
 ```
 
 ---
@@ -100,100 +68,85 @@ python -m gridworld.evaluate --level 0 --agent qlearning --episodes 5 --fps 15
 
 Task 2 implements **on-policy SARSA** and compares its learning behavior with Q-Learning on a map with dangerous fire hazards.
 
-### A. Training SARSA & Q-Learning on Level 1
-
-#### 1. Train SARSA on Level 1 (1,000 episodes):
+### Training & Comparison Commands:
 ```bash
+# Train SARSA on Level 1 (1000 episodes)
 python -m gridworld.train --level 1 --agent sarsa --episodes 1000
-```
 
-#### 2. Train Q-Learning on Level 1 (for comparison):
-```bash
-python -m gridworld.train --level 1 --agent qlearning --episodes 1000
-```
-
-#### 3. Live Visual Training with SARSA:
-```bash
-python -m gridworld.train --level 1 --agent sarsa --episodes 50 --render
-```
-
----
-
-### B. Evaluating SARSA on Level 1
-
-#### 1. Standard Evaluation:
-```bash
+# Visually Evaluate SARSA on Level 1
 python -m gridworld.evaluate --level 1 --agent sarsa --episodes 3 --fps 6
-```
 
-#### 2. Slow-Motion Evaluation:
-```bash
-python -m gridworld.evaluate --level 1 --agent sarsa --fps 2
-```
-
----
-
-### C. Automated Side-by-Side Comparison (Report Evidence)
-
-Run this command to train both agents, trace their greedy trajectories, and generate a comparative learning curve chart:
-
-```bash
+# Automated Side-by-Side Comparison (generates joint learning curve plot)
 python -m gridworld.compare --level 1 --episodes 1000
 ```
 
-#### Optional Comparison Flags:
-- `--episodes 1500` : Custom episode count.
-- `--window 50` : Moving average smoothing window size for the plot.
+---
 
+## 5. Task 3: Key & Chest Mechanics (Levels 2 & 3)
+
+Task 3 extends Q-Learning and SARSA to solve multi-step planning tasks where the agent must collect the key (`K`) before unlocking the chest (`C` for +2 reward) alongside collecting all apples (`A`).
+
+### A. Level 2 (Simple Open Layout)
 ```bash
-python -m gridworld.compare --level 1 --episodes 1500 --window 100
+# Train Q-Learning on Level 2 (1000 episodes)
+python -m gridworld.train --level 2 --agent qlearning --episodes 1000
+
+# Train SARSA on Level 2 (1000 episodes)
+python -m gridworld.train --level 2 --agent sarsa --episodes 1000
+
+# Visually Evaluate Level 2 Agents:
+python -m gridworld.evaluate --level 2 --agent qlearning --episodes 3 --fps 6
+python -m gridworld.evaluate --level 2 --agent sarsa --episodes 3 --fps 6
+```
+
+### B. Level 3 (Complex Rock Corridors)
+```bash
+# Train Q-Learning on Level 3 (1500 episodes)
+python -m gridworld.train --level 3 --agent qlearning --episodes 1500
+
+# Train SARSA on Level 3 (1500 episodes)
+python -m gridworld.train --level 3 --agent sarsa --episodes 1500
+
+# Visually Evaluate Level 3 Agents:
+python -m gridworld.evaluate --level 3 --agent qlearning --episodes 3 --fps 6
+python -m gridworld.evaluate --level 3 --agent sarsa --episodes 3 --fps 6
 ```
 
 ---
 
-## 5. Understanding Generated Files (`models/` & `logs/`)
-
-Whenever you run training or comparison scripts, the outputs are automatically organized into `models/` and `logs/`:
+## 6. Understanding Generated Files (`models/` & `logs/`)
 
 ```
 GAI_Ass3/
 ├── models/
 │   └── gridworld/
-│       ├── level0_qlearning.pkl      <-- Task 1 Q-Learning model weights
-│       ├── level1_qlearning.pkl      <-- Level 1 Q-Learning model weights
-│       └── level1_sarsa.pkl          <-- Task 2 SARSA model weights
+│       ├── level0_qlearning.pkl
+│       ├── level1_qlearning.pkl
+│       ├── level1_sarsa.pkl
+│       ├── level2_qlearning.pkl
+│       ├── level2_sarsa.pkl
+│       ├── level3_qlearning.pkl
+│       └── level3_sarsa.pkl
 └── logs/
     └── gridworld/
-        ├── level0_qlearning.png      <-- Task 1 training curve plot
-        ├── level0_qlearning_rewards.csv
-        ├── level1_qlearning.png
-        ├── level1_qlearning_rewards.csv
-        ├── level1_sarsa.png
-        ├── level1_sarsa_rewards.csv
-        └── level1_comparison_qlearning_vs_sarsa.png  <-- Task 2 comparison chart
+        ├── level0_qlearning.png
+        ├── level1_comparison_qlearning_vs_sarsa.png
+        ├── level2_qlearning.png
+        ├── level2_sarsa.png
+        ├── level3_qlearning.png
+        └── level3_sarsa.png
 ```
-
-### Detailed File Descriptions:
-
-| File Type | Path / Format | Description & Usage |
-| :--- | :--- | :--- |
-| **Model Weights** | `models/gridworld/*.pkl` | **Serialized Q-Table:** Stores the learned dictionary of `(state, action) -> Q-value` pairs using Python's `pickle`. Loaded automatically by `evaluate.py` to replay greedy policies without retraining. Included in the final submission `.zip`. |
-| **Training Curves** | `logs/gridworld/*.png` | **High-Resolution Learning Plot:** Shows raw episode rewards (light line) alongside a moving average (dark solid line) illustrating learning progression and stability over time. Directly insertable into your assignment PDF report. |
-| **Raw Rewards CSV** | `logs/gridworld/*_rewards.csv` | **Raw Numerical Data:** Plain text CSV recording total reward obtained per episode (`episode_reward`). Useful if you wish to analyze training data in Pandas or plot custom graphs in Excel. |
-| **Comparison Plot** | `logs/gridworld/*_comparison_*.png` | **Comparative Benchmark Chart:** Overlays Q-Learning vs SARSA rolling averages on the same figure, providing direct visual evidence for Task 2 and the written report. |
 
 ---
 
-## 6. Command Reference Summary
+## 7. Command Reference Summary
 
-| Purpose | Command |
-| :--- | :--- |
-| **Play Level 0 (Apples)** | `python -m gridworld.play --level 0` |
-| **Play Level 1 (Fire)** | `python -m gridworld.play --level 1` |
-| **Play Level 2 (Key/Chest)** | `python -m gridworld.play --level 2` |
-| **Play Level 4 (Monsters)** | `python -m gridworld.play --level 4` |
-| **Train Q-Learning (L0)** | `python -m gridworld.train --level 0 --agent qlearning --episodes 500` |
-| **Evaluate Q-Learning (L0)** | `python -m gridworld.evaluate --level 0 --agent qlearning --episodes 3 --fps 6` |
-| **Train SARSA (L1)** | `python -m gridworld.train --level 1 --agent sarsa --episodes 1000` |
-| **Evaluate SARSA (L1)** | `python -m gridworld.evaluate --level 1 --agent sarsa --episodes 3 --fps 6` |
-| **Run L1 Comparison** | `python -m gridworld.compare --level 1 --episodes 1000` |
+| Level & Task | Algorithm | Train Command | Evaluate Command |
+| :--- | :--- | :--- | :--- |
+| **Level 0 (Apples)** | Q-Learning | `python -m gridworld.train --level 0 --agent qlearning --episodes 500` | `python -m gridworld.evaluate --level 0 --agent qlearning` |
+| **Level 1 (Fire)** | SARSA | `python -m gridworld.train --level 1 --agent sarsa --episodes 1000` | `python -m gridworld.evaluate --level 1 --agent sarsa` |
+| **Level 1 (Fire)** | Comparison | `python -m gridworld.compare --level 1 --episodes 1000` | N/A |
+| **Level 2 (Key/Chest)** | Q-Learning | `python -m gridworld.train --level 2 --agent qlearning --episodes 1000` | `python -m gridworld.evaluate --level 2 --agent qlearning` |
+| **Level 2 (Key/Chest)** | SARSA | `python -m gridworld.train --level 2 --agent sarsa --episodes 1000` | `python -m gridworld.evaluate --level 2 --agent sarsa` |
+| **Level 3 (Corridors)** | Q-Learning | `python -m gridworld.train --level 3 --agent qlearning --episodes 1500` | `python -m gridworld.evaluate --level 3 --agent qlearning` |
+| **Level 3 (Corridors)** | SARSA | `python -m gridworld.train --level 3 --agent sarsa --episodes 1500` | `python -m gridworld.evaluate --level 3 --agent sarsa` |
