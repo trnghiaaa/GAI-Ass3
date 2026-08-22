@@ -245,6 +245,12 @@ class ArenaEnv(gym.Env):
             self._renderer.close()
             self._renderer = None
 
+    @property
+    def window_closed(self) -> bool:
+        """Whether the user closed the human-rendering window."""
+
+        return bool(self._renderer is not None and self._renderer.close_requested)
+
     # ------------------------------------------------------------------
     # Player controls
     # ------------------------------------------------------------------

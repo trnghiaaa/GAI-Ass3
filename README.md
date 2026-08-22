@@ -58,6 +58,35 @@ The arena currently provides:
 - Episode endings for player destruction and the configured maximum step count
 - Headless, human-window, and RGB-array rendering modes
 
+### Arena API
+
+Stable-Baselines3 2.x uses the modern Gymnasium contract:
+
+```python
+from arena import ArenaEnv
+
+env = ArenaEnv(control_style="direct", render_mode="human")
+observation, info = env.reset(seed=42)
+observation, reward, terminated, truncated, info = env.step(0)
+done = terminated or truncated
+env.render()
+env.close()
+```
+
+The assignment handout describes the older four-value Gym contract. The
+compatibility adapter exposes that exact interface when needed for a marker or
+demonstration, while the native environment remains compatible with SB3:
+
+```python
+from arena import LegacyArenaEnv
+
+env = LegacyArenaEnv(control_style="direct", render_mode="human")
+observation = env.reset(seed=42)
+observation, reward, done, info = env.step(0)
+env.render()
+env.close()
+```
+
 Run the focused mechanics tests with:
 
 ```bash
