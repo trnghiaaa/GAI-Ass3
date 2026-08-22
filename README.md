@@ -87,6 +87,29 @@ env.render()
 env.close()
 ```
 
+### Arena Observation Vector
+
+The agent receives a one-dimensional `float32` vector with exactly 20
+normalized features. It never receives the rendered pixels.
+
+| Indices | Features | Range | Meaning |
+|---|---|---|---|
+| 0–1 | `player_x`, `player_y` | `[-1, 1]` | Player position within the playable arena |
+| 2–3 | `player_velocity_x`, `player_velocity_y` | `[-1, 1]` | Velocity divided by the configured maximum speed |
+| 4–5 | `player_heading_cos`, `player_heading_sin` | `[-1, 1]` | Continuous orientation without angle wrap-around |
+| 6 | `player_health` | `[0, 1]` | Remaining player-health proportion |
+| 7 | `weapon_ready` | `[0, 1]` | Fire-cooldown readiness |
+| 8–11 | Nearest-enemy direction X/Y, distance, health | mixed normalized | Unit relative direction, arena-diagonal distance, and health |
+| 12–15 | Nearest-spawner direction X/Y, distance, health | mixed normalized | Unit relative direction, arena-diagonal distance, and health |
+| 16–17 | `enemy_count`, `spawner_count` | `[0, 1]` | Active counts divided by configured maxima |
+| 18 | `phase` | `[0, 1]` | Current phase divided by the configured observation cap |
+| 19 | `time_remaining` | `[0, 1]` | Fraction of the episode step budget remaining |
+
+If a target type is absent, its four target features are `(0, 0, 1, 0)`:
+no direction, maximum normalized distance, and zero health. Stable feature
+indices are exported as `ObservationIndex`; `env.observation_as_dict()` gives a
+named view for debugging and report evidence.
+
 Run the focused mechanics tests with:
 
 ```bash

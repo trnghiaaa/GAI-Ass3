@@ -8,6 +8,7 @@ optional :class:`arena.renderer.ArenaRenderer` displays the same live state.
 from __future__ import annotations
 
 from copy import deepcopy
+from enum import IntEnum
 import json
 import math
 from pathlib import Path
@@ -36,6 +37,34 @@ ROTATION_ACTIONS = {
     "ROTATE_RIGHT": 3,
     "SHOOT": 4,
 }
+
+
+class ObservationIndex(IntEnum):
+    """Stable indices for the agent's fixed-size feature vector."""
+
+    PLAYER_X = 0
+    PLAYER_Y = 1
+    PLAYER_VELOCITY_X = 2
+    PLAYER_VELOCITY_Y = 3
+    PLAYER_HEADING_COS = 4
+    PLAYER_HEADING_SIN = 5
+    PLAYER_HEALTH = 6
+    WEAPON_READY = 7
+    NEAREST_ENEMY_DIRECTION_X = 8
+    NEAREST_ENEMY_DIRECTION_Y = 9
+    NEAREST_ENEMY_DISTANCE = 10
+    NEAREST_ENEMY_HEALTH = 11
+    NEAREST_SPAWNER_DIRECTION_X = 12
+    NEAREST_SPAWNER_DIRECTION_Y = 13
+    NEAREST_SPAWNER_DISTANCE = 14
+    NEAREST_SPAWNER_HEALTH = 15
+    ENEMY_COUNT = 16
+    SPAWNER_COUNT = 17
+    PHASE = 18
+    TIME_REMAINING = 19
+
+
+OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -107,28 +136,7 @@ class ArenaEnv(gym.Env):
         self.action_space = spaces.Discrete(len(self.action_names))
 
         # The layout is fixed even when there are no enemies or spawners.
-        self.observation_names = (
-            "player_x",
-            "player_y",
-            "player_velocity_x",
-            "player_velocity_y",
-            "player_heading_cos",
-            "player_heading_sin",
-            "player_health",
-            "weapon_ready",
-            "nearest_enemy_dx",
-            "nearest_enemy_dy",
-            "nearest_enemy_distance",
-            "nearest_enemy_health",
-            "nearest_spawner_dx",
-            "nearest_spawner_dy",
-            "nearest_spawner_distance",
-            "nearest_spawner_health",
-            "enemy_count",
-            "spawner_count",
-            "phase",
-            "time_remaining",
-        )
+        self.observation_names = OBSERVATION_NAMES
         low = np.array(
             [-1, -1, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0],
             dtype=np.float32,
@@ -576,6 +584,12 @@ class ArenaEnv(gym.Env):
     def _target_features(
         self, targets: list[Enemy] | list[Spawner]
     ) -> tuple[float, float, float, float]:
+        """Encode unit direction, normalized distance, and health of the nearest target.
+
+        A missing target uses direction ``(0, 0)``, maximum distance ``1``,
+        and zero health. Screen-space positive Y points downward.
+        """
+
         if not targets:
             return 0.0, 0.0, 1.0, 0.0
         target = min(
@@ -583,13 +597,21 @@ class ArenaEnv(gym.Env):
             key=lambda item: (item.x - self.player.x) ** 2
             + (item.y - self.player.y) ** 2,
         )
-        dx = (target.x - self.player.x) / self.width
+        dx = target.x - self.player.x
+        dy = target.y - self.player.y
+        pixel_distance = math.hypot(dx, dy)
+        if pixel_distance > 1e-8:
+            direction_x = dx / pixel_distance
+            direction_y = dy / pixel_distance
+        else:
+            direction_x = 0.0
+            direction_y = 0.0
+
         playfield_height = self.height - self.playfield_top
-        dy = (target.y - self.player.y) / playfield_height
-        diagonal = math.hypot(self.width, self.height)
-        distance = math.hypot(target.x - self.player.x, target.y - self.player.y) / diagonal
-        health = max(0.0, target.health / target.max_health)
-        return dx, dy, distance, health
+        diagonal = math.hypot(self.width, playfield_height)
+        distance = float(np.clip(pixel_distance / diagonal, 0.0, 1.0))
+        health = float(np.clip(target.health / target.max_health, 0.0, 1.0))
+        return direction_x, direction_y, distance, health
 
     def _get_observation(self) -> np.ndarray:
         max_speed = max(
@@ -621,7 +643,26 @@ class ArenaEnv(gym.Env):
             ],
             dtype=np.float32,
         )
-        return observation
+        return np.clip(
+            observation,
+            self.observation_space.low,
+            self.observation_space.high,
+        ).astype(np.float32, copy=False)
+
+    def observation_as_dict(
+        self, observation: np.ndarray | None = None
+    ) -> dict[str, float]:
+        """Return a named view of an observation for reports and debugging."""
+
+        vector = self._get_observation() if observation is None else np.asarray(observation)
+        if vector.shape != self.observation_space.shape:
+            raise ValueError(
+                f"Expected observation shape {self.observation_space.shape}, got {vector.shape}"
+            )
+        return {
+            name: float(value)
+            for name, value in zip(self.observation_names, vector, strict=True)
+        }
 
     def _calculate_reward(self, events: dict[str, Any], terminated: bool) -> float:
         """Provide configurable event rewards; detailed tuning is a later task."""
@@ -649,4 +690,10 @@ class ArenaEnv(gym.Env):
         }
 
 
-__all__ = ["ArenaEnv", "DIRECT_ACTIONS", "ROTATION_ACTIONS"]
+__all__ = [
+    "ArenaEnv",
+    "DIRECT_ACTIONS",
+    "ROTATION_ACTIONS",
+    "ObservationIndex",
+    "OBSERVATION_NAMES",
+]
