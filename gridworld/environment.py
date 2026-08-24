@@ -203,7 +203,14 @@ class GridWorldEnv:
         )
 
         if self.has_monsters:
-            m_pos = tuple(sorted(tuple(mp) for mp in self.monster_positions))
+            # Relative offsets of monsters within sensing radius of 2
+            nearby = []
+            for mp in self.monster_positions:
+                dr = mp[0] - self.agent_pos[0]
+                dc = mp[1] - self.agent_pos[1]
+                if abs(dr) + abs(dc) <= 2:
+                    nearby.append((dr, dc))
+            m_pos = tuple(sorted(nearby))
         else:
             m_pos = ()
 
