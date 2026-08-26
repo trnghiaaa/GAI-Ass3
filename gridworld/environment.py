@@ -3,13 +3,14 @@ GridWorld environment with support for all tile types:
     apples, keys, chests, fire, rocks, and monsters.
 
 State representation (hashable tuple for Q-table lookup):
-    (row, col, has_key, collectibles_remaining, monster_positions)
+    (row, col, has_key, collectibles_remaining, nearby_monster_offsets)
 
-    - collectibles_remaining : tuple of 0/1 flags for each collectible
-    - monster_positions      : sorted tuple of (r, c) pairs (empty if none)
+    - collectibles_remaining  : tuple of 0/1 flags for each collectible
+    - nearby_monster_offsets  : sorted tuple of (dr, dc) relative offsets
+                                for monsters within Manhattan distance <= 2
+                                (empty tuple if no monsters or none nearby)
 """
 
-import copy
 import random
 from gridworld.levels import LEVELS
 

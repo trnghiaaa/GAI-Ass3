@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 
 from gridworld.environment import GridWorldEnv
 from gridworld.agents.q_learning import QLearningAgent
+from gridworld.agents.sarsa import SARSAAgent
 from gridworld.renderer import GridWorldRenderer
 
 
@@ -51,7 +52,6 @@ def make_agent(agent_type, config, num_episodes, use_intrinsic=False):
             intrinsic_strength=intrinsic_strength,
         )
     elif agent_type == "sarsa":
-        from gridworld.agents.sarsa import SARSAAgent
         return SARSAAgent(
             alpha=tc["alpha"],
             gamma=tc["gamma"],
@@ -86,7 +86,7 @@ def train(env, agent, num_episodes, renderer=None, max_steps=500):
             total_reward += reward
             step_count += 1
 
-            if hasattr(agent, "__class__") and agent.__class__.__name__ == "SARSAAgent":
+            if isinstance(agent, SARSAAgent):
                 next_action = agent.choose_action(next_state) if not done else None
                 agent.update(state, action, reward, next_state, done, next_action=next_action)
                 action = next_action
