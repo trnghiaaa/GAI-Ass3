@@ -1,0 +1,34 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Part I: Run Gridworld",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "purpose": [
+                "debug-in-terminal"
+            ],
+            "justMyCode": true,
+            "redirectOutput": true,
+            "env": {
+                "PYGAME_HIDE_SUPPORT_PROMPT": "1"
+            }
+        },
+        {
+            "name": "Part I: Debug Gridworld",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
+            "justMyCode": true,
+            "redirectOutput": true,
+            "env": {
+                "PYGAME_HIDE_SUPPORT_PROMPT": "1"
+            }
+        }
+    ]
+}

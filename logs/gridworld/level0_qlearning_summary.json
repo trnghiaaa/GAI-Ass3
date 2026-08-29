@@ -1,0 +1,45 @@
+{
+  "algorithm": "qlearning",
+  "intrinsic_enabled": false,
+  "level_id": 0,
+  "profile": {
+    "alpha": 0.1,
+    "bootstrap_on_truncation": true,
+    "episodes": 500,
+    "epsilon_end": 0.01,
+    "epsilon_start": 1.0,
+    "gamma": 0.99,
+    "intrinsic_strength": 0.0001,
+    "max_steps": 100,
+    "rolling_window": 50,
+    "seed": 1729
+  },
+  "seed": 1729,
+  "state_schema": [
+    "agent_row",
+    "agent_column",
+    "has_key",
+    "collectible_flags",
+    "monster_observation"
+  ],
+  "summary": {
+    "episodes": 500,
+    "first_success_episode": 11,
+    "overall": {
+      "death_rate": 0.0,
+      "mean_extrinsic_reward": 2.518,
+      "mean_intrinsic_reward": 0.0,
+      "truncation_rate": 0.24,
+      "victory_rate": 0.76
+    },
+    "tail": {
+      "death_rate": 0.0,
+      "mean_extrinsic_reward": 3.0,
+      "mean_intrinsic_reward": 0.0,
+      "mean_steps_on_victory": 19.23,
+      "truncation_rate": 0.0,
+      "victory_rate": 1.0
+    },
+    "tail_window": 100
+  }
+}

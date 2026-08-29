@@ -1,0 +1,45 @@
+{
+  "algorithm": "sarsa",
+  "intrinsic_enabled": false,
+  "level_id": 3,
+  "profile": {
+    "alpha": 0.1,
+    "bootstrap_on_truncation": true,
+    "episodes": 1500,
+    "epsilon_end": 0.01,
+    "epsilon_start": 1.0,
+    "gamma": 0.99,
+    "intrinsic_strength": 0.0001,
+    "max_steps": 250,
+    "rolling_window": 50,
+    "seed": 1729
+  },
+  "seed": 1729,
+  "state_schema": [
+    "agent_row",
+    "agent_column",
+    "has_key",
+    "collectible_flags",
+    "monster_observation"
+  ],
+  "summary": {
+    "episodes": 1500,
+    "first_success_episode": 68,
+    "overall": {
+      "death_rate": 0.0,
+      "mean_extrinsic_reward": 3.6133333333333333,
+      "mean_intrinsic_reward": 0.0,
+      "truncation_rate": 0.174,
+      "victory_rate": 0.826
+    },
+    "tail": {
+      "death_rate": 0.0,
+      "mean_extrinsic_reward": 4.0,
+      "mean_intrinsic_reward": 0.0,
+      "mean_steps_on_victory": 26.43,
+      "truncation_rate": 0.0,
+      "victory_rate": 1.0
+    },
+    "tail_window": 100
+  }
+}

@@ -4,13 +4,88 @@
         "alpha": 0.1,
         "gamma": 0.99,
         "epsilon_start": 1.0,
-        "epsilon_end": 0.01
+        "epsilon_end": 0.01,
+        "max_steps": 500,
+        "bootstrap_on_truncation": true,
+        "rolling_window": 50,
+        "seed": 1729
+    },
+    "agent_profiles": {
+        "qlearning": {
+            "alpha": 0.1
+        },
+        "sarsa": {
+            "alpha": 0.1
+        }
+    },
+    "level_profiles": {
+        "0": {
+            "episodes": 500,
+            "max_steps": 100
+        },
+        "1": {
+            "episodes": 3000,
+            "epsilon_end": 0.05,
+            "max_steps": 50
+        },
+        "2": {
+            "episodes": 1000,
+            "max_steps": 200
+        },
+        "3": {
+            "episodes": 1500,
+            "max_steps": 250
+        },
+        "4": {
+            "episodes": 1500,
+            "max_steps": 350
+        },
+        "5": {
+            "episodes": 6000,
+            "max_steps": 400
+        },
+        "6": {
+            "episodes": 1000,
+            "max_steps": 300,
+            "intrinsic_strength": 0.0001
+        }
+    },
+    "level_agent_profiles": {
+        "1": {
+            "qlearning": {
+                "epsilon_end": 0.05
+            },
+            "sarsa": {
+                "epsilon_end": 0.05
+            }
+        }
     },
     "monster": {
         "move_chance": 0.4
     },
     "intrinsic": {
-        "reward_strength": 1.0
+        "reward_strength": 0.0001,
+        "strength_sweep": [0.00001, 0.0001, 0.001, 0.005]
+    },
+    "evaluation": {
+        "episodes": 3,
+        "max_steps": 500,
+        "seed": 9001,
+        "fps": 8,
+        "hold_window": false
+    },
+    "evidence": {
+        "rolling_window": 50,
+        "level1": {
+            "seeds": [101, 202, 303, 404, 505, 606, 707, 808, 909, 1010],
+            "evaluation_epsilon": 0.05,
+            "evaluation_episodes": 200
+        },
+        "level6": {
+            "agent": "qlearning",
+            "seeds": [111, 222, 333, 444, 555],
+            "evaluation_episodes": 50
+        }
     },
     "rendering": {
         "cell_size": 60,

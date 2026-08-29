@@ -5,8 +5,9 @@ Draws the grid, agent, items, monsters, fire, and a HUD bar showing
 episode info.
 """
 
+import math
+
 import pygame
-import sys
 
 # ── Colour palette ─────────────────────────────────────────────────────
 COLORS = {
@@ -30,7 +31,7 @@ COLORS = {
     "hud_text":     (240, 240, 240),
 }
 
-HUD_HEIGHT = 40  # pixels
+HUD_HEIGHT = 56  # pixels
 
 
 class GridWorldRenderer:
@@ -49,14 +50,24 @@ class GridWorldRenderer:
         pygame.display.set_caption(title)
         self.clock = pygame.time.Clock()
         self.font = pygame.font.SysFont("consolas", 16)
+        self.small_font = pygame.font.SysFont("consolas", 13)
+        self.frame_count = 0
 
     # ------------------------------------------------------------------
     # Public
     # ------------------------------------------------------------------
 
-    def render(self, episode=None, step=None, total_reward=None):
-        """Draw the current state of the environment."""
-        self._handle_events()
+    def render(self, episode=None, step=None, total_reward=None, message=None,
+               trail=None, policy=None):
+        """Draw the current state without consuming input events.
+
+        Event ownership deliberately stays with the caller.  The previous
+        renderer drained the entire Pygame queue, which meant manual and
+        evaluation controls could be swallowed before their game loops saw
+        them.  ``trail`` and ``policy`` are optional presentation aids used by
+        evaluation and do not change the environment or rewards.
+        """
+        self.frame_count += 1
 
         self.screen.fill(COLORS["bg"])
         grid = self.env.get_grid_for_render()
@@ -92,8 +103,13 @@ class GridWorldRenderer:
                 elif tile == "P":
                     self._draw_player(rect)
 
+        if trail:
+            self._draw_trail(trail)
+        if policy:
+            self._draw_policy(policy)
+
         # HUD
-        self._draw_hud(episode, step, total_reward)
+        self._draw_hud(episode, step, total_reward, message)
 
         pygame.display.flip()
         self.clock.tick(self.fps)
@@ -116,10 +132,11 @@ class GridWorldRenderer:
 
     def _draw_fire(self, rect):
         pygame.draw.rect(self.screen, COLORS["fire"], rect)
-        # Flame accent triangle
+        # A small pulse makes hazards visibly animated during evaluation.
         cx = rect.centerx
+        pulse = int(3 * math.sin(self.frame_count * 0.24 + rect.x * 0.03))
         points = [
-            (cx, rect.y + 6),
+            (cx, rect.y + 6 + pulse),
             (cx - rect.width // 4, rect.y + rect.height - 6),
             (cx + rect.width // 4, rect.y + rect.height - 6),
         ]
@@ -176,7 +193,42 @@ class GridWorldRenderer:
     # HUD
     # ------------------------------------------------------------------
 
-    def _draw_hud(self, episode, step, total_reward):
+    def _draw_trail(self, trail):
+        """Render a translucent breadcrumb trail behind a rollout."""
+        if len(trail) < 2:
+            return
+        points = [
+            (int(c * self.cell_size + self.cell_size / 2),
+             int(r * self.cell_size + self.cell_size / 2))
+            for r, c in trail
+        ]
+        if len(points) >= 2:
+            pygame.draw.lines(self.screen, (83, 109, 254), False, points,
+                              max(2, self.cell_size // 16))
+
+    def _draw_policy(self, policy):
+        """Draw policy arrows from a ``{(row, col): action}`` mapping."""
+        arrows = {
+            0: (0, -1),
+            1: (0, 1),
+            2: (-1, 0),
+            3: (1, 0),
+        }
+        radius = max(6, self.cell_size // 5)
+        for (row, col), action in policy.items():
+            if action not in arrows:
+                continue
+            dx, dy = arrows[action]
+            cx = col * self.cell_size + self.cell_size // 2
+            cy = row * self.cell_size + self.cell_size // 2
+            start = (cx - dx * radius // 2, cy - dy * radius // 2)
+            end = (cx + dx * radius, cy + dy * radius)
+            pygame.draw.line(self.screen, (83, 109, 254), start, end, 2)
+            left = (end[0] - dx * 5 + dy * 4, end[1] - dy * 5 - dx * 4)
+            right = (end[0] - dx * 5 - dy * 4, end[1] - dy * 5 + dx * 4)
+            pygame.draw.polygon(self.screen, (83, 109, 254), [end, left, right])
+
+    def _draw_hud(self, episode, step, total_reward, message=None):
         hud_y = self.env.rows * self.cell_size
         hud_rect = pygame.Rect(0, hud_y, self.width, HUD_HEIGHT)
         pygame.draw.rect(self.screen, COLORS["hud_bg"], hud_rect)
@@ -191,17 +243,22 @@ class GridWorldRenderer:
         if self.env.has_key:
             parts.append("KEY [Y]")
 
+        remaining = len(self.env.collectibles)
+        parts.append(f"Left: {remaining}")
+
         text = "   |   ".join(parts) if parts else ""
         surf = self.font.render(text, True, COLORS["hud_text"])
-        self.screen.blit(surf, (12, hud_y + 10))
+        self.screen.blit(surf, (12, hud_y + 8))
+
+        level = getattr(self.env, "level_id", "?")
+        footer = message or f"Level {level}  |  Arrow keys move  |  R restart  |  ESC quit"
+        footer_surf = self.small_font.render(footer, True, (185, 190, 200))
+        self.screen.blit(footer_surf, (12, hud_y + 32))
 
     # ------------------------------------------------------------------
     # Events
     # ------------------------------------------------------------------
 
-    def _handle_events(self):
-        """Process Pygame events so the window stays responsive."""
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.close()
-                sys.exit()
+    def quit_requested(self):
+        """Return whether the window was closed without consuming key input."""
+        return bool(pygame.event.get(pygame.QUIT))

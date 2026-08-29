@@ -1,9 +1,4 @@
-# Part I: Classical RL Gridworld
+# Assignment 3, Part I: Classical RL Gridworld
 pygame>=2.5.0
 numpy>=1.24.0
 matplotlib>=3.7.0
-
-# Part II: Deep RL Arena (Stable-Baselines3)
-gymnasium>=0.29.0
-stable-baselines3>=2.2.0
-tensorboard>=2.14.0

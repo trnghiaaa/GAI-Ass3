@@ -1,24 +1,27 @@
-"""
-Level definitions for the Gridworld environment.
+"""Canonical level definitions for the Part I Gridworld.
 
-Tile legend:
-    .  = Empty (walkable)
-    S  = Start (agent spawn)
-    R  = Rock (blocks movement)
-    F  = Fire (instant death)
-    A  = Apple (+1 reward, consumed)
-    K  = Key (no reward, allows opening chests)
-    C  = Chest (+2 reward if agent has key)
-    M  = Monster (instant death, moves probabilistically)
+Tile legend
+-----------
+``.`` empty, ``S`` start, ``R`` rock, ``F`` fire, ``A`` apple,
+``K`` key, ``C`` chest, and ``M`` monster.
+
+The descriptive metadata is intentionally kept beside each map so launchers and
+renderers can present a useful level-select screen without duplicating assignment
+knowledge elsewhere.
 """
+
 
 LEVELS = {
-    # ------------------------------------------------------------------
-    # Level 0 — Basic Apples (Task 1: Q-Learning)
-    # Apples on the right side, some rocks as obstacles.
-    # ------------------------------------------------------------------
     0: {
-        "description": "Basic apples – learn shortest path with Q-Learning",
+        "title": "Orchard Sprint",
+        "task": 1,
+        "task_name": "Basic Q-Learning",
+        "description": "Collect the apples on the right using a shortest path.",
+        "objectives": (
+            "Collect all three apples.",
+            "Demonstrate a shortest-path Q-learning policy.",
+        ),
+        "mechanics": ("apples", "rocks", "shortest-path planning"),
         "grid": [
             "S.........",
             "..........",
@@ -32,34 +35,44 @@ LEVELS = {
             "..........",
         ],
     },
-
-    # ------------------------------------------------------------------
-    # Level 1 — Fire Corridor / Cliff-Walk (Task 2: SARSA)
-    # Fire blocks the direct east path along the bottom.
-    # Q-Learning walks the cliff edge (row 7); SARSA routes higher.
-    # ------------------------------------------------------------------
     1: {
-        "description": "Fire corridor – SARSA learns a safer route than Q-Learning",
+        "title": "Cliffside Choice",
+        "task": 2,
+        "task_name": "SARSA Hazard Avoidance",
+        "description": (
+            "Choose between a short fire-edge lane and a slightly longer safe lane."
+        ),
+        "objectives": (
+            "Collect the apple without stepping into fire.",
+            "Compare Q-learning's short route with SARSA's conservative route.",
+        ),
+        "mechanics": ("apple", "fire", "safe-versus-risky routing"),
+        # Rows 0-6 constrain the experiment to two reachable lanes. Row 7 is
+        # the safe seven-step route; row 8 is the risky five-step route; fire
+        # on row 9 punishes exploratory DOWN actions from the risky lane.
         "grid": [
-            "..........",
-            "..........",
-            "..........",
-            "..........",
-            "..........",
-            "..........",
-            "........A.",
-            "........A.",
-            "SFFFFFFF..",
-            "........A.",
+            "RRRRRRRRRR",
+            "RRRRRRRRRR",
+            "RRRRRRRRRR",
+            "RRRRRRRRRR",
+            "RRRRRRRRRR",
+            "RRRRRRRRRR",
+            "RRRRRRRRRR",
+            "RR......RR",
+            "RRS....ARR",
+            "RRRFFFFRRR",
         ],
     },
-
-    # ------------------------------------------------------------------
-    # Level 2 — Key and Chest, simple (Task 3)
-    # Agent must collect key before opening chest.
-    # ------------------------------------------------------------------
     2: {
-        "description": "Key and chest – simple layout",
+        "title": "Keykeeper's Meadow",
+        "task": 3,
+        "task_name": "Keys, Chests, and Multiple Rewards",
+        "description": "Collect two apples, find the key, then open the chest.",
+        "objectives": (
+            "Collect both apples.",
+            "Collect the key before opening the chest.",
+        ),
+        "mechanics": ("multiple apples", "key", "locked chest", "rocks"),
         "grid": [
             "S.........",
             "..R.......",
@@ -73,13 +86,16 @@ LEVELS = {
             "..........",
         ],
     },
-
-    # ------------------------------------------------------------------
-    # Level 3 — Key and Chest, harder (Task 3)
-    # More rocks funnel the agent through corridors.
-    # ------------------------------------------------------------------
     3: {
-        "description": "Key and chest – harder, rock corridors",
+        "title": "Vault Labyrinth",
+        "task": 3,
+        "task_name": "Keys, Chests, and Multiple Rewards",
+        "description": "Solve a rock labyrinth containing apples, a key, and a chest.",
+        "objectives": (
+            "Collect both apples.",
+            "Navigate to the key and unlock the chest.",
+        ),
+        "mechanics": ("multiple apples", "key", "locked chest", "maze"),
         "grid": [
             "S..R......",
             "...R......",
@@ -93,14 +109,16 @@ LEVELS = {
             "........C.",
         ],
     },
-
-    # ------------------------------------------------------------------
-    # Level 4 — Monsters, simple (Task 4)
-    # One monster in an open area.  Agent must avoid it while
-    # collecting apples.
-    # ------------------------------------------------------------------
     4: {
-        "description": "One monster – stochastic danger in open area",
+        "title": "Monster Meadow",
+        "task": 4,
+        "task_name": "Stochastic Monster Transitions",
+        "description": "Collect every apple while one roaming monster moves randomly.",
+        "objectives": (
+            "Collect all three apples.",
+            "Avoid stepping onto the monster or letting it move onto the agent.",
+        ),
+        "mechanics": ("multiple apples", "one monster", "stochastic movement"),
         "grid": [
             "S.........",
             "..........",
@@ -114,13 +132,16 @@ LEVELS = {
             "..........",
         ],
     },
-
-    # ------------------------------------------------------------------
-    # Level 5 — Monsters, harder (Task 4)
-    # Two monsters with tighter corridors created by rocks.
-    # ------------------------------------------------------------------
     5: {
-        "description": "Two monsters – tighter corridors, more danger",
+        "title": "Predator Passages",
+        "task": 4,
+        "task_name": "Stochastic Monster Transitions",
+        "description": "Outmanoeuvre two monsters in tighter rock passages.",
+        "objectives": (
+            "Collect all three apples.",
+            "Adapt to two independently moving monsters.",
+        ),
+        "mechanics": ("multiple apples", "two monsters", "rock corridors"),
         "grid": [
             "S.R.......",
             "..R.......",
@@ -134,15 +155,16 @@ LEVELS = {
             "..........",
         ],
     },
-
-    # ------------------------------------------------------------------
-    # Level 6 — Intrinsic Reward (Task 5)
-    # Sparse rewards far from start; maze-like rocks create dead ends.
-    # Intrinsic exploration bonus helps the agent discover distant
-    # apples faster.
-    # ------------------------------------------------------------------
     6: {
-        "description": "Sparse rewards in a maze – intrinsic reward needed",
+        "title": "Curiosity Maze",
+        "task": 5,
+        "task_name": "Intrinsic Exploration Reward",
+        "description": "Explore a maze with sparse, distant apples.",
+        "objectives": (
+            "Collect all three apples.",
+            "Compare learning with and without the count-based intrinsic bonus.",
+        ),
+        "mechanics": ("sparse apples", "maze", "intrinsic exploration"),
         "grid": [
             "S..R......",
             ".R.R..R...",

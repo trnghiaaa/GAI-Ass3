@@ -1,0 +1,69 @@
+{
+  "comparison": "algorithms",
+  "conclusion": "Q-learning consistently selected the shorter fire-edge route; SARSA consistently selected the longer lane with fewer hazard-adjacent steps.",
+  "epsilon_evaluation": {
+    "qlearning": {
+      "episodes_per_seed": 200,
+      "epsilon": 0.05,
+      "mean_fire_deaths": 9.4,
+      "mean_victory_rate": 0.953
+    },
+    "sarsa": {
+      "episodes_per_seed": 200,
+      "epsilon": 0.05,
+      "mean_fire_deaths": 0.4,
+      "mean_victory_rate": 0.998
+    }
+  },
+  "greedy_rollouts": {
+    "qlearning": {
+      "mean_hazard_adjacent_steps": 4.0,
+      "mean_minimum_fire_distance": 1.0,
+      "mean_steps": 5.0,
+      "victory_rate": 1.0
+    },
+    "sarsa": {
+      "mean_hazard_adjacent_steps": 0.0,
+      "mean_minimum_fire_distance": 2.0,
+      "mean_steps": 7.0,
+      "victory_rate": 1.0
+    }
+  },
+  "level_id": 1,
+  "profiles": {
+    "qlearning": {
+      "alpha": 0.1,
+      "bootstrap_on_truncation": true,
+      "episodes": 3000,
+      "epsilon_end": 0.05,
+      "epsilon_start": 1.0,
+      "gamma": 0.99,
+      "intrinsic_strength": 0.0001,
+      "max_steps": 50,
+      "rolling_window": 50
+    },
+    "sarsa": {
+      "alpha": 0.1,
+      "bootstrap_on_truncation": true,
+      "episodes": 3000,
+      "epsilon_end": 0.05,
+      "epsilon_start": 1.0,
+      "gamma": 0.99,
+      "intrinsic_strength": 0.0001,
+      "max_steps": 50,
+      "rolling_window": 50
+    }
+  },
+  "seeds": [
+    101,
+    202,
+    303,
+    404,
+    505,
+    606,
+    707,
+    808,
+    909,
+    1010
+  ]
+}

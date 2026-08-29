@@ -1,127 +1,205 @@
-"""
-Evaluation script to visually replay and verify trained agents in Pygame.
+"""Bounded, seeded evaluation for saved Gridworld policies.
 
-Usage:
-    python -m gridworld.evaluate --level 0 --agent qlearning
-    python -m gridworld.evaluate --level 0 --agent qlearning --episodes 5 --fps 6
+The default command renders actual Pygame gameplay.  ``--headless`` is useful
+for automated acceptance checks; both modes use the same rollout code and
+distinguish victory, death, and a safe runner-level timeout.
 """
+
+from __future__ import annotations
 
 import argparse
 import json
 import os
-import sys
-import time
-import pygame
+from pathlib import Path
+from typing import Any, Mapping
 
-from gridworld.environment import GridWorldEnv
 from gridworld.agents.q_learning import QLearningAgent
-from gridworld.renderer import GridWorldRenderer
+from gridworld.agents.sarsa import SARSAAgent
+from gridworld.train import (
+    MODELS_DIR,
+    load_config,
+    make_environment,
+    reset_environment,
+    resolve_training_profile,
+    step_environment,
+)
 
 
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
-MODELS_DIR = os.path.join(ROOT_DIR, "models", "gridworld")
+def load_agent(agent_kind: str, model_path: str | os.PathLike[str], seed: int):
+    agent_class = QLearningAgent if agent_kind == "qlearning" else SARSAAgent
+    agent = agent_class(seed=seed)
+    metadata = agent.load(model_path)
+    agent.set_seed(seed)
+    return agent, metadata
 
 
-def load_config():
-    """Load configuration from config.json."""
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+def evaluate_agent(
+    level_id: int,
+    agent: Any,
+    config: Mapping[str, Any],
+    *,
+    episodes: int,
+    max_steps: int,
+    base_seed: int,
+    epsilon: float = 0.0,
+    renderer: Any = None,
+) -> list[dict[str, Any]]:
+    """Evaluate without learning and return one auditable row per episode."""
+    if episodes <= 0 or max_steps <= 0:
+        raise ValueError("episodes and max_steps must be positive")
+    if not 0.0 <= epsilon <= 1.0:
+        raise ValueError("epsilon must be between 0 and 1")
+
+    pygame = None
+    if renderer is not None:
+        import pygame as pygame_module
+        pygame = pygame_module
+
+    agent.epsilon = float(epsilon)
+    agent.set_seed(base_seed + 7_000_003)
+    rows: list[dict[str, Any]] = []
+    quit_requested = False
+
+    for episode in range(episodes):
+        seed = base_seed + episode
+        env = make_environment(level_id, config, seed)
+        state = reset_environment(env, seed)
+        if hasattr(agent, "begin_episode"):
+            agent.begin_episode(state)
+        if renderer is not None:
+            renderer.env = env
+
+        total_reward = 0.0
+        path = [tuple(env.agent_pos)]
+        done = False
+        info: dict[str, Any] = {}
+        for step in range(1, max_steps + 1):
+            if renderer is not None:
+                renderer.render(
+                    episode=episode + 1,
+                    step=step - 1,
+                    total_reward=total_reward,
+                    trail=path,
+                    message=f"Greedy policy (epsilon={epsilon:g})",
+                )
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT or (
+                        event.type == pygame.KEYDOWN
+                        and event.key in (pygame.K_ESCAPE, pygame.K_q)
+                    ):
+                        quit_requested = True
+                if quit_requested:
+                    break
+
+            action = int(agent.choose_action(state))
+            state, reward, done, info = step_environment(env, action)
+            total_reward += reward
+            path.append(tuple(env.agent_pos))
+            if done:
+                if renderer is not None:
+                    renderer.render(
+                        episode=episode + 1,
+                        step=step,
+                        total_reward=total_reward,
+                        trail=path,
+                        message=("VICTORY" if info.get("victory") else
+                                 f"DEATH: {info.get('death', 'hazard')}").upper(),
+                    )
+                break
+
+        if quit_requested:
+            break
+        if done and info.get("victory"):
+            status = "victory"
+        elif done and info.get("death"):
+            status = f"death_{info['death']}"
+        else:
+            status = "timeout"
+        rows.append({
+            "episode": episode + 1,
+            "seed": seed,
+            "status": status,
+            "victory": int(status == "victory"),
+            "death": int(status.startswith("death_")),
+            "timeout": int(status == "timeout"),
+            "steps": step,
+            "environment_reward": total_reward,
+            "path": path,
+        })
+    return rows
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Evaluate Trained Gridworld Agent")
-    parser.add_argument("--level", type=int, default=0, help="Level ID (0-6)")
-    parser.add_argument("--agent", type=str, default="qlearning",
-                        choices=["qlearning", "sarsa"], help="Agent type")
-    parser.add_argument("--episodes", type=int, default=3,
-                        help="Number of evaluation episodes to replay")
-    parser.add_argument("--fps", type=int, default=6,
-                        help="Visual playback speed (frames per second)")
-    parser.add_argument("--intrinsic", action="store_true",
-                        help="Load intrinsic curiosity model")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Evaluate a saved Gridworld policy")
+    parser.add_argument("--level", type=int, default=0, choices=range(7))
+    parser.add_argument("--agent", choices=["qlearning", "sarsa"],
+                        default="qlearning")
+    parser.add_argument("--episodes", type=int, default=None)
+    parser.add_argument("--max-steps", type=int, default=None)
+    parser.add_argument("--fps", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--epsilon", type=float, default=0.0,
+                        help="0 gives greedy evaluation with random exact ties")
+    parser.add_argument("--intrinsic", action="store_true")
+    parser.add_argument("--headless", action="store_true")
+    parser.add_argument("--json", action="store_true",
+                        help="Print machine-readable episode metrics")
     args = parser.parse_args()
 
     config = load_config()
-    monster_chance = config.get("monster", {}).get("move_chance", 0.4)
-
+    evaluation = config.get("evaluation", {})
+    profile = resolve_training_profile(config, args.level, args.agent)
+    episodes = int(args.episodes or evaluation.get("episodes", 3))
+    max_steps = int(args.max_steps or evaluation.get("max_steps", profile["max_steps"]))
+    fps = int(args.fps or evaluation.get("fps", 8))
+    seed = int(args.seed if args.seed is not None else evaluation.get("seed", 9001))
     suffix = "_intrinsic" if args.intrinsic else ""
-    model_filename = f"level{args.level}_{args.agent}{suffix}.pkl"
-    model_path = os.path.join(MODELS_DIR, model_filename)
+    model_path = Path(MODELS_DIR) / f"level{args.level}_{args.agent}{suffix}.pkl"
+    if not model_path.exists():
+        raise SystemExit(
+            f"Model not found: {model_path}\n"
+            f"Train it with: python -m gridworld.train --level {args.level} "
+            f"--agent {args.agent}{' --intrinsic' if args.intrinsic else ''}"
+        )
 
-    if not os.path.exists(model_path):
-        print(f"[!] Error: Trained model not found at {model_path}")
-        print(f"    Train the agent first using: python -m gridworld.train --level {args.level} --agent {args.agent}")
-        sys.exit(1)
+    agent, metadata = load_agent(args.agent, model_path, seed)
+    expected_schema = metadata.get("state_schema") if metadata else None
+    probe_env = make_environment(args.level, config, seed)
+    if expected_schema and list(expected_schema) != list(probe_env.state_schema):
+        raise SystemExit("Saved model state schema differs from the current environment; retrain it.")
 
-    # Initialize environment and load agent
-    env = GridWorldEnv(args.level, monster_move_chance=monster_chance)
+    renderer = None
+    if not args.headless:
+        from gridworld.renderer import GridWorldRenderer
+        renderer = GridWorldRenderer(
+            probe_env,
+            cell_size=int(config["rendering"]["cell_size"]),
+            fps=fps,
+            title=f"Level {args.level} - {args.agent.upper()} evaluation",
+        )
+    try:
+        rows = evaluate_agent(
+            args.level, agent, config, episodes=episodes, max_steps=max_steps,
+            base_seed=seed, epsilon=args.epsilon, renderer=renderer,
+        )
+    finally:
+        if renderer is not None:
+            renderer.close()
 
-    if args.agent == "qlearning":
-        agent = QLearningAgent()
+    if args.json:
+        print(json.dumps(rows, indent=2))
     else:
-        from gridworld.agents.sarsa import SARSAAgent
-        agent = SARSAAgent()
-
-    agent.load(model_path)
-    # Set epsilon = 0 for deterministic greedy evaluation
-    agent.epsilon = 0.0
-
-    renderer = GridWorldRenderer(
-        env,
-        cell_size=config["rendering"]["cell_size"],
-        fps=args.fps,
-        title=f"Evaluation - Level {args.level} ({args.agent.upper()})",
-    )
-
-    print(f"=== Evaluating {args.agent.upper()} on Level {args.level} ===")
-    print(f"    Model: {model_path}")
-    print(f"    Replay Episodes: {args.episodes} | Playback FPS: {args.fps}")
-    print("    (Close Pygame window or press ESC/Q to exit)")
-    print()
-
-    for ep in range(args.episodes):
-        state = env.reset()
-        total_reward = 0.0
-        step_count = 0
-
-        # Render initial frame
-        renderer.render(episode=ep + 1, step=0, total_reward=0.0)
-        time.sleep(0.3)
-
-        done = False
-        info = {}
-
-        while not done:
-            action = agent.choose_action(state)
-            state, reward, done, info = env.step(action)
-            total_reward += reward
-            step_count += 1
-
-            renderer.render(episode=ep + 1, step=step_count, total_reward=total_reward)
-
-            # Check if user requested window exit during evaluation
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_q)):
-                    renderer.close()
-                    sys.exit(0)
-
-        result = "VICTORY" if info.get("victory") else f"DIED ({info.get('death', 'hazard')})"
-        print(f"  Episode {ep + 1:>2}: {result:<10} | Steps: {step_count:>3} | Total Reward: {total_reward:.1f}")
-        time.sleep(0.8)
-
-    print()
-    print("=== Evaluation Complete. Window will remain open until closed. ===")
-
-    # Keep window open for inspection
-    running = True
-    while running:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key in (pygame.K_ESCAPE, pygame.K_q)):
-                running = False
-        renderer.clock.tick(10)
-
-    renderer.close()
+        for row in rows:
+            print(
+                f"Episode {row['episode']:>2}: {row['status']:<14} | "
+                f"steps {row['steps']:>3} | env reward {row['environment_reward']:.1f}"
+            )
+        if rows:
+            print(
+                f"Summary: {sum(row['victory'] for row in rows)}/{len(rows)} victories, "
+                f"{sum(row['death'] for row in rows)} deaths, "
+                f"{sum(row['timeout'] for row in rows)} timeouts."
+            )
 
 
 if __name__ == "__main__":

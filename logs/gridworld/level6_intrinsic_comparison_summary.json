@@ -1,0 +1,61 @@
+{
+  "algorithm": "qlearning",
+  "comparison": "intrinsic",
+  "environment_rewards_unchanged": true,
+  "intrinsic_formula": "intrinsic_strength / sqrt(n(s) + 1), where s is the reached state",
+  "level_id": 6,
+  "observed_result": {
+    "explanation": "The small count bonus targets faster initial reward discovery; tail success and greedy completion are reported beside it so the exploration/exploitation trade-off remains visible.",
+    "first_success_episode_improvement": 2.1999999999999993,
+    "first_success_percent_faster": 21.568627450980387
+  },
+  "profiles": {
+    "baseline": {
+      "alpha": 0.1,
+      "bootstrap_on_truncation": true,
+      "episodes": 1000,
+      "epsilon_end": 0.01,
+      "epsilon_start": 1.0,
+      "gamma": 0.99,
+      "intrinsic_strength": 0.0001,
+      "max_steps": 300,
+      "rolling_window": 50
+    },
+    "intrinsic": {
+      "alpha": 0.1,
+      "bootstrap_on_truncation": true,
+      "episodes": 1000,
+      "epsilon_end": 0.01,
+      "epsilon_start": 1.0,
+      "gamma": 0.99,
+      "intrinsic_strength": 0.0001,
+      "max_steps": 300,
+      "rolling_window": 50
+    }
+  },
+  "seeds": [
+    111,
+    222,
+    333,
+    444,
+    555
+  ],
+  "variants": {
+    "baseline": {
+      "greedy_victory_rate": 1.0,
+      "mean_first_100_unique_positions": 41.86,
+      "mean_first_100_victory_rate": 0.23399999999999999,
+      "mean_first_success_episode": 10.2,
+      "mean_greedy_steps": 22.0,
+      "mean_last_100_victory_rate": 1.0
+    },
+    "intrinsic": {
+      "greedy_victory_rate": 1.0,
+      "mean_first_100_unique_positions": 40.028,
+      "mean_first_100_victory_rate": 0.18400000000000002,
+      "mean_first_success_episode": 8.0,
+      "mean_greedy_steps": 22.0,
+      "mean_last_100_victory_rate": 1.0
+    }
+  }
+}
