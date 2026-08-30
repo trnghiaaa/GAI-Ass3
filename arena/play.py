@@ -45,12 +45,12 @@ def _rotation_action(keys: pygame.key.ScancodeWrapper) -> int:
 def play_manual(control_style: str = "direct", seed: int = 42) -> None:
     """Run one interactive manual session and return when its window closes."""
 
-    env = ArenaEnv(control_style=control_style)
+    env = ArenaEnv(control_style=control_style, manual_choices=True)
     env.reset(seed=seed)
     renderer = ArenaRenderer(env, mode="human")
 
     if control_style == "direct":
-        footer = "WASD / ARROWS move   •   SPACE auto-aim fire   •   R restart   •   ESC quit"
+        footer = "WASD / ARROWS move + aim   •   SPACE fire forward   •   R restart   •   ESC quit"
         choose_action = _direct_action
     else:
         footer = "W / UP thrust   •   A/D rotate   •   SPACE fire   •   R restart   •   ESC quit"
@@ -66,12 +66,44 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                     running = False
                 elif event.key == pygame.K_r:
                     env.reset(seed=seed)
+                elif event.key == pygame.K_TAB and env.pending_choice_kind is None:
+                    renderer.show_build_panel = not renderer.show_build_panel
+                elif env.pending_choice_kind is not None and event.key in (
+                    pygame.K_1,
+                    pygame.K_2,
+                    pygame.K_3,
+                ):
+                    index = event.key - pygame.K_1
+                    if index < len(env.pending_choices):
+                        env.choose_pending_choice(index)
+            elif (
+                event.type == pygame.MOUSEBUTTONDOWN
+                and event.button == 1
+                and env.pending_choice_kind is not None
+            ):
+                index = renderer.choice_at_position(event.pos)
+                if index is not None:
+                    env.choose_pending_choice(index)
 
-        if running and not env.done:
+        if (
+            running
+            and not env.done
+            and env.pending_choice_kind is None
+            and not renderer.show_build_panel
+        ):
             action = choose_action(pygame.key.get_pressed())
             env.step(action)
 
-        renderer.render(process_events=False, footer_text=footer)
+        active_footer = (
+            "Choose one card with the mouse or keys 1–3   •   The battle timer is paused"
+            if env.pending_choice_kind is not None
+            else (
+                "SHIP BUILD  •  TAB closes this panel  •  The battle timer is paused"
+                if renderer.show_build_panel
+                else footer + "   •   TAB build"
+            )
+        )
+        renderer.render(process_events=False, footer_text=active_footer)
         renderer.clock.tick(env.fps)
 
     renderer.close()

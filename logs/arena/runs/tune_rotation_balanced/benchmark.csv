@@ -1,9 +1,7 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
-1,14301,-18.965333,1,0,420,105,player_destroyed,False,0,1,125.0,112.0,27,5,0.185185,1,35.0,Pulse Cannon
-2,14302,-23.194019,1,0,590,148,player_destroyed,False,2,0,125.0,112.0,30,5,0.166667,1,20.0,Pulse Cannon
-3,14303,54.950668,1,0,3174,794,player_destroyed,False,20,1,1100.0,112.0,437,66,0.15103,4,235.0,Laser Array
-4,14304,43.852621,1,0,2788,697,player_destroyed,False,17,1,979.0,112.0,397,58,0.146096,3,205.0,Twin Pulse
-5,14305,-26.491051,1,0,542,136,player_destroyed,False,1,0,50.0,112.0,36,2,0.055556,1,10.0,Pulse Cannon
-6,14306,-11.793262,1,0,650,163,player_destroyed,False,3,1,250.0,112.0,20,10,0.5,2,65.0,Rapid Loader
-7,14307,-4.831881,1,0,766,192,player_destroyed,False,5,1,350.0,112.0,43,14,0.325581,2,85.0,Rapid Loader
-8,14308,17.396306,1,0,1790,448,player_destroyed,False,11,1,650.0,112.0,223,32,0.143498,3,145.0,Twin Pulse
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
+1,18401,174.018723,4,3,1977,495,player_destroyed,False,18,6,2054.95,107.52,103,45,0.436893,6,465.0,Prism Laser,5,3,1,fire_rate:1;laser:1;piercing:1;splash:2
+2,18402,33.461131,2,1,931,233,player_destroyed,False,6,2,728.0,101.92,59,17,0.288136,3,155.0,Rapid Pulse,2,1,0,fire_rate:1;piercing:1
+3,18403,-21.847275,1,0,402,101,player_destroyed,False,1,1,178.75,112.0,19,7,0.368421,2,45.0,Prism Laser,1,0,0,laser:1
+4,18404,-35.323659,1,0,337,85,player_destroyed,False,1,0,75.0,112.0,19,3,0.157895,1,10.0,Pulse Cannon,0,0,0,
+5,18405,120.309185,2,1,6770,1693,player_destroyed,False,63,2,3658.65,101.36,575,115,0.2,7,725.0,Nova Payload,6,1,0,damage:2;multishot:1;piercing:1;splash:2
+6,18406,41.43536,2,1,609,153,player_destroyed,False,2,3,517.25,101.92,64,13,0.203125,3,150.0,Multi-Beam Array,2,1,0,damage:1;multishot:1

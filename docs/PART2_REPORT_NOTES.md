@@ -8,19 +8,22 @@ come from the generated JSON artifacts and should be refreshed after retraining.
 Neon Rift Arena is a continuous 800×600 Pygame combat environment. A damageable
 ship destroys steering enemies and their periodically spawning rifts. Destroying
 all active rifts advances the phase, increasing spawner count, health, enemy
-health/speed, and spawn rate. An episode ends on ship destruction or the fixed
-simulation-step limit. Training is headless; evaluation renders the identical
-state and mechanics.
+health/speed, contact damage, capacity, and spawn rate. Every third phase is a
+boss-rift encounter with elite minions. An episode ends on ship destruction or
+the 120-second step limit; the clock does not reset per phase. Training is
+headless; evaluation renders the identical state and mechanics.
 
 ## Observation
 
-The 34-value normalized feature vector avoids expensive pixel learning. It
+The 43-value normalized feature vector avoids expensive pixel learning. It
 contains player kinematics/orientation/health, weapon readiness, nearest enemy
 and rift relative features, entity counts, phase/time, aim alignment, and a
 signed turn signal for the active target. Six progression features expose ship
 level, XP progress, volley size, fire rate, damage, and laser state. Direction
 uses unit vectors, angle is encoded with sine/cosine to avoid wrap discontinuity,
-and missing targets use an unambiguous sentinel.
+and missing targets use an unambiguous sentinel. Nine further features expose
+hull, shielding, range, piercing, splash, engines, wingman, bomb, and boss state,
+so procedural builds remain Markov rather than hidden from the agent.
 
 ## Reward justification
 
@@ -30,34 +33,38 @@ credit to projectiles before a delayed kill. Same-target distance and aim
 potential differences help movement/rotation without paying for oscillation or
 target replacement. Shot-quality shaping rewards intentional aligned fire.
 Every component is returned in `info`, and shaping never changes the mechanics.
-Combat XP is explicitly separate from RL reward: it unlocks weapons for gameplay
-depth but is not added to the scalar reward or its breakdown.
+Combat XP and drafted upgrades are explicitly separate from RL reward: they add
+gameplay depth but are not added to the scalar reward or its breakdown.
 
 ## Training and tuning
 
 Separate SB3 DQN agents use configurable MLPs, replay memory, target-network
 updates, epsilon exploration, action repeat four, checkpoints, TensorBoard, and
 held-out seeded model selection. Three configurations varied learning rate,
-exploration fraction, and network width. The 20,000-step sweep selected
-`balanced` for direct control (mean reward 429.58, mean phase 5.13) and
-`fast_exploration` for rotation (mean reward 9.48, 37.5% phase progression).
-The final longer budgets were 150,000 and 250,000 decisions respectively. Exact
+exploration fraction, and network width. The 25,000-step sweep selected
+`fast_exploration` for direct control (mean reward 68.59, 33.3% phase
+progression) and `balanced` for rotation (mean reward 52.01, 66.7% phase
+progression). The final longer budgets were 200,000 and 300,000 decisions
+respectively. Exact
 settings remain in model metadata and
 `logs/arena/tuning/hyperparameter_results.json`.
 
 ## Control comparison and originality
 
-Direct movement is easier because one action chooses an absolute direction and
-shooting auto-aims. Rotation control is harder because the policy must align,
+Direct movement is easier because one action chooses an absolute direction;
+shots follow the most recent movement heading. Rotation control must align,
 thrust with momentum, and shoot forward. Compare final reward, phase progression,
 survival, kills, and accuracy from `logs/arena/control_style_comparison.json`.
-Across 20 held-out episodes, direct control achieved mean reward 622.98, 100%
-phase progression, 90% time-limit survival, mean phase 6.9, and mean ship level
-4.95. Rotation/thrust achieved 186.84 reward, 90% progression, 25% survival,
-mean phase 3.1, and level 4.05. This supports the expected conclusion that the
-direct action set is easier and more sample-efficient, while the rotation policy
-still learned intentional progression and consistently unlocked upgrades.
+Across 20 held-out episodes, direct control achieved mean reward 141.32, 100%
+phase progression, mean phase 3.2, mean ship level 5.2, and 0.55 boss-rift kills
+per episode. Rotation/thrust achieved 215.29 reward, 100% progression, mean
+phase 4.15, level 6.0, and 0.85 boss-rift kills. Neither policy merely waited for
+the time limit: they pursued increasingly dangerous objectives until destroyed.
+The result shows that the longer-trained rotation policy ultimately surpassed
+the smaller direct model despite its harder steering problem. Seeded random
+baselines never left phase 1, supporting that progression is learned behavior.
 Original elements include the continuous custom combat simulation, phase
 director, normalized targeting/turn representation, auditable shaped reward,
-held-out checkpoint selection, automatic five-tier combat progression, distinct
-multi-beam/laser weapons, visual policy launcher, and procedural neon VFX.
+held-out checkpoint selection, three-card build drafts, eleven stackable upgrade
+types, support drops, boss rifts, distinct multi-beam/laser/piercing/splash
+weapons, a visual policy launcher, and procedural neon VFX.

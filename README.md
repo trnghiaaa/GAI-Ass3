@@ -49,7 +49,7 @@ schemes. Direct manual play is also available from the command line:
 python -m arena.play --control-style direct
 ```
 
-Use `WASD` or the arrow keys to move and `Space` to auto-aim and fire. To try
+Use `WASD` or the arrow keys to move and aim, then `Space` to fire forward. To try
 rotation and thrust controls instead:
 
 ```bash
@@ -58,7 +58,8 @@ python -m arena.play --control-style rotation
 
 For rotation controls, use `W` to thrust, `A`/`D` to rotate, and `Space` to
 fire in the ship's current direction. In both modes, `R` restarts an episode
-and `Esc` quits.
+and `Esc` quits. `Tab` opens a readable ship-build panel and pauses the manual
+battle while you inspect every selected upgrade and live weapon statistic.
 
 The arena provides:
 
@@ -67,12 +68,13 @@ The arena provides:
 - Enemies that continuously steer toward and damage the player on contact
 - Projectile collisions with separate enemy and spawner health bars
 - Increasing phases after all active spawners are destroyed
-- Episode endings for player destruction and the configured maximum step count
+- A gradual phase director plus a special boss rift every third phase
+- Episode endings for player destruction or the 120-second maximum step count
 - Headless, human-window, and RGB-array rendering modes
 - Targeting reticles, impact particles, projectile trails, damage feedback,
   readable HUD telemetry, phase banners, and report-ready RGB screenshots
-- Per-episode combat XP with five automatic ship levels: Pulse Cannon, Rapid
-  Loader, Twin Pulse, Laser Array, and Nova Tri-Beam
+- Per-episode combat XP and three-card level-up drafts with eleven upgrade types
+- Between-phase support drafts: repair cache, nova bomb, or temporary wingman
 
 ### Arena API
 
@@ -105,7 +107,7 @@ env.close()
 
 ### Arena Observation Vector
 
-The agent receives a one-dimensional `float32` vector with exactly 34
+The agent receives a one-dimensional `float32` vector with exactly 43
 normalized features. It never receives the rendered pixels.
 
 | Indices | Features | Range | Meaning |
@@ -124,8 +126,10 @@ normalized features. It never receives the rendered pixels.
 | 22–24 | Active-target direction X/Y and distance | mixed normalized | The exact closest target used by the targeting reticle |
 | 25 | `active_target_is_spawner` | `[0, 1]` | Distinguishes a progression target from an enemy |
 | 26–27 | Active-target alignment and signed turn direction | `[-1, 1]` | Tells rotation control how close its aim is and which way to turn |
-| 28–29 | Ship level and XP progress | `[0, 1]` | Current automatic upgrade tier and progress toward the next tier |
+| 28–29 | Ship level and XP progress | `[0, 1]` | Current build level and progress toward the next draft |
 | 30–33 | Volley size, fire rate, damage and laser flag | `[0, 1]` | Active weapon characteristics needed to keep progression Markov |
+| 34–39 | Hull, shield, range, piercing, splash and engine | `[0, 1]` | Normalized permanent build-upgrade state |
+| 40–42 | Wingman, nova bomb and boss phase | `[0, 1]` | Temporary support and encounter state |
 
 If a target type is absent, its four target features are `(0, 0, 1, 0)`:
 no direction, maximum normalized distance, and zero health. Stable feature
@@ -143,14 +147,22 @@ The training wrapper holds a decision for four 60 Hz simulation frames. This
 does not add or remove actions; it makes rotation and thrust decisions visible
 enough for DQN to learn while the renderer remains smooth.
 
-### Combat XP and Automatic Upgrades
+### Combat XP, Build Drafts, and Boss Phases
 
 Combat XP is a creative gameplay system separate from the RL reward. Destroyed
-enemies, destroyed rifts, and completed phases grant XP within the current
-episode. Levels automatically unlock faster firing, multi-shot volleys, and
-laser weapons. Automatic unlocks preserve the assignment's exact action sets:
-the existing `Shoot` action simply fires the active tier. XP never replaces the
-required phase system or adds an unreported term to the RL reward breakdown.
+enemies, rifts, and completed phases grant XP within the current episode. A
+manual player pauses at each level and chooses one of three seeded cards:
+maximum hull, repair, damage, fire rate, multi-beam, range, prism laser,
+piercing, splash, shield, or engines. Clearing a phase offers repair, an armed
+arena bomb, or a one-phase combat drone. Every third phase replaces ordinary
+rifts with one larger boss rift and elite minions. Difficulty grows gradually
+through health, speed, contact damage, capacity, and spawn rate.
+
+During headless training and learned-policy playback, a deterministic heuristic
+chooses from the same seeded three-card offers. This keeps both rubric-required
+action dictionaries exactly unchanged: the existing `Shoot` action uses the
+composed build. XP and drafts never add an unreported RL reward term or replace
+the required phase rule.
 
 ### Reward Design
 
@@ -171,22 +183,24 @@ model metadata:
 
 ```bash
 # Reproduce the two tuned final models
-python -m arena.train --control-style direct --timesteps 150000 --profile balanced --benchmark-episodes 20 --seed 5200
-python -m arena.train --control-style rotation --timesteps 250000 --profile fast_exploration --benchmark-episodes 20 --seed 6200
+python -m arena.train --control-style direct --timesteps 200000 --profile fast_exploration --benchmark-episodes 20 --seed 5200
+python -m arena.train --control-style rotation --timesteps 300000 --profile balanced --benchmark-episodes 20 --seed 6200
 
 # Generic training is also supported (300,000 decisions by default)
 python -m arena.train --control-style both
 
 # Reproduce the three-profile hyperparameter comparison
-python -m arena.tune --control-style both --timesteps 20000 --benchmark-episodes 8 --seed 4200
+python -m arena.tune --control-style both --timesteps 25000 --benchmark-episodes 6 --seed 8300
 ```
 
 Final models are saved separately as `models/arena/dqn_direct.zip` and
 `models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
 checkpoints, deterministic seeded benchmarks, plots, and summaries are written
 under `logs/arena`. In the submitted held-out 20-episode benchmarks, direct
-control achieved mean reward 622.98, 100% phase progression, and mean ship level
-4.95; rotation/thrust achieved 186.84, 90%, and level 4.05 respectively.
+control achieved mean reward 141.32, 100% phase progression, mean phase 3.2,
+and mean ship level 5.2; rotation/thrust achieved 215.29, 100%, phase 4.15, and
+level 6.0 respectively. The policies destroyed boss rifts in 55% and 85% of
+episodes, while seeded random-action baselines never cleared phase 1.
 
 ### Visual Evaluation
 
@@ -201,7 +215,9 @@ python -m arena.evaluate_rotation
 
 Playback is deterministic (`model.predict(..., deterministic=True)`) and shows
 the saved model controlling the actual submitted environment. Use `P` to pause,
-`.` to single-step, `+/-` to change speed, `R` to replay, and `Esc` to exit.
+`.` to single-step, `+/-` to change speed, `Tab` to inspect the current build,
+`R` to replay, and `Esc` to exit. Launcher playback runs one episode by default,
+so the longer 120-second cap does not trap the user in a multi-episode demo.
 
 Build and verify the final report evidence after training:
 

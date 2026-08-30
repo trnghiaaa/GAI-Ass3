@@ -1,0 +1,18 @@
+{
+  "comparisons": [
+    {
+      "control_style": "direct",
+      "random_mean_reward": -39.1885,
+      "trained_mean_reward": 141.318611,
+      "random_phase_progression_rate": 0.0,
+      "trained_phase_progression_rate": 1.0
+    },
+    {
+      "control_style": "rotation",
+      "random_mean_reward": -37.255403,
+      "trained_mean_reward": 215.287313,
+      "random_phase_progression_rate": 0.0,
+      "trained_phase_progression_rate": 1.0
+    }
+  ]
+}

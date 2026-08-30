@@ -111,8 +111,15 @@ def watch_policy(
                         observation, _ = env.reset(seed=seed + episode - 1)
                         frames_left = 0
                         paused = False
+                    elif event.key == pygame.K_TAB:
+                        renderer.show_build_panel = not renderer.show_build_panel
 
-            if running and not env.done and (not paused or single_step):
+            if (
+                running
+                and not env.done
+                and not renderer.show_build_panel
+                and (not paused or single_step)
+            ):
                 if frames_left <= 0:
                     action, _ = model.predict(observation, deterministic=True)
                     current_action = int(np.asarray(action).item())
@@ -121,9 +128,13 @@ def watch_policy(
                 frames_left -= 1
 
             footer = (
-                f"TRAINED DQN  •  deterministic  •  episode {episode}/{episodes}  •  "
-                f"{speed_options[speed_index]:g}x  •  P pause  . step  "
-                "+/- speed  R replay  Esc exit"
+                "SHIP BUILD  •  TAB closes this panel  •  playback paused"
+                if renderer.show_build_panel
+                else (
+                    f"TRAINED DQN  •  deterministic  •  episode {episode}/{episodes}  •  "
+                    f"{speed_options[speed_index]:g}x  •  P pause  . step  "
+                    "+/- speed  TAB build  R replay  Esc exit"
+                )
             )
             renderer.render(process_events=False, footer_text=footer)
 

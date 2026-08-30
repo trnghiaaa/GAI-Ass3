@@ -1,9 +1,7 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
-1,14300,106.036217,1,0,3600,900,time_limit,True,27,1,1539.5,42.0,456,84,0.184211,4,305.0,Laser Array
-2,14301,-14.704836,1,0,510,128,player_destroyed,False,2,1,225.0,112.0,19,9,0.473684,2,55.0,Rapid Loader
-3,14302,-30.596209,1,0,348,87,player_destroyed,False,0,0,25.0,112.0,8,1,0.125,1,0.0,Pulse Cannon
-4,14303,10.312341,2,1,638,160,player_destroyed,False,2,2,350.0,112.0,28,14,0.5,3,115.0,Twin Pulse
-5,14304,34.615871,2,1,1030,258,player_destroyed,False,6,3,708.0,112.0,69,36,0.521739,3,190.0,Twin Pulse
-6,14305,11.29799,2,1,615,154,player_destroyed,False,2,2,300.0,112.0,25,12,0.48,3,115.0,Twin Pulse
-7,14306,-18.380545,1,0,633,159,player_destroyed,False,1,1,150.0,112.0,15,6,0.4,2,45.0,Rapid Loader
-8,14307,-22.717702,1,0,883,221,player_destroyed,False,3,0,150.0,112.0,13,6,0.461538,1,30.0,Pulse Cannon
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
+1,18400,-12.689144,1,0,1444,361,player_destroyed,False,11,1,675.0,168.0,64,27,0.421875,3,145.0,Pulse Cannon,2,0,0,hull:1
+2,18401,114.946014,2,1,6367,1592,player_destroyed,False,53,3,3057.75,128.8224,1156,112,0.096886,7,660.0,Prism Laser,6,1,0,hull:1;multishot:2;laser:1;piercing:1;shield:1
+3,18402,-27.170983,1,0,860,215,player_destroyed,False,8,0,450.0,112.0,29,18,0.62069,2,80.0,Rapid Pulse,1,0,0,fire_rate:1
+4,18403,-33.017994,1,0,793,199,player_destroyed,False,3,0,200.0,112.0,24,8,0.333333,1,30.0,Pulse Cannon,0,0,0,
+5,18404,-12.385692,1,0,1212,303,player_destroyed,False,7,1,475.0,112.0,49,19,0.387755,3,105.0,Nova Payload,2,0,0,piercing:1;splash:1
+6,18405,-14.854089,1,0,615,154,player_destroyed,False,3,1,279.5,112.0,37,11,0.297297,2,65.0,Pulse Cannon,1,0,0,damage:1

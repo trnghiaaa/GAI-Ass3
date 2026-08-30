@@ -67,6 +67,22 @@ class ArenaApiTests(unittest.TestCase):
         finally:
             env.close()
 
+    def test_upgrade_choice_overlay_preserves_rgb_render_contract(self) -> None:
+        env = ArenaEnv(render_mode="rgb_array", manual_choices=True)
+        try:
+            env.reset(seed=22)
+            env._queue_choice("level_up")
+            env._prepare_next_choice()
+            frame = env.render()
+            self.assertEqual(len(env.pending_choices), 3)
+            self.assertEqual(frame.shape, (env.height, env.width, 3))
+            renderer = env._renderer
+            self.assertIsNotNone(renderer)
+            for index, rect in enumerate(renderer.choice_rects()):
+                self.assertEqual(renderer.choice_at_position(rect.center), index)
+        finally:
+            env.close()
+
 
 if __name__ == "__main__":
     unittest.main()

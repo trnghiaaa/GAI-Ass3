@@ -1,9 +1,7 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
-1,14302,77.812972,2,1,2795,699,player_destroyed,False,20,2,1267.25,112.0,364,65,0.178571,4,295.0,Laser Array
-2,14303,-20.223753,1,0,550,138,player_destroyed,False,0,1,100.0,112.0,34,4,0.117647,1,35.0,Pulse Cannon
-3,14304,-17.37702,1,0,903,226,player_destroyed,False,1,1,150.0,112.0,58,6,0.103448,2,45.0,Rapid Loader
-4,14305,-11.60665,1,0,689,173,player_destroyed,False,3,1,250.0,112.0,35,10,0.285714,2,65.0,Rapid Loader
-5,14306,38.055384,2,1,1241,311,player_destroyed,False,7,3,665.0,112.0,129,35,0.271318,3,200.0,Twin Pulse
-6,14307,-20.401184,1,0,432,108,player_destroyed,False,0,1,125.0,112.0,28,5,0.178571,1,35.0,Pulse Cannon
-7,14308,10.455337,2,1,602,151,player_destroyed,False,2,2,314.5,112.0,26,13,0.5,3,115.0,Twin Pulse
-8,14309,-10.733858,1,0,877,220,player_destroyed,False,3,1,250.0,112.0,37,10,0.27027,2,65.0,Rapid Loader
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
+1,18402,-21.32113,1,0,456,114,player_destroyed,False,1,1,225.0,112.0,30,9,0.3,2,45.0,Pulse Cannon,1,0,0,piercing:1
+2,18403,67.283326,2,1,1972,493,player_destroyed,False,23,3,1653.75,101.92,221,35,0.158371,5,360.0,Prism Laser,4,1,0,multishot:1;laser:1;piercing:1;splash:1
+3,18404,-19.988564,1,0,521,131,player_destroyed,False,2,1,278.75,112.0,36,11,0.305556,2,55.0,Prism Laser,1,0,0,laser:1
+4,18405,-21.011729,1,0,853,214,player_destroyed,False,2,1,200.0,112.0,30,8,0.266667,2,55.0,Pulse Cannon,1,0,0,damage:1
+5,18406,128.819601,3,2,2965,742,player_destroyed,False,21,5,1785.0,108.864,442,36,0.081448,5,435.0,Prism Laser,4,2,0,damage:1;fire_rate:1;multishot:1;laser:1
+6,18407,-35.840305,1,0,576,144,player_destroyed,False,1,0,100.0,112.0,26,4,0.153846,1,10.0,Pulse Cannon,0,0,0,

@@ -76,6 +76,15 @@ class ObservationIndex(IntEnum):
     WEAPON_FIRE_RATE = 31
     WEAPON_DAMAGE = 32
     WEAPON_IS_LASER = 33
+    MAX_HEALTH_BONUS = 34
+    DAMAGE_RESISTANCE = 35
+    PROJECTILE_RANGE = 36
+    PROJECTILE_PIERCE = 37
+    PROJECTILE_SPLASH = 38
+    ENGINE_POWER = 39
+    SUPPORT_DRONE_ACTIVE = 40
+    NOVA_BOMB_ARMED = 41
+    BOSS_PHASE = 42
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
@@ -106,6 +115,10 @@ class ArenaEnv(gym.Env):
         ``"rgb_array"`` for an RGB frame.
     config_override:
         Optional nested dictionary used by tests and later experiments.
+    manual_choices:
+        Pause at upgrade drafts for human selection. Headless agents resolve
+        the same three-card drafts with a deterministic heuristic so the
+        required action sets remain unchanged.
     """
 
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 60}
@@ -115,6 +128,7 @@ class ArenaEnv(gym.Env):
         control_style: str = "direct",
         render_mode: str | None = None,
         config_override: dict[str, Any] | None = None,
+        manual_choices: bool = False,
     ) -> None:
         super().__init__()
 
@@ -130,6 +144,7 @@ class ArenaEnv(gym.Env):
 
         self.control_style = control_style
         self.render_mode = render_mode
+        self.manual_choices = bool(manual_choices)
         self.sim_cfg = self.config["simulation"]
         self.player_cfg = self.config["player"]
         self.enemy_cfg = self.config["enemy"]
@@ -159,6 +174,7 @@ class ArenaEnv(gym.Env):
                 0, 0, 0, 0, -1, -1,
                 -1, -1, 0, 0, -1, -1,
                 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 0, 0, 0, 0, 0, 0,
             ],
             dtype=np.float32,
         )
@@ -180,6 +196,13 @@ class ArenaEnv(gym.Env):
         self.episode_stats: dict[str, float | int] = {}
         self.upgrade_banner_steps = 0
         self.last_upgrade_name = "Pulse Cannon"
+        self.upgrade_stacks: dict[str, int] = {}
+        self.pending_choice_kind: str | None = None
+        self.pending_choices: list[dict[str, Any]] = []
+        self._choice_queue: list[str] = []
+        self.nova_bomb_armed = False
+        self.support_drone_phase = 0
+        self.drone_cooldown_steps = 0
 
     # ------------------------------------------------------------------
     # Gymnasium API
@@ -207,7 +230,16 @@ class ArenaEnv(gym.Env):
         self.projectiles = []
         self.last_events = {}
         self.upgrade_banner_steps = 0
-        self.last_upgrade_name = str(self._weapon_tiers()[0]["name"])
+        self.last_upgrade_name = "Pulse Cannon"
+        self.upgrade_stacks = {
+            str(item["id"]): 0 for item in self.progression_cfg["upgrade_catalog"]
+        }
+        self.pending_choice_kind = None
+        self.pending_choices = []
+        self._choice_queue = []
+        self.nova_bomb_armed = False
+        self.support_drone_phase = 0
+        self.drone_cooldown_steps = 0
         self.episode_stats = {
             "reward": 0.0,
             "enemies_destroyed": 0,
@@ -221,6 +253,9 @@ class ArenaEnv(gym.Env):
             "projectile_hits": 0,
             "xp_earned": 0.0,
             "levels_gained": 0,
+            "upgrades_chosen": 0,
+            "phase_rewards_chosen": 0,
+            "bosses_destroyed": 0,
         }
 
         radius = float(self.player_cfg["radius"])
@@ -242,6 +277,8 @@ class ArenaEnv(gym.Env):
 
         if self.done:
             raise RuntimeError("Episode has ended; call reset() before step().")
+        if self.pending_choice_kind is not None:
+            raise RuntimeError("Resolve the pending upgrade choice before step().")
         if not self.action_space.contains(action):
             raise ValueError(f"Invalid action {action} for {self.control_style} controls")
 
@@ -265,6 +302,11 @@ class ArenaEnv(gym.Env):
             "xp_gained": 0.0,
             "levels_gained": 0,
             "upgrade_unlocked": None,
+            "choice_offered": None,
+            "choice_selected": None,
+            "drone_shots": 0,
+            "drone_hits": 0,
+            "nova_bomb_detonated": False,
         }
 
         shaping_before = self._shaping_snapshot()
@@ -275,11 +317,15 @@ class ArenaEnv(gym.Env):
             events["shot_alignment"] = float(
                 self._shaping_snapshot()["target_alignment"]
             )
+        self._update_support_drone(events)
         self._update_projectiles(events)
         self._update_enemies(events)
         self._update_spawners(events)
         self._update_phase(events)
         self._apply_combat_progression(events)
+        if events["phase_advanced"]:
+            self._queue_choice("phase_reward")
+        self._prepare_next_choice(events)
         self._apply_shaping_delta(events, shaping_before)
 
         terminated = self.player.health <= 0.0
@@ -330,9 +376,10 @@ class ArenaEnv(gym.Env):
 
     def _apply_player_action(self, action: int) -> int:
         projectiles_fired = 0
+        engine_multiplier = 1.0 + 0.10 * self.upgrade_stacks.get("engine", 0)
 
         if self.control_style == "direct":
-            speed = float(self.player_cfg["direct_speed"])
+            speed = float(self.player_cfg["direct_speed"]) * engine_multiplier
             self.player.vx = 0.0
             self.player.vy = 0.0
             if action == DIRECT_ACTIONS["UP"]:
@@ -348,7 +395,7 @@ class ArenaEnv(gym.Env):
                 self.player.vx = speed
                 self.player.angle = 0.0
             elif action == DIRECT_ACTIONS["SHOOT"]:
-                projectiles_fired = self._fire_projectile(auto_aim=True)
+                projectiles_fired = self._fire_projectile(auto_aim=False)
         else:
             rotation_speed = math.radians(float(self.player_cfg["rotation_speed_degrees"]))
             if action == ROTATION_ACTIONS["ROTATE_LEFT"]:
@@ -356,7 +403,7 @@ class ArenaEnv(gym.Env):
             elif action == ROTATION_ACTIONS["ROTATE_RIGHT"]:
                 self.player.angle += rotation_speed * self.dt
             elif action == ROTATION_ACTIONS["THRUST"]:
-                acceleration = float(self.player_cfg["thrust_acceleration"])
+                acceleration = float(self.player_cfg["thrust_acceleration"]) * engine_multiplier
                 self.player.vx += math.cos(self.player.angle) * acceleration * self.dt
                 self.player.vy += math.sin(self.player.angle) * acceleration * self.dt
             elif action == ROTATION_ACTIONS["SHOOT"]:
@@ -365,7 +412,7 @@ class ArenaEnv(gym.Env):
             drag = float(self.player_cfg["drag"])
             self.player.vx *= drag
             self.player.vy *= drag
-            max_speed = float(self.player_cfg["max_speed"])
+            max_speed = float(self.player_cfg["max_speed"]) * engine_multiplier
             speed = math.hypot(self.player.vx, self.player.vy)
             if speed > max_speed:
                 scale = max_speed / speed
@@ -432,34 +479,56 @@ class ArenaEnv(gym.Env):
                     damage=damage,
                     lifetime_steps=int(
                         float(self.projectile_cfg["lifetime_seconds"]) * self.fps
+                        * float(profile["lifetime_multiplier"])
                     ),
                     weapon_kind=kind,
+                    owner="player",
+                    pierces_remaining=int(profile["pierces"]),
+                    splash_radius=float(profile["splash_radius"]),
                 )
             )
 
         self.player.fire_cooldown_steps = self.weapon_cooldown_steps()
         return shot_count
 
-    def _weapon_tiers(self) -> list[dict[str, Any]]:
-        tiers = list(self.progression_cfg["weapon_tiers"])
-        thresholds = list(self.progression_cfg["level_thresholds"])
-        if not tiers or len(tiers) != len(thresholds):
-            raise ValueError(
-                "progression.weapon_tiers and level_thresholds must have equal non-zero lengths"
-            )
-        return tiers
-
     @property
     def maximum_player_level(self) -> int:
-        """Highest automatic combat-progression level available this episode."""
+        """Highest combat-progression level available this episode."""
 
-        return len(self._weapon_tiers())
+        return len(self.progression_cfg["level_thresholds"])
 
     def weapon_profile(self) -> dict[str, Any]:
-        """Return the active immutable-by-convention weapon-tier configuration."""
+        """Compose the live weapon from the player's selected upgrade stacks."""
 
-        level = int(np.clip(self.player.level, 1, self.maximum_player_level))
-        return dict(self._weapon_tiers()[level - 1])
+        multishot = self.upgrade_stacks.get("multishot", 0)
+        fire_rate = self.upgrade_stacks.get("fire_rate", 0)
+        damage = self.upgrade_stacks.get("damage", 0)
+        range_stacks = self.upgrade_stacks.get("range", 0)
+        laser = self.upgrade_stacks.get("laser", 0) > 0
+        splash = self.upgrade_stacks.get("splash", 0)
+        shot_count = 1 + multishot
+        if laser:
+            name, kind = "Prism Laser", "laser"
+        elif splash:
+            name, kind = "Nova Payload", "nova"
+        elif shot_count > 1:
+            name, kind = "Multi-Beam Array", "twin"
+        elif fire_rate:
+            name, kind = "Rapid Pulse", "rapid"
+        else:
+            name, kind = "Pulse Cannon", "pulse"
+        return {
+            "name": name,
+            "kind": kind,
+            "shot_count": shot_count,
+            "spread_degrees": 0 if shot_count == 1 else min(24, 6 + (shot_count - 2) * 4),
+            "cooldown_multiplier": 0.88**fire_rate,
+            "speed_multiplier": 1.0 + 0.08 * range_stacks + (0.45 if laser else 0.0),
+            "damage_multiplier": 1.0 + 0.18 * damage + (0.15 if laser else 0.0),
+            "lifetime_multiplier": 1.0 + 0.22 * range_stacks,
+            "pierces": self.upgrade_stacks.get("piercing", 0),
+            "splash_radius": 28.0 * splash,
+        }
 
     def weapon_cooldown_steps(self) -> int:
         """Return the active weapon's cooldown in simulation frames."""
@@ -516,16 +585,129 @@ class ArenaEnv(gym.Env):
         levels_gained = self.player.level - previous_level
         events["levels_gained"] = levels_gained
         if levels_gained > 0:
-            profile = self.weapon_profile()
-            self.last_upgrade_name = str(profile["name"])
-            events["upgrade_unlocked"] = self.last_upgrade_name
-            self.upgrade_banner_steps = max(
-                1,
-                int(
-                    float(self.progression_cfg["upgrade_banner_seconds"])
-                    * self.fps
-                ),
+            for _ in range(levels_gained):
+                self._queue_choice("level_up")
+
+    @property
+    def is_boss_phase(self) -> bool:
+        interval = max(1, int(self.phase_cfg["boss_interval"]))
+        return self.phase % interval == 0
+
+    @property
+    def support_drone_active(self) -> bool:
+        return self.support_drone_phase == self.phase
+
+    def _queue_choice(self, kind: str) -> None:
+        if kind not in ("level_up", "phase_reward"):
+            raise ValueError(f"Unknown choice kind: {kind}")
+        self._choice_queue.append(kind)
+
+    def _choice_catalog(self, kind: str) -> list[dict[str, Any]]:
+        key = "upgrade_catalog" if kind == "level_up" else "phase_reward_catalog"
+        return [dict(item) for item in self.progression_cfg[key]]
+
+    def _roll_choices(self, kind: str) -> list[dict[str, Any]]:
+        catalog = self._choice_catalog(kind)
+        if kind == "level_up":
+            catalog = [
+                item
+                for item in catalog
+                if item["id"] == "repair"
+                or self.upgrade_stacks.get(str(item["id"]), 0)
+                < int(item.get("max_stacks", 1))
+            ]
+        count = min(int(self.progression_cfg["upgrade_choices"]), len(catalog))
+        if count == len(catalog):
+            order = self.np_random.permutation(len(catalog))
+            return [catalog[int(index)] for index in order]
+        indices = self.np_random.choice(len(catalog), size=count, replace=False)
+        return [catalog[int(index)] for index in indices]
+
+    def _auto_choice_index(self) -> int:
+        health_ratio = self.player.health / max(1.0, self.player.max_health)
+        scores: list[float] = []
+        for item in self.pending_choices:
+            item_id = str(item["id"])
+            if self.pending_choice_kind == "phase_reward":
+                score = {
+                    "repair_cache": 11.0 if health_ratio < 0.62 else 4.0,
+                    "nova_bomb": 9.0 if self.is_boss_phase else 7.0,
+                    "wingman": 8.0,
+                }[item_id]
+            else:
+                score = float(item.get("auto_priority", 0.0))
+                if item_id in ("repair", "hull") and health_ratio < 0.55:
+                    score += 12.0
+                if item_id == "repair" and health_ratio > 0.9:
+                    score -= 10.0
+                score -= self.upgrade_stacks.get(item_id, 0) * 0.35
+            scores.append(score)
+        return int(np.argmax(np.asarray(scores, dtype=np.float32)))
+
+    def _prepare_next_choice(self, events: dict[str, Any] | None = None) -> None:
+        if self.pending_choice_kind is not None:
+            return
+        while self._choice_queue and self.pending_choice_kind is None:
+            self.pending_choice_kind = self._choice_queue.pop(0)
+            self.pending_choices = self._roll_choices(self.pending_choice_kind)
+            if events is not None:
+                events["choice_offered"] = self.pending_choice_kind
+            if self.manual_choices:
+                return
+            self.choose_pending_choice(self._auto_choice_index(), events=events)
+
+    def choose_pending_choice(
+        self, index: int, *, events: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        """Apply one visible draft choice and return the selected card."""
+
+        if self.pending_choice_kind is None or not self.pending_choices:
+            raise RuntimeError("There is no pending choice.")
+        if not 0 <= index < len(self.pending_choices):
+            raise ValueError(f"Choice index {index} is out of range")
+
+        kind = self.pending_choice_kind
+        selected = dict(self.pending_choices[index])
+        selected_id = str(selected["id"])
+        if kind == "level_up":
+            if selected_id == "hull":
+                self.upgrade_stacks[selected_id] += 1
+                self.player.max_health += 25.0
+                self.player.health = min(self.player.max_health, self.player.health + 25.0)
+            elif selected_id == "repair":
+                self.player.health = min(self.player.max_health, self.player.health + 40.0)
+            else:
+                self.upgrade_stacks[selected_id] += 1
+            self.episode_stats["upgrades_chosen"] = int(
+                self.episode_stats["upgrades_chosen"]
+            ) + 1
+        elif selected_id == "repair_cache":
+            self.player.health = min(
+                self.player.max_health,
+                self.player.health + self.player.max_health * 0.45,
             )
+        elif selected_id == "nova_bomb":
+            self.nova_bomb_armed = True
+        elif selected_id == "wingman":
+            self.support_drone_phase = self.phase
+            self.drone_cooldown_steps = 1
+        if kind == "phase_reward":
+            self.episode_stats["phase_rewards_chosen"] = int(
+                self.episode_stats["phase_rewards_chosen"]
+            ) + 1
+
+        self.last_upgrade_name = str(selected["name"])
+        self.upgrade_banner_steps = max(
+            1,
+            int(float(self.progression_cfg["upgrade_banner_seconds"]) * self.fps),
+        )
+        if events is not None:
+            events["choice_selected"] = selected_id
+            events["upgrade_unlocked"] = self.last_upgrade_name
+        self.pending_choice_kind = None
+        self.pending_choices = []
+        self._prepare_next_choice(events)
+        return selected
 
     # ------------------------------------------------------------------
     # Simulation updates
@@ -533,9 +715,71 @@ class ArenaEnv(gym.Env):
 
     def _tick_cooldowns(self) -> None:
         self.player.fire_cooldown_steps = max(0, self.player.fire_cooldown_steps - 1)
+        self.drone_cooldown_steps = max(0, self.drone_cooldown_steps - 1)
         self.upgrade_banner_steps = max(0, self.upgrade_banner_steps - 1)
         for enemy in self.enemies:
             enemy.attack_cooldown_steps = max(0, enemy.attack_cooldown_steps - 1)
+
+    def _update_support_drone(self, events: dict[str, Any]) -> None:
+        if not self.support_drone_active or self.drone_cooldown_steps > 0:
+            return
+        target = self._nearest_target()
+        if target is None:
+            return
+        orbit = self.step_count * 0.055
+        origin_x = self.player.x + math.cos(orbit) * 34.0
+        origin_y = self.player.y + math.sin(orbit) * 34.0
+        angle = math.atan2(target.y - origin_y, target.x - origin_x)
+        speed = float(self.projectile_cfg["speed"]) * 0.9
+        self.projectiles.append(
+            Projectile(
+                x=origin_x,
+                y=origin_y,
+                radius=3.0,
+                entity_id=self._new_id(),
+                vx=math.cos(angle) * speed,
+                vy=math.sin(angle) * speed,
+                damage=float(self.projectile_cfg["damage"]) * 0.55,
+                lifetime_steps=int(float(self.projectile_cfg["lifetime_seconds"]) * self.fps),
+                weapon_kind="drone",
+                owner="drone",
+            )
+        )
+        events["drone_shots"] += 1
+        self.drone_cooldown_steps = max(1, int(0.42 * self.fps))
+
+    def _damage_target(
+        self,
+        target: Enemy | Spawner,
+        amount: float,
+        events: dict[str, Any],
+        destroyed_enemy_ids: set[int],
+        destroyed_spawner_ids: set[int],
+        *,
+        source: str,
+        count_hit: bool,
+    ) -> None:
+        if target.health <= 0.0:
+            return
+        damage = min(amount, target.health)
+        target.health -= amount
+        is_spawner = isinstance(target, Spawner)
+        events["damage_dealt_spawner" if is_spawner else "damage_dealt_enemy"] += damage
+        if count_hit:
+            events["projectile_hits" if source == "player" else "drone_hits"] += 1
+        destroyed = target.health <= 0.0
+        events["impacts"].append(
+            {
+                "x": float(target.x),
+                "y": float(target.y),
+                "kind": "spawner" if is_spawner else "enemy",
+                "destroyed": destroyed,
+            }
+        )
+        if destroyed:
+            (destroyed_spawner_ids if is_spawner else destroyed_enemy_ids).add(
+                target.entity_id
+            )
 
     def _update_projectiles(self, events: dict[str, Any]) -> None:
         surviving_projectiles: list[Projectile] = []
@@ -546,7 +790,6 @@ class ArenaEnv(gym.Env):
             projectile.x += projectile.vx * self.dt
             projectile.y += projectile.vy * self.dt
             projectile.lifetime_steps -= 1
-
             if (
                 projectile.lifetime_steps <= 0
                 or projectile.x < -projectile.radius
@@ -556,70 +799,70 @@ class ArenaEnv(gym.Env):
             ):
                 continue
 
-            hit = False
-            for enemy in self.enemies:
-                if enemy.entity_id in destroyed_enemy_ids:
-                    continue
-                if circles_overlap(projectile, enemy):
-                    damage = min(projectile.damage, max(0.0, enemy.health))
-                    enemy.health -= projectile.damage
-                    events["damage_dealt_enemy"] += damage
-                    events["projectile_hits"] += 1
-                    events["impacts"].append(
-                        {
-                            "x": float(projectile.x),
-                            "y": float(projectile.y),
-                            "kind": "enemy",
-                            "destroyed": enemy.health <= 0.0,
-                        }
-                    )
-                    hit = True
-                    if enemy.health <= 0.0:
-                        destroyed_enemy_ids.add(enemy.entity_id)
-                    break
+            candidates: list[Enemy | Spawner] = [*self.enemies, *self.spawners]
+            target = next(
+                (
+                    item
+                    for item in candidates
+                    if item.entity_id not in projectile.hit_entity_ids
+                    and item.entity_id not in destroyed_enemy_ids
+                    and item.entity_id not in destroyed_spawner_ids
+                    and circles_overlap(projectile, item)
+                ),
+                None,
+            )
+            if target is None:
+                surviving_projectiles.append(projectile)
+                continue
 
-            if not hit:
-                for spawner in self.spawners:
-                    if spawner.entity_id in destroyed_spawner_ids:
+            projectile.hit_entity_ids.add(target.entity_id)
+            self._damage_target(
+                target,
+                projectile.damage,
+                events,
+                destroyed_enemy_ids,
+                destroyed_spawner_ids,
+                source=projectile.owner,
+                count_hit=True,
+            )
+            if projectile.splash_radius > 0.0:
+                for nearby in candidates:
+                    if nearby.entity_id == target.entity_id or nearby.health <= 0.0:
                         continue
-                    if circles_overlap(projectile, spawner):
-                        damage = min(projectile.damage, max(0.0, spawner.health))
-                        spawner.health -= projectile.damage
-                        events["damage_dealt_spawner"] += damage
-                        events["projectile_hits"] += 1
-                        events["impacts"].append(
-                            {
-                                "x": float(projectile.x),
-                                "y": float(projectile.y),
-                                "kind": "spawner",
-                                "destroyed": spawner.health <= 0.0,
-                            }
+                    if math.hypot(nearby.x - target.x, nearby.y - target.y) <= projectile.splash_radius:
+                        self._damage_target(
+                            nearby,
+                            projectile.damage * 0.6,
+                            events,
+                            destroyed_enemy_ids,
+                            destroyed_spawner_ids,
+                            source=projectile.owner,
+                            count_hit=False,
                         )
-                        hit = True
-                        if spawner.health <= 0.0:
-                            destroyed_spawner_ids.add(spawner.entity_id)
-                        break
-
-            if not hit:
+            if projectile.pierces_remaining > 0:
+                projectile.pierces_remaining -= 1
                 surviving_projectiles.append(projectile)
 
         if destroyed_enemy_ids:
-            self.enemies = [
-                enemy for enemy in self.enemies if enemy.entity_id not in destroyed_enemy_ids
-            ]
+            self.enemies = [item for item in self.enemies if item.entity_id not in destroyed_enemy_ids]
             events["enemies_destroyed"] += len(destroyed_enemy_ids)
         if destroyed_spawner_ids:
-            self.spawners = [
-                spawner
-                for spawner in self.spawners
-                if spawner.entity_id not in destroyed_spawner_ids
-            ]
+            self.episode_stats["bosses_destroyed"] = int(
+                self.episode_stats["bosses_destroyed"]
+            ) + sum(
+                int(item.is_boss)
+                for item in self.spawners
+                if item.entity_id in destroyed_spawner_ids
+            )
+            self.spawners = [item for item in self.spawners if item.entity_id not in destroyed_spawner_ids]
             events["spawners_destroyed"] += len(destroyed_spawner_ids)
-
         self.projectiles = surviving_projectiles
 
     def _update_enemies(self, events: dict[str, Any]) -> None:
-        contact_damage = float(self.enemy_cfg["contact_damage"])
+        base_contact_damage = float(self.enemy_cfg["contact_damage"]) * (
+            1.0 + (self.phase - 1) * float(self.phase_cfg["contact_damage_growth"])
+        )
+        resistance = min(0.6, 0.12 * self.upgrade_stacks.get("shield", 0))
         cooldown_steps = max(1, int(float(self.enemy_cfg["attack_cooldown_seconds"]) * self.fps))
 
         for enemy in self.enemies:
@@ -633,6 +876,8 @@ class ArenaEnv(gym.Env):
                 enemy.y += enemy.vy * self.dt
 
             if circles_overlap(enemy, self.player) and enemy.attack_cooldown_steps == 0:
+                contact_damage = base_contact_damage * (1.2 if enemy.is_elite else 1.0)
+                contact_damage *= 1.0 - resistance
                 self.player.health -= contact_damage
                 events["damage_taken"] += contact_damage
                 events["player_hit"] = True
@@ -656,14 +901,16 @@ class ArenaEnv(gym.Env):
         if self.phase_transition_steps > 0:
             return
 
-        max_enemies = int(self.enemy_cfg["maximum_active"])
+        max_enemies = int(self.enemy_cfg["maximum_active"]) + (
+            self.phase - 1
+        ) * int(self.phase_cfg["maximum_enemy_growth_per_phase"])
         for spawner in self.spawners:
             spawner.spawn_cooldown_steps -= 1
             if spawner.spawn_cooldown_steps <= 0:
                 if len(self.enemies) < max_enemies:
                     self._spawn_enemy(spawner)
                     events["enemies_spawned"] += 1
-                spawner.spawn_cooldown_steps = self._spawn_interval_steps()
+                spawner.spawn_cooldown_steps = self._spawn_interval_steps(spawner)
 
     def _update_phase(self, events: dict[str, Any]) -> None:
         if self.spawners:
@@ -672,7 +919,7 @@ class ArenaEnv(gym.Env):
         if self.phase_transition_steps > 0:
             self.phase_transition_steps -= 1
             if self.phase_transition_steps == 0:
-                self._spawn_phase_spawners()
+                self._spawn_phase_spawners(events)
             return
 
         self.phase += 1
@@ -681,14 +928,15 @@ class ArenaEnv(gym.Env):
             0, int(float(self.phase_cfg["transition_seconds"]) * self.fps)
         )
         if self.phase_transition_steps == 0:
-            self._spawn_phase_spawners()
+            self._spawn_phase_spawners(events)
 
     # ------------------------------------------------------------------
     # Entity creation
     # ------------------------------------------------------------------
 
-    def _spawn_phase_spawners(self) -> None:
-        count = min(
+    def _spawn_phase_spawners(self, events: dict[str, Any] | None = None) -> None:
+        boss_phase = self.is_boss_phase
+        count = 1 if boss_phase else min(
             int(self.phase_cfg["maximum_spawners"]),
             int(self.phase_cfg["initial_spawners"])
             + (self.phase - 1) * int(self.phase_cfg["spawners_added_per_phase"]),
@@ -698,20 +946,55 @@ class ArenaEnv(gym.Env):
 
         for x, y in positions:
             max_health = float(self.spawner_cfg["max_health"]) * health_scale
+            if boss_phase:
+                max_health *= float(self.phase_cfg["boss_health_multiplier"])
             initial_delay = int(
-                self.np_random.uniform(0.35, 1.0) * self._spawn_interval_steps()
+                self.np_random.uniform(0.35, 1.0)
+                * self._spawn_interval_steps(None, is_boss=boss_phase)
             )
             self.spawners.append(
                 Spawner(
                     x=x,
                     y=y,
-                    radius=float(self.spawner_cfg["radius"]),
+                    radius=(48.0 if boss_phase else float(self.spawner_cfg["radius"])),
                     entity_id=self._new_id(),
                     max_health=max_health,
                     health=max_health,
                     spawn_cooldown_steps=max(1, initial_delay),
+                    is_boss=boss_phase,
                 )
             )
+        if self.nova_bomb_armed and events is not None:
+            self._detonate_nova_bomb(events)
+
+    def _detonate_nova_bomb(self, events: dict[str, Any]) -> None:
+        destroyed_enemy_ids: set[int] = set()
+        destroyed_spawner_ids: set[int] = set()
+        for target in [*self.enemies, *self.spawners]:
+            self._damage_target(
+                target,
+                70.0,
+                events,
+                destroyed_enemy_ids,
+                destroyed_spawner_ids,
+                source="bomb",
+                count_hit=False,
+            )
+        if destroyed_enemy_ids:
+            self.enemies = [item for item in self.enemies if item.entity_id not in destroyed_enemy_ids]
+            events["enemies_destroyed"] += len(destroyed_enemy_ids)
+        if destroyed_spawner_ids:
+            self.episode_stats["bosses_destroyed"] = int(
+                self.episode_stats["bosses_destroyed"]
+            ) + sum(
+                int(item.is_boss)
+                for item in self.spawners
+                if item.entity_id in destroyed_spawner_ids
+            )
+            self.spawners = [item for item in self.spawners if item.entity_id not in destroyed_spawner_ids]
+            events["spawners_destroyed"] += len(destroyed_spawner_ids)
+        events["nova_bomb_detonated"] = True
+        self.nova_bomb_armed = False
 
     def _choose_spawner_positions(self, count: int) -> list[tuple[float, float]]:
         margin = float(self.spawner_cfg["edge_margin"])
@@ -753,6 +1036,9 @@ class ArenaEnv(gym.Env):
         )
         health_scale = 1.0 + (self.phase - 1) * float(self.phase_cfg["enemy_health_growth"])
         speed_scale = 1.0 + (self.phase - 1) * float(self.phase_cfg["enemy_speed_growth"])
+        if spawner.is_boss:
+            health_scale *= float(self.phase_cfg["boss_enemy_health_multiplier"])
+            speed_scale *= float(self.phase_cfg["boss_enemy_speed_multiplier"])
         max_health = float(self.enemy_cfg["max_health"]) * health_scale
         self.enemies.append(
             Enemy(
@@ -763,12 +1049,17 @@ class ArenaEnv(gym.Env):
                 max_health=max_health,
                 health=max_health,
                 speed=float(self.enemy_cfg["speed"]) * speed_scale,
+                is_elite=spawner.is_boss,
             )
         )
 
-    def _spawn_interval_steps(self) -> int:
+    def _spawn_interval_steps(
+        self, spawner: Spawner | None = None, *, is_boss: bool = False
+    ) -> int:
         base_seconds = float(self.spawner_cfg["spawn_interval_seconds"])
         speedup = 1.0 + (self.phase - 1) * float(self.phase_cfg["spawn_rate_growth"])
+        if is_boss or (spawner is not None and spawner.is_boss):
+            base_seconds *= float(self.phase_cfg["boss_spawn_rate_multiplier"])
         return max(1, int(base_seconds / speedup * self.fps))
 
     def _new_id(self) -> int:
@@ -871,7 +1162,7 @@ class ArenaEnv(gym.Env):
         )
 
     def _active_target_features(self) -> tuple[float, float, float, float, float, float]:
-        """Encode the same nearest target used by direct auto-aim and the reticle."""
+        """Encode the same nearest target highlighted by the targeting reticle."""
 
         target = self._nearest_target()
         if target is None:
@@ -936,26 +1227,18 @@ class ArenaEnv(gym.Env):
             )
 
     def _get_observation(self) -> np.ndarray:
+        engine_multiplier = 1.0 + 0.10 * self.upgrade_stacks.get("engine", 0)
         max_speed = max(
             float(self.player_cfg["max_speed"]), float(self.player_cfg["direct_speed"])
-        )
+        ) * engine_multiplier
         enemy_features = self._target_features(self.enemies)
         spawner_features = self._target_features(self.spawners)
         active_target_features = self._active_target_features()
         fire_cooldown = self.weapon_cooldown_steps()
         profile = self.weapon_profile()
-        tiers = self._weapon_tiers()
-        max_shots = max(int(tier["shot_count"]) for tier in tiers)
-        max_damage_multiplier = max(float(tier["damage_multiplier"]) for tier in tiers)
-        cooldown_multipliers = [float(tier["cooldown_multiplier"]) for tier in tiers]
-        slowest_cooldown = max(cooldown_multipliers)
-        fastest_cooldown = min(cooldown_multipliers)
-        fire_rate_progress = (
-            1.0
-            if math.isclose(slowest_cooldown, fastest_cooldown)
-            else (slowest_cooldown - float(profile["cooldown_multiplier"]))
-            / (slowest_cooldown - fastest_cooldown)
-        )
+        max_enemies = int(self.enemy_cfg["maximum_active"]) + (
+            self.phase - 1
+        ) * int(self.phase_cfg["maximum_enemy_growth_per_phase"])
 
         observation = np.array(
             [
@@ -972,7 +1255,7 @@ class ArenaEnv(gym.Env):
                 1.0 - np.clip(self.player.fire_cooldown_steps / fire_cooldown, 0.0, 1.0),
                 *enemy_features,
                 *spawner_features,
-                np.clip(len(self.enemies) / max(1, int(self.enemy_cfg["maximum_active"])), 0.0, 1.0),
+                np.clip(len(self.enemies) / max(1, max_enemies), 0.0, 1.0),
                 np.clip(len(self.spawners) / max(1, int(self.phase_cfg["maximum_spawners"])), 0.0, 1.0),
                 np.clip(self.phase / max(1, int(self.phase_cfg["observation_phase_cap"])), 0.0, 1.0),
                 np.clip(1.0 - self.step_count / self.max_steps, 0.0, 1.0),
@@ -981,10 +1264,23 @@ class ArenaEnv(gym.Env):
                 *active_target_features,
                 (self.player.level - 1) / max(1, self.maximum_player_level - 1),
                 self.xp_progress(),
-                int(profile["shot_count"]) / max(1, max_shots),
-                fire_rate_progress,
-                float(profile["damage_multiplier"]) / max_damage_multiplier,
+                int(profile["shot_count"]) / 5.0,
+                self.upgrade_stacks.get("fire_rate", 0) / 5.0,
+                float(profile["damage_multiplier"]) / 2.05,
                 float(str(profile["kind"]) in ("laser", "nova")),
+                np.clip(
+                    (self.player.max_health - float(self.player_cfg["max_health"])) / 75.0,
+                    0.0,
+                    1.0,
+                ),
+                self.upgrade_stacks.get("shield", 0) / 3.0,
+                self.upgrade_stacks.get("range", 0) / 3.0,
+                self.upgrade_stacks.get("piercing", 0) / 2.0,
+                self.upgrade_stacks.get("splash", 0) / 3.0,
+                self.upgrade_stacks.get("engine", 0) / 3.0,
+                float(self.support_drone_active),
+                float(self.nova_bomb_armed),
+                float(self.is_boss_phase),
             ],
             dtype=np.float32,
         )
@@ -1089,6 +1385,13 @@ class ArenaEnv(gym.Env):
             "xp_to_next_level": self.xp_to_next_level(),
             "weapon_name": str(self.weapon_profile()["name"]),
             "weapon_kind": str(self.weapon_profile()["kind"]),
+            "weapon_profile": dict(self.weapon_profile()),
+            "upgrade_stacks": dict(self.upgrade_stacks),
+            "pending_choice_kind": self.pending_choice_kind,
+            "pending_choices": [dict(item) for item in self.pending_choices],
+            "boss_phase": self.is_boss_phase,
+            "support_drone_active": self.support_drone_active,
+            "nova_bomb_armed": self.nova_bomb_armed,
             "active_enemies": len(self.enemies),
             "active_spawners": len(self.spawners),
             "active_projectiles": len(self.projectiles),

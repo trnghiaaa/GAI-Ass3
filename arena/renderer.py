@@ -24,6 +24,8 @@ COLORS = {
     "enemy_dark": (104, 22, 44),
     "spawner": (181, 82, 255),
     "spawner_core": (255, 116, 226),
+    "boss": (255, 84, 176),
+    "drone": (78, 229, 181),
     "projectile": (255, 235, 99),
     "laser": (82, 242, 255),
     "nova": (141, 112, 255),
@@ -66,6 +68,7 @@ class ArenaRenderer:
         self.effect_rng = random.Random(4207)
         self.particles: list[dict[str, object]] = []
         self.last_effect_step = -1
+        self.show_build_panel = False
 
         star_rng = random.Random(8071)
         self.stars = [
@@ -96,14 +99,27 @@ class ArenaRenderer:
         self._draw_enemies()
         self._draw_targeting_reticle()
         self._draw_player()
+        self._draw_support_drone()
         self._draw_particles()
         self._draw_vignette()
         self._draw_hud(footer_text)
 
-        if self.env.phase_transition_steps > 0 and not self.env.done:
+        if (
+            self.env.phase_transition_steps > 0
+            and self.env.pending_choice_kind is None
+            and not self.env.done
+        ):
             self._draw_phase_banner()
-        if self.env.upgrade_banner_steps > 0 and not self.env.done:
+        elif (
+            self.env.upgrade_banner_steps > 0
+            and self.env.pending_choice_kind is None
+            and not self.env.done
+        ):
             self._draw_upgrade_banner()
+        if self.show_build_panel and self.env.pending_choice_kind is None and not self.env.done:
+            self._draw_build_panel()
+        if self.env.pending_choice_kind is not None and not self.env.done:
+            self._draw_choice_overlay()
         if self.env.done:
             self._draw_episode_end()
 
@@ -182,15 +198,34 @@ class ArenaRenderer:
         pygame.draw.circle(shield, (*COLORS["player"], shield_alpha), (26, 26), 24, 1)
         self.surface.blit(shield, (round(player.x) - 26, round(player.y) - 26))
 
+    def _draw_support_drone(self) -> None:
+        if not self.env.support_drone_active:
+            return
+        orbit = self.env.step_count * 0.055
+        x = self.env.player.x + math.cos(orbit) * 34.0
+        y = self.env.player.y + math.sin(orbit) * 34.0
+        center = (round(x), round(y))
+        pygame.draw.circle(self.surface, COLORS["drone"], center, 8)
+        pygame.draw.circle(self.surface, COLORS["player_core"], center, 3)
+        pygame.draw.arc(
+            self.surface,
+            COLORS["drone"],
+            pygame.Rect(center[0] - 13, center[1] - 13, 26, 26),
+            self.env.step_count * 0.08,
+            self.env.step_count * 0.08 + math.pi,
+            2,
+        )
+
     def _draw_enemies(self) -> None:
         for enemy in self.env.enemies:
             center = (round(enemy.x), round(enemy.y))
+            enemy_color = COLORS["boss"] if enemy.is_elite else COLORS["enemy"]
             glow = pygame.Surface((48, 48), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*COLORS["enemy"], 35), (24, 24), 22)
+            pygame.draw.circle(glow, (*enemy_color, 35), (24, 24), 22)
             self.surface.blit(glow, (center[0] - 24, center[1] - 24))
 
             pygame.draw.circle(self.surface, COLORS["enemy_dark"], center, round(enemy.radius))
-            pygame.draw.circle(self.surface, COLORS["enemy"], center, round(enemy.radius), 3)
+            pygame.draw.circle(self.surface, enemy_color, center, round(enemy.radius), 3)
             heading = math.atan2(enemy.vy, enemy.vx)
             eye = (
                 round(enemy.x + math.cos(heading) * 7),
@@ -208,10 +243,11 @@ class ArenaRenderer:
     def _draw_spawners(self) -> None:
         for spawner in self.env.spawners:
             center = (round(spawner.x), round(spawner.y))
+            spawner_color = COLORS["boss"] if spawner.is_boss else COLORS["spawner"]
             pulse = 2.0 + math.sin(self.env.step_count * 0.12 + spawner.entity_id) * 2.0
             pygame.draw.circle(
                 self.surface,
-                COLORS["spawner"],
+                spawner_color,
                 center,
                 round(spawner.radius + 8 + pulse),
                 2,
@@ -226,13 +262,17 @@ class ArenaRenderer:
                 for index in range(6)
             ]
             pygame.draw.polygon(self.surface, (45, 25, 75), points)
-            pygame.draw.polygon(self.surface, COLORS["spawner"], points, 3)
+            pygame.draw.polygon(self.surface, spawner_color, points, 4 if spawner.is_boss else 3)
             pygame.draw.circle(self.surface, COLORS["spawner_core"], center, 8)
             pygame.draw.circle(self.surface, COLORS["player_core"], center, 3)
+            if spawner.is_boss:
+                label = self.font_tiny.render("BOSS RIFT", True, COLORS["boss"])
+                self.surface.blit(label, label.get_rect(center=(center[0], center[1] + spawner.radius + 18)))
+            bar_width = 100 if spawner.is_boss else 56
             self._draw_health_bar(
-                spawner.x - 28,
+                spawner.x - bar_width / 2,
                 spawner.y - spawner.radius - 15,
-                56,
+                bar_width,
                 spawner.health / spawner.max_health,
                 height=6,
             )
@@ -247,7 +287,9 @@ class ArenaRenderer:
                 round(projectile.x - projectile.vx / speed * tail_length),
                 round(projectile.y - projectile.vy / speed * tail_length),
             )
-            if projectile.weapon_kind == "nova":
+            if projectile.weapon_kind == "drone":
+                outer, core = COLORS["drone"], COLORS["player_core"]
+            elif projectile.weapon_kind == "nova":
                 outer, core = COLORS["nova"], COLORS["player_core"]
             elif projectile.weapon_kind == "laser":
                 outer, core = COLORS["laser"], COLORS["player_core"]
@@ -289,7 +331,9 @@ class ArenaRenderer:
         panel.fill((*COLORS["hud"], 225))
         self.surface.blit(panel, (0, 0))
 
-        self._text(f"PHASE {self.env.phase}", 18, 12, self.font_medium, COLORS["accent"])
+        phase_label = f"BOSS {self.env.phase}" if self.env.is_boss_phase else f"PHASE {self.env.phase}"
+        phase_color = COLORS["boss"] if self.env.is_boss_phase else COLORS["accent"]
+        self._text(phase_label, 18, 12, self.font_medium, phase_color)
         time_remaining = max(0.0, (self.env.max_steps - self.env.step_count) / self.env.fps)
         self._text(
             f"TIME {time_remaining:05.1f}s", 18, 42, self.font_small, COLORS["muted"]
@@ -297,10 +341,10 @@ class ArenaRenderer:
 
         self._text("HULL", 135, 15, self.font_small, COLORS["muted"])
         health_ratio = self.env.player.health / self.env.player.max_health
-        self._draw_health_bar(135, 40, 150, health_ratio, height=13)
+        self._draw_health_bar(135, 40, 135, health_ratio, height=13)
         self._text(
-            f"{max(0, math.ceil(self.env.player.health)):3d}",
-            292,
+            f"{max(0, math.ceil(self.env.player.health))}/{math.ceil(self.env.player.max_health)}",
+            278,
             35,
             self.font_small,
             COLORS["text"],
@@ -370,7 +414,8 @@ class ArenaRenderer:
         banner = pygame.Surface((390, 92), pygame.SRCALPHA)
         banner.fill((10, 13, 31, 220))
         pygame.draw.rect(banner, COLORS["spawner"], banner.get_rect(), 2, border_radius=12)
-        title = self.font_large.render(f"PHASE {self.env.phase}", True, COLORS["text"])
+        title_text = f"BOSS PHASE {self.env.phase}" if self.env.is_boss_phase else f"PHASE {self.env.phase}"
+        title = self.font_large.render(title_text, True, COLORS["text"])
         subtitle = self.font_small.render(
             f"Rift signatures arriving in {remaining:0.1f}s", True, COLORS["muted"]
         )
@@ -430,7 +475,7 @@ class ArenaRenderer:
         banner.fill((8, 19, 36, alpha))
         pygame.draw.rect(banner, (*COLORS["xp"], alpha), banner.get_rect(), 2, border_radius=14)
         eyebrow = self.font_tiny.render(
-            f"SHIP LEVEL {self.env.player.level}  •  WEAPON UPGRADE",
+            f"SHIP LEVEL {self.env.player.level}  •  BUILD UPDATED",
             True,
             COLORS["xp"],
         )
@@ -438,6 +483,128 @@ class ArenaRenderer:
         banner.blit(eyebrow, ((banner.get_width() - eyebrow.get_width()) // 2, 8))
         banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 29))
         self.surface.blit(banner, ((self.env.width - banner.get_width()) // 2, 88))
+
+    def choice_rects(self) -> list[pygame.Rect]:
+        count = max(1, len(self.env.pending_choices))
+        width, gap = 224, 18
+        total = count * width + (count - 1) * gap
+        start_x = (self.env.width - total) // 2
+        return [pygame.Rect(start_x + index * (width + gap), 252, width, 206) for index in range(count)]
+
+    def choice_at_position(self, position: tuple[int, int]) -> int | None:
+        for index, rect in enumerate(self.choice_rects()):
+            if rect.collidepoint(position):
+                return index
+        return None
+
+    def _wrapped_lines(
+        self, text: str, font: pygame.font.Font, max_width: int, max_lines: int
+    ) -> list[str]:
+        words = text.split()
+        lines: list[str] = []
+        current = ""
+        for word in words:
+            candidate = word if not current else f"{current} {word}"
+            if font.size(candidate)[0] <= max_width:
+                current = candidate
+            else:
+                if current:
+                    lines.append(current)
+                current = word
+                if len(lines) == max_lines - 1:
+                    break
+        if current and len(lines) < max_lines:
+            lines.append(current)
+        consumed = " ".join(lines)
+        if len(consumed) < len(text) and lines:
+            while lines[-1] and font.size(lines[-1] + "…")[0] > max_width:
+                lines[-1] = lines[-1][:-1]
+            lines[-1] = lines[-1].rstrip() + "…"
+        return lines
+
+    def _draw_choice_overlay(self) -> None:
+        overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        overlay.fill((3, 6, 18, 224))
+        self.surface.blit(overlay, (0, 0))
+        phase_reward = self.env.pending_choice_kind == "phase_reward"
+        accent = COLORS["spawner_core"] if phase_reward else COLORS["xp"]
+        eyebrow_text = "PHASE CLEARED  •  CHOOSE ONE SUPPORT DROP" if phase_reward else f"SHIP LEVEL {self.env.player.level}  •  CHOOSE ONE UPGRADE"
+        title_text = "Prepare for the next assault" if phase_reward else "Evolve your build"
+        eyebrow = self.font_small.render(eyebrow_text, True, accent)
+        title = self.font_large.render(title_text, True, COLORS["text"])
+        hint = self.font_small.render("Click a card or press 1, 2, or 3. The battle timer is paused.", True, COLORS["muted"])
+        self.surface.blit(eyebrow, eyebrow.get_rect(center=(self.env.width // 2, 112)))
+        self.surface.blit(title, title.get_rect(center=(self.env.width // 2, 158)))
+        self.surface.blit(hint, hint.get_rect(center=(self.env.width // 2, 203)))
+
+        mouse = pygame.mouse.get_pos() if self.mode == "human" else (-1, -1)
+        for index, (rect, choice) in enumerate(zip(self.choice_rects(), self.env.pending_choices)):
+            hover = rect.collidepoint(mouse)
+            pygame.draw.rect(self.surface, (27, 40, 72) if hover else (17, 27, 52), rect, border_radius=16)
+            pygame.draw.rect(self.surface, accent if hover else (66, 84, 122), rect, 2, border_radius=16)
+            badge = pygame.Rect(rect.x + 15, rect.y + 15, 34, 34)
+            pygame.draw.rect(self.surface, accent, badge, border_radius=9)
+            number = self.font_medium.render(str(index + 1), True, COLORS["space"])
+            self.surface.blit(number, number.get_rect(center=badge.center))
+            name = self._fit_text(str(choice["name"]), self.font_medium, rect.width - 32, COLORS["text"])
+            self.surface.blit(name, (rect.x + 16, rect.y + 62))
+            for line_index, line in enumerate(
+                self._wrapped_lines(str(choice["description"]), self.font_small, rect.width - 32, 3)
+            ):
+                self._text(line, rect.x + 16, rect.y + 100 + line_index * 22, self.font_small, COLORS["muted"])
+            if not phase_reward:
+                choice_id = str(choice["id"])
+                stacks = self.env.upgrade_stacks.get(choice_id, 0)
+                maximum = int(choice.get("max_stacks", 1))
+                stack_text = "INSTANT REPAIR" if choice_id == "repair" else f"TIER {stacks + 1} / {maximum}"
+                self._text(stack_text, rect.x + 16, rect.bottom - 30, self.font_tiny, accent)
+
+    def _draw_build_panel(self) -> None:
+        overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        overlay.fill((3, 6, 18, 205))
+        self.surface.blit(overlay, (0, 0))
+        panel = pygame.Rect(100, 92, 600, 408)
+        pygame.draw.rect(self.surface, (17, 27, 52), panel, border_radius=18)
+        pygame.draw.rect(self.surface, COLORS["xp"], panel, 2, border_radius=18)
+        title = self.font_large.render("SHIP BUILD", True, COLORS["text"])
+        self.surface.blit(title, (panel.x + 28, panel.y + 22))
+        self._text("TAB to close  •  battle timer paused", panel.x + 30, panel.y + 68, self.font_small, COLORS["muted"])
+
+        profile = self.env.weapon_profile()
+        damage = float(self.env.projectile_cfg["damage"]) * float(profile["damage_multiplier"])
+        cooldown = self.env.weapon_cooldown_steps() / self.env.fps
+        lifetime = float(self.env.projectile_cfg["lifetime_seconds"]) * float(profile["lifetime_multiplier"])
+        self._text(str(profile["name"]).upper(), panel.x + 30, panel.y + 112, self.font_medium, COLORS["xp"])
+        weapon_lines = (
+            f"Beams        {int(profile['shot_count'])}",
+            f"Damage       {damage:.1f} each",
+            f"Cooldown     {cooldown:.2f}s",
+            f"Beam range   {lifetime:.1f}s flight",
+            f"Piercing     +{int(profile['pierces'])} targets",
+            f"Blast radius {float(profile['splash_radius']):.0f}px",
+        )
+        for index, line in enumerate(weapon_lines):
+            self._text(line, panel.x + 30, panel.y + 150 + index * 27, self.font_small, COLORS["text"])
+
+        self._text("SELECTED UPGRADES", panel.x + 330, panel.y + 112, self.font_medium, COLORS["accent"])
+        names = {str(item["id"]): str(item["name"]) for item in self.env.progression_cfg["upgrade_catalog"]}
+        selected = [
+            (names[key], value)
+            for key, value in self.env.upgrade_stacks.items()
+            if value > 0 and key != "repair"
+        ]
+        if not selected:
+            self._text("No permanent upgrades yet.", panel.x + 330, panel.y + 151, self.font_small, COLORS["muted"])
+        for index, (name, stacks) in enumerate(selected[:8]):
+            label = self._fit_text(f"{name}  ×{stacks}", self.font_small, 235, COLORS["text"])
+            self.surface.blit(label, (panel.x + 330, panel.y + 151 + index * 25))
+        support = []
+        if self.env.support_drone_active:
+            support.append("DRONE ACTIVE")
+        if self.env.nova_bomb_armed:
+            support.append("NOVA BOMB ARMED")
+        support_text = "  •  ".join(support) if support else "No temporary support"
+        self._text(support_text, panel.x + 330, panel.bottom - 42, self.font_tiny, COLORS["drone"] if support else COLORS["muted"])
 
     def _sync_effects(self) -> None:
         if self.env.step_count == self.last_effect_step:
@@ -465,6 +632,13 @@ class ArenaRenderer:
                 self.env.player.y,
                 COLORS["xp"],
                 42,
+            )
+        if events.get("nova_bomb_detonated"):
+            self._burst(
+                self.env.width / 2,
+                self.env.height / 2,
+                COLORS["nova"],
+                110,
             )
 
     def _burst(

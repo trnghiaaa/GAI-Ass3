@@ -19,8 +19,9 @@ Creative renderer-only presentation features include parallax background,
 targeting reticle, projectile trails, hit particles, low-health vignette,
 animated spawners, phase banners, fitted text, telemetry, and a visual launcher.
 The additional combat-progression system grants non-RL XP for objectives and
-automatically unlocks rapid fire, twin shots, laser fire, and tri-beam fire. It
-does not alter either required action dictionary or the phase progression rule.
+offers seeded three-card build drafts. Eleven permanent upgrades, phase support
+drops, and every-third-phase boss rifts deepen play without altering either
+required action dictionary or the phase progression rule.
 
 ## H — API and observation
 
@@ -28,10 +29,10 @@ does not alter either required action dictionary or the phase progression rule.
   `step() -> (obs, reward, terminated, truncated, info)`.
 - `LegacyArenaEnv` exposes the assignment's four-value contract exactly:
   `reset() -> obs` and `step() -> (obs, reward, done, info)`.
-- The fixed `float32` observation contains 34 normalized features. It includes
+- The fixed `float32` observation contains 43 normalized features. It includes
   player position, velocity, orientation, health, nearest enemy/spawner relative
   direction and distance, phase, targeting diagnostics, XP progress, ship level,
-  and the active weapon's normalized characteristics.
+  the active weapon, full composed build, temporary support, and boss state.
 - `ObservationIndex`, `OBSERVATION_NAMES`, and `observation_as_dict()` make every
   position explicit for tests and report tables.
 
@@ -45,9 +46,10 @@ does not alter either required action dictionary or the phase progression rule.
 Metadata beside each model records its control style, observation schema,
 network, seed, action repeat, hyperparameters, versions, checkpoint selection,
 and held-out benchmark. The submitted 20-episode benchmarks report 100% phase
-progression and mean reward 622.98 for direct control, versus 90% and 186.84 for
-rotation/thrust. Mean ship levels were 4.95 and 4.05, proving that both learned
-policies activate the progression system during deterministic evaluation.
+progression for both models and mean rewards of 141.32 (direct) and 215.29
+(rotation/thrust). Mean ship levels were 5.2 and 6.0; mean boss-rift kills were
+0.55 and 0.85. The seeded random-action baselines never cleared phase 1,
+supporting that progression and build activation are learned behavior.
 
 ## J — Reward and deep-RL quality
 
@@ -70,6 +72,9 @@ writes CSV/JSON/PNG evidence under `logs/arena/tuning`.
 - `logs/arena/runs/dqn_*/benchmark.json`
 - `logs/arena/tuning/hyperparameter_comparison.png`
 - `logs/arena/control_style_comparison.png`
+- `logs/arena/learning_vs_random.png`
 - `logs/arena/environment_showcase.png`
 - `logs/arena/upgrade_showcase.png`
+- `logs/arena/choice_showcase.png`
+- `logs/arena/boss_showcase.png`
 - `logs/arena/evidence_manifest.json`

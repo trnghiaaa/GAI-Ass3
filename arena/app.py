@@ -109,7 +109,7 @@ def _draw_menu(
         arrow = fonts["title"].render("›", True, card.accent)
         screen.blit(arrow, (card.rect.right - 28, card.rect.bottom - 36))
 
-    tags = "CONTINUOUS MOTION   •   COMBAT XP   •   WEAPON UPGRADES   •   PHASE PROGRESSION"
+    tags = "BUILD DRAFTS   •   BOSS RIFTS   •   SUPPORT DROPS   •   DEEP-RL AGENTS"
     tag_surface = fonts["tiny"].render(tags, True, MUTED)
     screen.blit(tag_surface, tag_surface.get_rect(center=(WIDTH // 2, 535)))
     footer = notice or "Click a card to launch  •  Esc exits"
@@ -133,7 +133,7 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
         "tiny": pygame.font.SysFont("segoeui", 12),
     }
     cards = [
-        LaunchCard(pygame.Rect(55, 170, 330, 145), "Manual: Direct", "WASD movement with auto-aim shooting.", "manual", "direct", CYAN),
+        LaunchCard(pygame.Rect(55, 170, 330, 145), "Manual: Direct", "WASD sets direction; SPACE fires forward.", "manual", "direct", CYAN),
         LaunchCard(pygame.Rect(415, 170, 330, 145), "Manual: Rotation", "Rotate, thrust, and aim every projectile.", "manual", "rotation", PURPLE),
         LaunchCard(pygame.Rect(55, 340, 330, 145), "Watch Direct DQN", "Watch the learned policy level up its arsenal.", "ai", "direct", CYAN),
         LaunchCard(pygame.Rect(415, 340, 330, 145), "Watch Rotation DQN", "See learned aiming, thrust, and weapon upgrades.", "ai", "rotation", PURPLE),
@@ -182,6 +182,7 @@ def main() -> None:
         watch_policy(
             model,
             control_style,
+            episodes=1,
             action_repeat=int(metadata.get("action_repeat", 4)),
         )
 

@@ -1,3 +1,3 @@
-control_style,algorithm,timesteps,network,mean_reward,reward_std,mean_phase,max_phase,phase_progression_rate,survival_rate,mean_enemies_destroyed,mean_spawners_destroyed,mean_accuracy,mean_player_level,max_player_level,mean_xp_earned
-direct,DQN,150000,256x256,622.977534,125.461096,6.9,8,1.0,0.9,75.5,25.65,0.919274,4.95,5,1800.25
-rotation,DQN,250000,128x128,186.841294,162.707943,3.1,5,0.9,0.25,31.5,7.4,0.610077,4.05,5,626.5
+control_style,algorithm,timesteps,network,mean_reward,reward_std,mean_phase,max_phase,phase_progression_rate,survival_rate,mean_enemies_destroyed,mean_spawners_destroyed,mean_accuracy,mean_player_level,max_player_level,mean_xp_earned,mean_bosses_destroyed,mean_upgrades_chosen
+direct,DQN,200000,128x128,141.318611,74.69417,3.2,4,1.0,0.0,16.6,6.05,0.565048,5.2,8,432.75,0.55,4.2
+rotation,DQN,300000,256x256,215.287313,97.934929,4.15,7,1.0,0.0,17.2,8.95,0.678298,6.0,9,564.0,0.85,5.0

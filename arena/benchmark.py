@@ -19,7 +19,8 @@ ROW_FIELDS = (
     "simulation_steps", "decisions", "end_reason", "survived_time_limit",
     "enemies_destroyed", "spawners_destroyed", "damage_dealt", "damage_taken",
     "shots_fired", "projectile_hits", "accuracy", "player_level", "xp_earned",
-    "weapon_name",
+    "weapon_name", "upgrades_chosen", "phase_rewards_chosen", "bosses_destroyed",
+    "build_summary",
 )
 
 
@@ -85,6 +86,14 @@ def evaluate_model(
                 "player_level": int(final_info.get("player_level", 1)),
                 "xp_earned": round(float(stats.get("xp_earned", 0.0)), 4),
                 "weapon_name": str(final_info.get("weapon_name", "Pulse Cannon")),
+                "upgrades_chosen": int(stats.get("upgrades_chosen", 0)),
+                "phase_rewards_chosen": int(stats.get("phase_rewards_chosen", 0)),
+                "bosses_destroyed": int(stats.get("bosses_destroyed", 0)),
+                "build_summary": ";".join(
+                    f"{key}:{value}"
+                    for key, value in final_info.get("upgrade_stacks", {}).items()
+                    if int(value) > 0
+                ),
             }
         )
 
@@ -121,6 +130,12 @@ def evaluate_model(
         "max_player_level": max(levels),
         "mean_xp_earned": round(
             fmean(float(row["xp_earned"]) for row in rows), 4
+        ),
+        "mean_bosses_destroyed": round(
+            fmean(int(row["bosses_destroyed"]) for row in rows), 4
+        ),
+        "mean_upgrades_chosen": round(
+            fmean(int(row["upgrades_chosen"]) for row in rows), 4
         ),
     }
     return rows, aggregate

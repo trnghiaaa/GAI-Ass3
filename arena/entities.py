@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -35,6 +35,7 @@ class Enemy(Body):
     vx: float = 0.0
     vy: float = 0.0
     attack_cooldown_steps: int = 0
+    is_elite: bool = False
 
 
 @dataclass
@@ -43,6 +44,7 @@ class Spawner(Body):
     max_health: float
     health: float
     spawn_cooldown_steps: int
+    is_boss: bool = False
 
 
 @dataclass
@@ -53,6 +55,10 @@ class Projectile(Body):
     damage: float
     lifetime_steps: int
     weapon_kind: str = "pulse"
+    owner: str = "player"
+    pierces_remaining: int = 0
+    splash_radius: float = 0.0
+    hit_entity_ids: set[int] = field(default_factory=set)
 
 
 def circles_overlap(first: Body, second: Body) -> bool:

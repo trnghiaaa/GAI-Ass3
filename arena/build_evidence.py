@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import os
 from pathlib import Path
 from typing import Any
@@ -13,8 +14,10 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import numpy as np
 import pygame
 
+from arena.benchmark import evaluate_model, write_benchmark
 from arena.environment import ArenaEnv, DIRECT_ACTIONS
 from arena.renderer import ArenaRenderer
 from arena.settings import (
@@ -77,6 +80,8 @@ def _load_final_metadata() -> list[dict[str, Any]]:
                 "mean_player_level": benchmark.get("mean_player_level", 1.0),
                 "max_player_level": benchmark.get("max_player_level", 1),
                 "mean_xp_earned": benchmark.get("mean_xp_earned", 0.0),
+                "mean_bosses_destroyed": benchmark.get("mean_bosses_destroyed", 0.0),
+                "mean_upgrades_chosen": benchmark.get("mean_upgrades_chosen", 0.0),
             }
         )
     return rows
@@ -117,15 +122,84 @@ def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
     plt.close(figure)
 
 
+class _SeededRandomPolicy:
+    def __init__(self, action_count: int, seed: int) -> None:
+        self.rng = np.random.default_rng(seed)
+        self.action_count = action_count
+
+    def predict(self, observation: Any, deterministic: bool = True) -> tuple[int, None]:
+        del observation, deterministic
+        return int(self.rng.integers(self.action_count)), None
+
+
+def _write_learning_baseline(final_rows: list[dict[str, Any]]) -> None:
+    comparisons: list[dict[str, Any]] = []
+    for index, style in enumerate(("direct", "rotation")):
+        action_count = 6 if style == "direct" else 5
+        random_rows, random_aggregate = evaluate_model(
+            _SeededRandomPolicy(action_count, 9400 + index),
+            style,
+            episodes=20,
+            action_repeat=4,
+            seed=9400,
+            deterministic=False,
+        )
+        write_benchmark(
+            random_rows,
+            random_aggregate,
+            ARENA_LOG_DIR / f"random_baseline_{style}",
+        )
+        trained = next(row for row in final_rows if row["control_style"] == style)
+        comparisons.append(
+            {
+                "control_style": style,
+                "random_mean_reward": random_aggregate["mean_reward"],
+                "trained_mean_reward": trained["mean_reward"],
+                "random_phase_progression_rate": random_aggregate["phase_progression_rate"],
+                "trained_phase_progression_rate": trained["phase_progression_rate"],
+            }
+        )
+    with (ARENA_LOG_DIR / "learning_vs_random.json").open("w", encoding="utf-8") as output:
+        json.dump({"comparisons": comparisons}, output, indent=2)
+
+    figure, axes = plt.subplots(1, 2, figsize=(10.5, 4.5))
+    labels = [str(row["control_style"]).title() for row in comparisons]
+    positions = np.arange(len(labels))
+    width = 0.34
+    for axis, random_key, trained_key, title in (
+        (axes[0], "random_mean_reward", "trained_mean_reward", "Mean episode reward"),
+        (axes[1], "random_phase_progression_rate", "trained_phase_progression_rate", "Phase progression rate"),
+    ):
+        axis.bar(positions - width / 2, [row[random_key] for row in comparisons], width, label="Random", color="#667085")
+        axis.bar(positions + width / 2, [row[trained_key] for row in comparisons], width, label="Trained DQN", color="#35cfff")
+        axis.set_xticks(positions, labels)
+        axis.set_title(title)
+        axis.grid(axis="y", alpha=0.2)
+    axes[1].set_ylim(0, 1.05)
+    axes[1].set_yticks([0, 0.25, 0.5, 0.75, 1], ["0%", "25%", "50%", "75%", "100%"])
+    axes[0].legend()
+    figure.suptitle("Learned policies versus seeded random-action baselines")
+    figure.tight_layout()
+    figure.savefig(ARENA_LOG_DIR / "learning_vs_random.png", dpi=180)
+    plt.close(figure)
+
+
 def _capture_environment_preview() -> None:
     os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
     os.environ.setdefault("PYGAME_HIDE_SUPPORT_PROMPT", "1")
     env = ArenaEnv(control_style="direct")
     env.reset(seed=8)
-    env.player.level = 4
-    env.player.xp = 270.0
+    env.player.level = 5
+    env.player.xp = 380.0
+    env.upgrade_stacks.update(
+        {"multishot": 2, "laser": 1, "damage": 2, "range": 1, "shield": 1}
+    )
     env.last_upgrade_name = str(env.weapon_profile()["name"])
     env.spawners[0].spawn_cooldown_steps = 1
+    env.player.angle = math.atan2(
+        env.spawners[0].y - env.player.y,
+        env.spawners[0].x - env.player.x,
+    )
     renderer = ArenaRenderer(env, mode="rgb_array")
     try:
         for frame in range(95):
@@ -142,9 +216,29 @@ def _capture_environment_preview() -> None:
             int(float(env.progression_cfg["upgrade_banner_seconds"]) * env.fps),
         )
         renderer.render(
-            footer_text="COMBAT XP  •  automatic upgrades  •  required action sets unchanged"
+            footer_text="COMBAT XP  •  composed build upgrades  •  required action sets unchanged"
         )
         pygame.image.save(renderer.surface, ARENA_LOG_DIR / "upgrade_showcase.png")
+        env.manual_choices = True
+        env._queue_choice("level_up")
+        env._prepare_next_choice()
+        renderer.render(
+            footer_text="THREE-CARD DRAFT  •  manual choice pauses the battle timer"
+        )
+        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "choice_showcase.png")
+        env.pending_choice_kind = None
+        env.pending_choices = []
+        env.upgrade_banner_steps = 0
+        env.phase = 3
+        env.spawners = []
+        env.enemies = []
+        env.projectiles = []
+        env._spawn_phase_spawners()
+        env._spawn_enemy(env.spawners[0])
+        renderer.render(
+            footer_text="BOSS PHASE  •  fortified rift  •  elite minions  •  gradual scaling"
+        )
+        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "boss_showcase.png")
     finally:
         renderer.close()
         env.close()
@@ -162,6 +256,7 @@ def build() -> None:
 
     rows = _load_final_metadata()
     _write_control_comparison(rows)
+    _write_learning_baseline(rows)
     _capture_environment_preview()
     manifest = {
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
@@ -174,6 +269,14 @@ def build() -> None:
             "control_style_comparison.png",
             "environment_showcase.png",
             "upgrade_showcase.png",
+            "choice_showcase.png",
+            "boss_showcase.png",
+            "random_baseline_direct.csv",
+            "random_baseline_direct.json",
+            "random_baseline_rotation.csv",
+            "random_baseline_rotation.json",
+            "learning_vs_random.json",
+            "learning_vs_random.png",
         ],
     }
     with (ARENA_LOG_DIR / "evidence_manifest.json").open("w", encoding="utf-8") as output:

@@ -25,17 +25,17 @@ class ArenaObservationTests(unittest.TestCase):
     def test_observation_is_fixed_numeric_vector_not_pixels(self) -> None:
         observation = self.env._get_observation()
 
-        self.assertEqual(observation.shape, (34,))
+        self.assertEqual(observation.shape, (43,))
         self.assertEqual(observation.ndim, 1)
         self.assertEqual(observation.dtype, np.float32)
-        self.assertEqual(len(OBSERVATION_NAMES), 34)
+        self.assertEqual(len(OBSERVATION_NAMES), 43)
         self.assertTrue(self.env.observation_space.contains(observation))
 
         # Removing every variable-length entity list must not alter the shape.
         self.env.enemies = []
         self.env.spawners = []
         self.env.projectiles = []
-        self.assertEqual(self.env._get_observation().shape, (34,))
+        self.assertEqual(self.env._get_observation().shape, (43,))
 
     def test_vectors_remain_in_bounds_during_both_control_styles(self) -> None:
         for style in ("direct", "rotation"):
@@ -209,13 +209,28 @@ class ArenaObservationTests(unittest.TestCase):
     def test_combat_level_and_weapon_upgrade_state_are_encoded(self) -> None:
         self.env.player.level = 4
         self.env.player.xp = 270.0
+        self.env.upgrade_stacks.update(
+            {"laser": 1, "fire_rate": 2, "damage": 2, "range": 1,
+             "piercing": 1, "splash": 2, "engine": 1, "shield": 1}
+        )
+        self.env.player.max_health += 25.0
+        self.env.support_drone_phase = self.env.phase
+        self.env.nova_bomb_armed = True
 
         observation = self.env._get_observation()
 
-        self.assertAlmostEqual(observation[ObservationIndex.PLAYER_LEVEL], 0.75)
+        self.assertAlmostEqual(observation[ObservationIndex.PLAYER_LEVEL], 3 / 8)
         self.assertGreater(observation[ObservationIndex.XP_PROGRESS], 0.0)
         self.assertGreater(observation[ObservationIndex.WEAPON_FIRE_RATE], 0.0)
         self.assertEqual(observation[ObservationIndex.WEAPON_IS_LASER], 1.0)
+        self.assertGreater(observation[ObservationIndex.MAX_HEALTH_BONUS], 0.0)
+        self.assertGreater(observation[ObservationIndex.DAMAGE_RESISTANCE], 0.0)
+        self.assertGreater(observation[ObservationIndex.PROJECTILE_RANGE], 0.0)
+        self.assertGreater(observation[ObservationIndex.PROJECTILE_PIERCE], 0.0)
+        self.assertGreater(observation[ObservationIndex.PROJECTILE_SPLASH], 0.0)
+        self.assertGreater(observation[ObservationIndex.ENGINE_POWER], 0.0)
+        self.assertEqual(observation[ObservationIndex.SUPPORT_DRONE_ACTIVE], 1.0)
+        self.assertEqual(observation[ObservationIndex.NOVA_BOMB_ARMED], 1.0)
 
 
 if __name__ == "__main__":

@@ -292,7 +292,7 @@ def train_control_style(
     )
 
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "algorithm": "DQN",
         "control_style": control_style,
