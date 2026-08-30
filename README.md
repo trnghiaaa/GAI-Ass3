@@ -17,9 +17,9 @@ On Windows, the easiest option is to double-click **`run_part1.bat`**. It automa
 
 ### VS Code run button
 
-The repository includes `.vscode/launch.json`. Open `main.py` and use the play-button dropdown to select **Part I: Run Gridworld**, or press `F5` and select **Part I: Debug Gridworld**. Both launch the fixed root entry point without constructing a PowerShell command from the workspace path.
+The repository includes `.vscode/launch.json`. Open `main.py` and use the play-button dropdown to select **Part I: Run Gridworld**, or press `F5` and select **Part I: Debug Gridworld**. The workspace launches the safe command `python` while placing `.venv/Scripts` first on the terminal `PATH`; this avoids inserting the absolute `A3_Game&AI` interpreter path into PowerShell syntax.
 
-If VS Code still shows an old malformed command, close its existing Python terminal once and use the configured run option. The folder name `A3_Game&AI` contains PowerShell's `&` operator, so an unquoted interpreter path cannot be executed safely; `run_part1.bat` and `python main.py` are also unaffected alternatives.
+After cloning or pulling these settings, run **Developer: Reload Window** once (or close all existing VS Code terminals) before using the configured run option. Existing terminals keep their previous environment. The folder name `A3_Game&AI` contains PowerShell's `&` operator, so the old unquoted absolute command cannot execute safely; `run_part1.bat` remains an unaffected alternative.
 
 The single launcher provides:
 

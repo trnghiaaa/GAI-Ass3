@@ -1,5 +1,6 @@
 {
-    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "python.defaultInterpreterPath": "python",
+    "python.terminal.activateEnvironment": false,
     "python.testing.pytestEnabled": true,
     "python.testing.pytestArgs": [
         "tests"
@@ -15,5 +16,9 @@
     },
     "files.watcherExclude": {
         "**/.venv/**": true
+    },
+    "terminal.integrated.env.windows": {
+        "PATH": "${workspaceFolder}\\.venv\\Scripts;${env:PATH}",
+        "VIRTUAL_ENV": "${workspaceFolder}\\.venv"
     }
 }
