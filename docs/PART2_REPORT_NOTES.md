@@ -10,8 +10,10 @@ ship destroys steering enemies and their periodically spawning rifts. Destroying
 all active rifts advances the phase, increasing spawner count, health, enemy
 health/speed, contact damage, capacity, and spawn rate. Every third phase is a
 boss-rift encounter with elite minions. An episode ends on ship destruction or
-the 120-second step limit; the clock does not reset per phase. Training is
-headless; evaluation renders the identical state and mechanics.
+a missed 60-second phase deadline, with a separate long episode safety cap.
+Clearing a phase resets the clock and removes surviving hostiles and projectiles
+without treating them as kills or granting XP/reward. Training is headless;
+evaluation renders the identical state and mechanics.
 
 ## Observation
 
@@ -42,8 +44,8 @@ Separate SB3 DQN agents use configurable MLPs, replay memory, target-network
 updates, epsilon exploration, action repeat four, checkpoints, TensorBoard, and
 held-out seeded model selection. Three configurations varied learning rate,
 exploration fraction, and network width. The 25,000-step sweep selected
-`fast_exploration` for direct control (mean reward 68.59, 33.3% phase
-progression) and `balanced` for rotation (mean reward 52.01, 66.7% phase
+`long_exploration` for direct control (mean reward 1518.12, 100% phase
+progression) and `fast_exploration` for rotation (mean reward 14.35, 33.3% phase
 progression). The final longer budgets were 200,000 and 300,000 decisions
 respectively. Exact
 settings remain in model metadata and
@@ -51,18 +53,21 @@ settings remain in model metadata and
 
 ## Control comparison and originality
 
-Direct movement is easier because one action chooses an absolute direction;
-shots follow the most recent movement heading. Rotation control must align,
+Direct movement is easier because one action chooses an absolute direction and
+shooting receives close-range target assist; outside lock range, shots follow
+the current heading. Rotation control must align,
 thrust with momentum, and shoot forward. Compare final reward, phase progression,
 survival, kills, and accuracy from `logs/arena/control_style_comparison.json`.
-Across 20 held-out episodes, direct control achieved mean reward 141.32, 100%
-phase progression, mean phase 3.2, mean ship level 5.2, and 0.55 boss-rift kills
-per episode. Rotation/thrust achieved 215.29 reward, 100% progression, mean
-phase 4.15, level 6.0, and 0.85 boss-rift kills. Neither policy merely waited for
-the time limit: they pursued increasingly dangerous objectives until destroyed.
-The result shows that the longer-trained rotation policy ultimately surpassed
-the smaller direct model despite its harder steering problem. Seeded random
-baselines never left phase 1, supporting that progression is learned behavior.
+Across 20 held-out episodes, direct control achieved mean reward 872.52, 100%
+phase progression, mean phase 9.9, mean ship level 8.3, and 2.75 boss-rift kills
+per episode. Rotation/thrust achieved 241.72 reward, 100% progression, mean
+phase 4.25, level 5.95, and 0.8 boss-rift kills. Neither policy merely waited for
+a deadline: they pursued increasingly dangerous objectives until destroyed.
+The direct policy progressed further because absolute movement and close target
+assist make control easier; rotation remained effective while learning the
+harder coupled aiming and momentum problem. The seeded random direct baseline
+averaged phase 1.25 with 25% progression, while random rotation never left phase
+1, supporting that the submitted policies learned purposeful progression.
 Original elements include the continuous custom combat simulation, phase
 director, normalized targeting/turn representation, auditable shaped reward,
 held-out checkpoint selection, three-card build drafts, eleven stackable upgrade

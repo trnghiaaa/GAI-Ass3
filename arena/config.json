@@ -2,9 +2,10 @@
     "simulation": {
         "window_width": 800,
         "window_height": 600,
-        "hud_height": 74,
+        "hud_height": 82,
         "fps": 60,
-        "max_steps": 7200
+        "phase_time_limit_seconds": 60,
+        "max_steps": 36000
     },
     "player": {
         "radius": 18,
@@ -14,7 +15,8 @@
         "rotation_speed_degrees": 220,
         "max_speed": 280,
         "drag": 0.985,
-        "fire_cooldown_seconds": 0.22
+        "fire_cooldown_seconds": 0.22,
+        "target_assist_range": 160
     },
     "projectile": {
         "radius": 4,

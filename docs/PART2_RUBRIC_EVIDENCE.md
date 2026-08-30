@@ -12,8 +12,8 @@ typed manually into the report.
 | Movement and shooting | Required direct and rotation action dictionaries plus `_apply_player_action()` and `_fire_projectile()` | Direct/rotation movement tests |
 | Spawners and steering enemies | `_update_spawners()`, `_spawn_enemy()`, `_update_enemies()` | Spawn and navigation tests |
 | Health and collisions | Circular projectile/entity collisions; player/enemy/spawner health | Damage, destruction, and death tests |
-| Phase progression | Destroying all active spawners increments phase and starts a visible transition | Phase test and final policy benchmarks |
-| Terminal rules | Player health reaches zero or configured step budget is exhausted | Termination/truncation tests |
+| Phase progression | Destroying all active spawners increments phase, cleanly withdraws old hostiles/projectiles, resets the phase clock, and starts a visible transition | Phase-cleanup/timer tests and final policy benchmarks |
+| Terminal rules | Player health reaches zero, a 60-second phase deadline expires, or the long safety budget is exhausted | Termination/truncation tests |
 
 Creative renderer-only presentation features include parallax background,
 targeting reticle, projectile trails, hit particles, low-health vignette,
@@ -46,10 +46,11 @@ required action dictionary or the phase progression rule.
 Metadata beside each model records its control style, observation schema,
 network, seed, action repeat, hyperparameters, versions, checkpoint selection,
 and held-out benchmark. The submitted 20-episode benchmarks report 100% phase
-progression for both models and mean rewards of 141.32 (direct) and 215.29
-(rotation/thrust). Mean ship levels were 5.2 and 6.0; mean boss-rift kills were
-0.55 and 0.85. The seeded random-action baselines never cleared phase 1,
-supporting that progression and build activation are learned behavior.
+progression for both models and mean rewards of 872.52 (direct) and 241.72
+(rotation/thrust). Mean ship levels were 8.3 and 5.95; mean boss-rift kills were
+2.75 and 0.8. The seeded random direct baseline averaged phase 1.25 with 25%
+progression, while random rotation never cleared phase 1, supporting that the
+much stronger submitted progression and build activation are learned behavior.
 
 ## J — Reward and deep-RL quality
 

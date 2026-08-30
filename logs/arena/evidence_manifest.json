@@ -21,14 +21,14 @@
     "logs\\arena\\tuning\\hyperparameter_comparison.png"
   ],
   "tensorboard_event_files": [
-    "logs\\arena\\tensorboard\\dqn_direct_3\\events.out.tfevents.1788106229.DESKTOP-J8VD39I.26136.0",
-    "logs\\arena\\tensorboard\\dqn_rotation_3\\events.out.tfevents.1788106669.DESKTOP-J8VD39I.26668.0",
-    "logs\\arena\\tensorboard\\tune_direct_balanced_5\\events.out.tfevents.1788105903.DESKTOP-J8VD39I.20816.1",
-    "logs\\arena\\tensorboard\\tune_direct_fast_exploration_5\\events.out.tfevents.1788105842.DESKTOP-J8VD39I.20816.0",
-    "logs\\arena\\tensorboard\\tune_direct_long_exploration_5\\events.out.tfevents.1788105962.DESKTOP-J8VD39I.20816.2",
-    "logs\\arena\\tensorboard\\tune_rotation_balanced_4\\events.out.tfevents.1788106072.DESKTOP-J8VD39I.20816.4",
-    "logs\\arena\\tensorboard\\tune_rotation_fast_exploration_5\\events.out.tfevents.1788106022.DESKTOP-J8VD39I.20816.3",
-    "logs\\arena\\tensorboard\\tune_rotation_long_exploration_4\\events.out.tfevents.1788106125.DESKTOP-J8VD39I.20816.5"
+    "logs\\arena\\tensorboard\\dqn_direct_4\\events.out.tfevents.1788109050.DESKTOP-J8VD39I.7860.0",
+    "logs\\arena\\tensorboard\\dqn_rotation_4\\events.out.tfevents.1788109568.DESKTOP-J8VD39I.23848.0",
+    "logs\\arena\\tensorboard\\tune_direct_balanced_6\\events.out.tfevents.1788108704.DESKTOP-J8VD39I.24548.1",
+    "logs\\arena\\tensorboard\\tune_direct_fast_exploration_6\\events.out.tfevents.1788108630.DESKTOP-J8VD39I.24548.0",
+    "logs\\arena\\tensorboard\\tune_direct_long_exploration_6\\events.out.tfevents.1788108771.DESKTOP-J8VD39I.24548.2",
+    "logs\\arena\\tensorboard\\tune_rotation_balanced_5\\events.out.tfevents.1788108928.DESKTOP-J8VD39I.24548.4",
+    "logs\\arena\\tensorboard\\tune_rotation_fast_exploration_6\\events.out.tfevents.1788108879.DESKTOP-J8VD39I.24548.3",
+    "logs\\arena\\tensorboard\\tune_rotation_long_exploration_5\\events.out.tfevents.1788108977.DESKTOP-J8VD39I.24548.5"
   ],
   "generated": [
     "control_style_comparison.csv",

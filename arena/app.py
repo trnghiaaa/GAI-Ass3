@@ -17,7 +17,7 @@ PANEL = (19, 29, 55)
 PANEL_HOVER = (28, 43, 75)
 LINE = (51, 72, 112)
 TEXT = (235, 243, 255)
-MUTED = (143, 162, 194)
+MUTED = (184, 199, 222)
 CYAN = (65, 210, 255)
 PURPLE = (181, 82, 255)
 GREEN = (63, 220, 135)
@@ -125,15 +125,15 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
     pygame.display.set_caption("Neon Rift Arena — Part II")
     clock = pygame.time.Clock()
     fonts = {
-        "eyebrow": pygame.font.SysFont("segoeui", 13),
-        "hero": pygame.font.SysFont("segoeui", 46, bold=True),
-        "subtitle": pygame.font.SysFont("segoeui", 17),
-        "title": pygame.font.SysFont("segoeui", 22, bold=True),
-        "body": pygame.font.SysFont("segoeui", 14),
-        "tiny": pygame.font.SysFont("segoeui", 12),
+        "eyebrow": pygame.font.SysFont("bahnschrift", 14, bold=True),
+        "hero": pygame.font.SysFont("bahnschrift", 46, bold=True),
+        "subtitle": pygame.font.SysFont("bahnschrift", 17),
+        "title": pygame.font.SysFont("bahnschrift", 23, bold=True),
+        "body": pygame.font.SysFont("bahnschrift", 15),
+        "tiny": pygame.font.SysFont("bahnschrift", 13, bold=True),
     }
     cards = [
-        LaunchCard(pygame.Rect(55, 170, 330, 145), "Manual: Direct", "WASD sets direction; SPACE fires forward.", "manual", "direct", CYAN),
+        LaunchCard(pygame.Rect(55, 170, 330, 145), "Manual: Direct", "WASD moves; SPACE uses close target assist.", "manual", "direct", CYAN),
         LaunchCard(pygame.Rect(415, 170, 330, 145), "Manual: Rotation", "Rotate, thrust, and aim every projectile.", "manual", "rotation", PURPLE),
         LaunchCard(pygame.Rect(55, 340, 330, 145), "Watch Direct DQN", "Watch the learned policy level up its arsenal.", "ai", "direct", CYAN),
         LaunchCard(pygame.Rect(415, 340, 330, 145), "Watch Rotation DQN", "See learned aiming, thrust, and weapon upgrades.", "ai", "rotation", PURPLE),

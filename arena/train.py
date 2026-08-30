@@ -35,7 +35,7 @@ from stable_baselines3.common.monitor import Monitor
 import torch
 
 from arena.benchmark import evaluate_model, write_benchmark
-from arena.environment import ArenaEnv, OBSERVATION_NAMES
+from arena.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
 from arena.settings import (
     ARENA_LOG_DIR,
     TENSORBOARD_DIR,
@@ -292,7 +292,7 @@ def train_control_style(
     )
 
     metadata = {
-        "schema_version": 2,
+        "schema_version": ENVIRONMENT_SCHEMA_VERSION,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "algorithm": "DQN",
         "control_style": control_style,

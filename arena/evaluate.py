@@ -13,7 +13,7 @@ import pygame
 from stable_baselines3 import DQN
 
 from arena.benchmark import evaluate_model, write_benchmark
-from arena.environment import ArenaEnv, OBSERVATION_NAMES
+from arena.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
 from arena.renderer import ArenaRenderer
 from arena.settings import ARENA_LOG_DIR, metadata_path, model_path
 
@@ -34,6 +34,8 @@ def policy_readiness(control_style: str) -> tuple[bool, str]:
         return False, "METADATA INVALID"
     if metadata.get("control_style") != control_style:
         return False, "WRONG CONTROL MODEL"
+    if metadata.get("schema_version") != ENVIRONMENT_SCHEMA_VERSION:
+        return False, "RETRAIN REQUIRED"
     if metadata.get("observation_names") != list(OBSERVATION_NAMES):
         return False, "RETRAIN REQUIRED"
     return True, "MODEL READY"
@@ -64,6 +66,8 @@ def load_policy(
                 f"Model metadata is for {metadata.get('control_style')!r}, "
                 f"not {control_style!r}"
             )
+        if metadata.get("schema_version") != ENVIRONMENT_SCHEMA_VERSION:
+            raise ValueError("Model was trained for an older arena version; retraining is required")
         if metadata.get("observation_names") != list(OBSERVATION_NAMES):
             raise ValueError("Model observation schema does not match the current arena")
     return DQN.load(str(path), device="auto"), metadata

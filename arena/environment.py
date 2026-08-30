@@ -88,6 +88,7 @@ class ObservationIndex(IntEnum):
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
+ENVIRONMENT_SCHEMA_VERSION = 3
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -160,6 +161,10 @@ class ArenaEnv(gym.Env):
         self.fps = int(self.sim_cfg["fps"])
         self.dt = 1.0 / self.fps
         self.max_steps = int(self.sim_cfg["max_steps"])
+        self.phase_max_steps = max(
+            1,
+            round(float(self.sim_cfg["phase_time_limit_seconds"]) * self.fps),
+        )
         self.metadata["render_fps"] = self.fps
 
         self.action_names = DIRECT_ACTIONS if control_style == "direct" else ROTATION_ACTIONS
@@ -187,7 +192,9 @@ class ArenaEnv(gym.Env):
         self.projectiles: list[Projectile] = []
         self.phase = 1
         self.step_count = 0
+        self.phase_step_count = 0
         self.phase_transition_steps = 0
+        self.last_phase_cleanup_count = 0
         self.done = False
         self.last_end_reason: str | None = None
         self._next_entity_id = 1
@@ -221,7 +228,9 @@ class ArenaEnv(gym.Env):
 
         self.phase = 1
         self.step_count = 0
+        self.phase_step_count = 0
         self.phase_transition_steps = 0
+        self.last_phase_cleanup_count = 0
         self.done = False
         self.last_end_reason = None
         self._next_entity_id = 1
@@ -283,6 +292,8 @@ class ArenaEnv(gym.Env):
             raise ValueError(f"Invalid action {action} for {self.control_style} controls")
 
         self.step_count += 1
+        if self.phase_transition_steps == 0:
+            self.phase_step_count += 1
         events: dict[str, Any] = {
             "shot_fired": False,
             "projectiles_fired": 0,
@@ -294,6 +305,8 @@ class ArenaEnv(gym.Env):
             "damage_dealt_spawner": 0.0,
             "damage_taken": 0.0,
             "phase_advanced": False,
+            "enemies_dispersed": 0,
+            "projectiles_cleared": 0,
             "spawner_progress": 0.0,
             "aim_improvement": 0.0,
             "shot_alignment": 0.0,
@@ -329,12 +342,16 @@ class ArenaEnv(gym.Env):
         self._apply_shaping_delta(events, shaping_before)
 
         terminated = self.player.health <= 0.0
-        truncated = self.step_count >= self.max_steps and not terminated
+        phase_timeout = self.phase_step_count >= self.phase_max_steps
+        safety_limit = self.step_count >= self.max_steps
+        truncated = (phase_timeout or safety_limit) and not terminated
         if terminated:
             self.player.health = 0.0
             self.last_end_reason = "player_destroyed"
-        elif truncated:
-            self.last_end_reason = "time_limit"
+        elif phase_timeout:
+            self.last_end_reason = "phase_timeout"
+        elif safety_limit:
+            self.last_end_reason = "safety_limit"
         self.done = terminated or truncated
 
         reward, reward_breakdown = self._calculate_reward(events, terminated)
@@ -395,7 +412,10 @@ class ArenaEnv(gym.Env):
                 self.player.vx = speed
                 self.player.angle = 0.0
             elif action == DIRECT_ACTIONS["SHOOT"]:
-                projectiles_fired = self._fire_projectile(auto_aim=False)
+                # Direct controls intentionally omit an aim action. Target assist
+                # keeps this control set accessible while rotation mode retains
+                # explicit learned aiming as its distinct challenge.
+                projectiles_fired = self._fire_projectile(auto_aim=True)
         else:
             rotation_speed = math.radians(float(self.player_cfg["rotation_speed_degrees"]))
             if action == ROTATION_ACTIONS["ROTATE_LEFT"]:
@@ -438,7 +458,9 @@ class ArenaEnv(gym.Env):
 
         angle = self.player.angle
         if auto_aim:
-            target = self._nearest_target()
+            target = self._nearest_target(
+                max_distance=float(self.player_cfg["target_assist_range"])
+            )
             if target is not None:
                 angle = math.atan2(target.y - self.player.y, target.x - self.player.x)
                 self.player.angle = angle
@@ -922,7 +944,18 @@ class ArenaEnv(gym.Env):
                 self._spawn_phase_spawners(events)
             return
 
+        # A new phase is a clean combat encounter. Remaining hostiles retreat
+        # and in-flight shots are discarded; neither grants kills, XP, or reward.
+        enemies_dispersed = len(self.enemies)
+        projectiles_cleared = len(self.projectiles)
+        self.enemies.clear()
+        self.projectiles.clear()
+        self.last_phase_cleanup_count = enemies_dispersed
+        events["enemies_dispersed"] = enemies_dispersed
+        events["projectiles_cleared"] = projectiles_cleared
+
         self.phase += 1
+        self.phase_step_count = 0
         events["phase_advanced"] = True
         self.phase_transition_steps = max(
             0, int(float(self.phase_cfg["transition_seconds"]) * self.fps)
@@ -1071,8 +1104,19 @@ class ArenaEnv(gym.Env):
     # Observations, rewards, and diagnostics
     # ------------------------------------------------------------------
 
-    def _nearest_target(self) -> Enemy | Spawner | None:
+    def _nearest_target(
+        self, max_distance: float | None = None
+    ) -> Enemy | Spawner | None:
         targets: list[Enemy | Spawner] = [*self.enemies, *self.spawners]
+        if max_distance is not None:
+            max_distance_squared = max_distance * max_distance
+            targets = [
+                target
+                for target in targets
+                if (target.x - self.player.x) ** 2
+                + (target.y - self.player.y) ** 2
+                <= max_distance_squared
+            ]
         if not targets:
             return None
         return min(
@@ -1258,7 +1302,11 @@ class ArenaEnv(gym.Env):
                 np.clip(len(self.enemies) / max(1, max_enemies), 0.0, 1.0),
                 np.clip(len(self.spawners) / max(1, int(self.phase_cfg["maximum_spawners"])), 0.0, 1.0),
                 np.clip(self.phase / max(1, int(self.phase_cfg["observation_phase_cap"])), 0.0, 1.0),
-                np.clip(1.0 - self.step_count / self.max_steps, 0.0, 1.0),
+                np.clip(
+                    1.0 - self.phase_step_count / self.phase_max_steps,
+                    0.0,
+                    1.0,
+                ),
                 self._aim_alignment(self.enemies),
                 self._aim_alignment(self.spawners),
                 *active_target_features,
@@ -1378,6 +1426,12 @@ class ArenaEnv(gym.Env):
             "phase": self.phase,
             "step": self.step_count,
             "time_seconds": self.step_count * self.dt,
+            "phase_step": self.phase_step_count,
+            "phase_time_seconds": self.phase_step_count * self.dt,
+            "phase_time_remaining": max(
+                0.0,
+                (self.phase_max_steps - self.phase_step_count) * self.dt,
+            ),
             "player_health": self.player.health,
             "player_level": self.player.level,
             "player_xp": self.player.xp,
@@ -1411,6 +1465,7 @@ class ArenaEnv(gym.Env):
 
 __all__ = [
     "ArenaEnv",
+    "ENVIRONMENT_SCHEMA_VERSION",
     "DIRECT_ACTIONS",
     "ROTATION_ACTIONS",
     "ObservationIndex",

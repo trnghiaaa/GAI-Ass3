@@ -104,6 +104,27 @@ class ArenaEnvironmentTests(unittest.TestCase):
         self.assertEqual(self.env.episode_stats["enemies_destroyed"], 1)
         self.assertEqual(self.env.episode_stats["projectile_hits"], 1)
 
+    def test_direct_shooting_uses_nearest_target_assist(self) -> None:
+        self.env.enemies = [
+            Enemy(
+                x=self.env.player.x + 100.0,
+                y=self.env.player.y,
+                radius=15.0,
+                entity_id=991,
+                max_health=50.0,
+                health=50.0,
+                speed=0.0,
+            )
+        ]
+        self.env.player.angle = -math.pi / 2.0
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["SHOOT"])
+
+        self.assertTrue(info["shot_fired"])
+        self.assertAlmostEqual(self.env.player.angle, 0.0)
+        self.assertGreater(self.env.projectiles[0].vx, 0.0)
+        self.assertAlmostEqual(self.env.projectiles[0].vy, 0.0)
+
     def test_destroying_last_spawner_advances_phase(self) -> None:
         spawner = Spawner(
             x=self.env.player.x + 80.0,
@@ -165,9 +186,66 @@ class ArenaEnvironmentTests(unittest.TestCase):
             _, _, terminated, truncated, info = env.step(DIRECT_ACTIONS["NOOP"])
             self.assertFalse(terminated)
             self.assertTrue(truncated)
-            self.assertEqual(info["episode_end"], "time_limit")
+            self.assertEqual(info["episode_end"], "safety_limit")
         finally:
             env.close()
+
+    def test_each_phase_has_its_own_deadline(self) -> None:
+        env = ArenaEnv(
+            control_style="direct",
+            config_override={
+                "simulation": {
+                    "phase_time_limit_seconds": 2 / 60,
+                    "max_steps": 20,
+                }
+            },
+        )
+        try:
+            env.reset(seed=2)
+            env.step(DIRECT_ACTIONS["NOOP"])
+            _, _, terminated, truncated, info = env.step(DIRECT_ACTIONS["NOOP"])
+            self.assertFalse(terminated)
+            self.assertTrue(truncated)
+            self.assertEqual(info["episode_end"], "phase_timeout")
+            self.assertEqual(info["phase_step"], 2)
+            self.assertEqual(info["phase_time_remaining"], 0.0)
+        finally:
+            env.close()
+
+    def test_phase_clear_resets_timer_and_removes_leftover_combatants(self) -> None:
+        enemy = Enemy(
+            x=100.0,
+            y=100.0,
+            radius=15.0,
+            entity_id=992,
+            max_health=50.0,
+            health=50.0,
+            speed=0.0,
+        )
+        self.env.enemies = [enemy]
+        self.env.spawners = []
+        self.env._fire_projectile(auto_aim=False)
+        self.env.phase_step_count = 120
+        xp_before = self.env.player.xp
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+
+        self.assertTrue(info["phase_advanced"])
+        self.assertEqual(info["enemies_dispersed"], 1)
+        self.assertGreaterEqual(info["projectiles_cleared"], 1)
+        self.assertEqual(self.env.enemies, [])
+        self.assertEqual(self.env.projectiles, [])
+        self.assertEqual(self.env.phase_step_count, 0)
+        self.assertEqual(
+            self.env.player.xp,
+            xp_before + float(self.env.progression_cfg["phase_xp"]),
+        )
+        self.assertEqual(self.env.episode_stats["enemies_destroyed"], 0)
+
+        transition_before = self.env.phase_transition_steps
+        self.env.step(DIRECT_ACTIONS["NOOP"])
+        self.assertEqual(self.env.phase_step_count, 0)
+        self.assertEqual(self.env.phase_transition_steps, transition_before - 1)
 
     def test_selected_upgrades_compose_a_diverse_weapon_build(self) -> None:
         self.env.upgrade_stacks.update(

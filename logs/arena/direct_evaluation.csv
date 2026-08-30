@@ -1,4 +1,21 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
-1,7300,642.426743,7,6,3600,900,time_limit,True,84,25,9788.5,14.0,760,707,0.930263,5,1865.0,Nova Tri-Beam
-2,7301,671.597766,8,7,3600,900,time_limit,True,67,30,9680.0,28.0,756,689,0.911376,5,1895.0,Nova Tri-Beam
-3,7302,639.421924,7,6,3600,900,time_limit,True,82,25,9690.0,0.0,741,697,0.940621,5,1845.0,Nova Tri-Beam
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
+1,9000,1363.346799,14,13,5188,1297,player_destroyed,False,115,47,22859.1,201.6,794,576,0.725441,9,3120.0,Prism Laser,8,13,4,damage:3;multishot:3;laser:1;splash:1
+2,9001,868.400903,10,9,3436,859,player_destroyed,False,72,31,12240.95,114.24,748,387,0.51738,9,2030.0,Prism Laser,8,9,3,damage:2;fire_rate:1;multishot:4;laser:1
+3,9002,1352.381295,14,13,5142,1286,player_destroyed,False,118,46,22885.8,147.28,1179,670,0.568278,9,3115.0,Prism Laser,8,13,4,damage:2;fire_rate:1;multishot:4;laser:1
+4,9003,1237.947041,13,12,4600,1150,player_destroyed,False,101,43,20315.7,159.9674,889,659,0.741282,9,2815.0,Prism Laser,8,12,4,damage:1;multishot:4;laser:1;splash:1;shield:1
+5,9004,207.225577,4,3,1360,340,player_destroyed,False,11,9,2188.9,183.68,78,73,0.935897,6,500.0,Nova Payload,5,3,1,hull:1;damage:2;fire_rate:1;splash:1
+6,9005,120.295805,3,2,1055,264,player_destroyed,False,9,5,1464.75,104.72,47,43,0.914894,5,315.0,Prism Laser,4,2,0,damage:1;fire_rate:1;laser:1;splash:1
+7,9006,1229.578721,13,12,5081,1271,player_destroyed,False,118,41,21807.75,200.48,703,700,0.995733,9,2915.0,Prism Laser,8,12,4,damage:1;fire_rate:3;multishot:2;laser:1;piercing:1
+8,9007,993.87306,11,10,4611,1153,player_destroyed,False,98,35,15893.25,282.016,572,490,0.856643,9,2455.0,Prism Laser,8,10,3,damage:1;fire_rate:1;multishot:2;range:1;laser:1;splash:2
+9,9008,1453.573651,15,14,4923,1231,player_destroyed,False,110,49,24212.4,178.192,967,687,0.710445,9,3165.0,Prism Laser,8,14,4,hull:1;damage:2;fire_rate:1;multishot:3;laser:1
+10,9009,113.499054,3,2,1149,288,player_destroyed,False,7,5,1315.7,137.424,47,47,1.0,4,295.0,Rapid Pulse,3,2,0,hull:1;fire_rate:2
+11,9010,203.790535,4,3,1579,395,player_destroyed,False,20,8,2814.75,242.48,112,110,0.982143,6,555.0,Prism Laser,5,3,1,fire_rate:3;laser:1
+12,9011,1983.449232,19,18,6688,1672,player_destroyed,False,186,64,40618.05,472.4966,1449,1395,0.962733,9,4550.0,Nova Payload,8,18,6,damage:1;multishot:4;piercing:1;splash:1;shield:1
+13,9012,1423.512999,14,13,5180,1295,player_destroyed,False,139,48,26192.2,224.224,904,827,0.914823,9,3395.0,Prism Laser,8,13,4,damage:1;fire_rate:3;multishot:2;laser:1;piercing:1
+14,9013,1625.983838,16,15,6132,1533,player_destroyed,False,151,53,30354.3,129.808,1222,1082,0.885434,9,3740.0,Prism Laser,8,15,5,hull:1;fire_rate:1;multishot:4;laser:1;piercing:1
+15,9014,117.261251,3,2,1167,292,player_destroyed,False,11,5,1485.8,137.424,49,48,0.979592,5,335.0,Nova Payload,4,2,0,hull:1;fire_rate:2;splash:1
+16,9015,117.323621,3,2,1207,302,player_destroyed,False,13,5,1690.85,187.376,60,56,0.933333,5,355.0,Prism Laser,4,2,0,damage:2;laser:1
+17,9016,1210.286532,13,12,4231,1058,player_destroyed,False,97,42,19227.3,245.84,713,687,0.963534,9,2740.0,Prism Laser,8,12,4,fire_rate:2;multishot:3;laser:1;piercing:1;splash:1
+18,9017,847.373003,10,9,3620,905,player_destroyed,False,70,30,12389.0,154.9498,481,395,0.821206,9,1975.0,Multi-Beam Array,8,9,3,damage:2;fire_rate:2;multishot:2;shield:1;engine:1
+19,9018,1359.966343,14,13,5106,1277,player_destroyed,False,122,46,22724.75,104.16,914,593,0.648796,9,3155.0,Prism Laser,8,13,4,damage:3;fire_rate:1;multishot:3;laser:1
+20,9019,1254.38305,13,12,4865,1217,player_destroyed,False,113,43,21372.15,185.696,648,539,0.83179,9,2935.0,Prism Laser,8,12,4,damage:2;fire_rate:1;multishot:2;laser:1;splash:2

@@ -1,7 +1,7 @@
 episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
-1,18402,-21.32113,1,0,456,114,player_destroyed,False,1,1,225.0,112.0,30,9,0.3,2,45.0,Pulse Cannon,1,0,0,piercing:1
-2,18403,67.283326,2,1,1972,493,player_destroyed,False,23,3,1653.75,101.92,221,35,0.158371,5,360.0,Prism Laser,4,1,0,multishot:1;laser:1;piercing:1;splash:1
-3,18404,-19.988564,1,0,521,131,player_destroyed,False,2,1,278.75,112.0,36,11,0.305556,2,55.0,Prism Laser,1,0,0,laser:1
-4,18405,-21.011729,1,0,853,214,player_destroyed,False,2,1,200.0,112.0,30,8,0.266667,2,55.0,Pulse Cannon,1,0,0,damage:1
-5,18406,128.819601,3,2,2965,742,player_destroyed,False,21,5,1785.0,108.864,442,36,0.081448,5,435.0,Prism Laser,4,2,0,damage:1;fire_rate:1;multishot:1;laser:1
-6,18407,-35.840305,1,0,576,144,player_destroyed,False,1,0,100.0,112.0,26,4,0.153846,1,10.0,Pulse Cannon,0,0,0,
+1,17402,-20.672775,1,0,994,249,player_destroyed,False,2,1,200.0,112.0,21,8,0.380952,2,55.0,Pulse Cannon,1,0,0,damage:1
+2,17403,-34.468423,1,0,421,106,player_destroyed,False,1,0,125.0,112.0,22,5,0.227273,1,10.0,Pulse Cannon,0,0,0,
+3,17404,-17.658387,1,0,598,150,player_destroyed,False,2,1,257.5,112.0,27,10,0.37037,2,55.0,Prism Laser,1,0,0,laser:1
+4,17405,-22.152137,1,0,650,163,player_destroyed,False,1,1,175.0,112.0,17,7,0.411765,2,45.0,Prism Laser,1,0,0,laser:1
+5,17406,64.908847,1,0,3600,900,phase_timeout,True,26,1,1400.0,0.0,323,56,0.173375,4,295.0,Nova Payload,3,0,0,damage:1;fire_rate:1;splash:1
+6,17407,40.889131,2,1,644,161,player_destroyed,False,3,3,524.25,101.92,60,14,0.233333,3,160.0,Multi-Beam Array,2,1,0,fire_rate:1;multishot:1

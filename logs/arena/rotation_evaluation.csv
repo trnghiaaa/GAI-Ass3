@@ -1,4 +1,21 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
-1,8300,423.713955,4,3,3600,900,time_limit,True,77,12,6716.5,0.0,890,468,0.525843,5,1265.0,Nova Tri-Beam
-2,8301,443.967773,4,3,3600,900,time_limit,True,93,10,7524.5,14.0,688,528,0.767442,5,1355.0,Nova Tri-Beam
-3,8302,145.558023,3,2,1668,417,player_destroyed,False,22,7,2343.5,112.0,227,137,0.603524,5,515.0,Nova Tri-Beam
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
+1,9000,347.729849,5,4,2488,622,player_destroyed,False,25,15,4463.8,230.72,308,156,0.506494,8,875.0,Prism Laser,7,4,1,fire_rate:1;multishot:3;laser:1;splash:1
+2,9001,162.357609,4,3,1471,368,player_destroyed,False,9,6,1807.6,152.32,165,53,0.321212,5,375.0,Nova Payload,4,3,1,damage:1;multishot:2;splash:1
+3,9002,105.201077,3,2,1340,335,player_destroyed,False,7,5,1520.1,230.496,69,52,0.753623,4,295.0,Pulse Cannon,3,2,0,damage:2
+4,9003,112.383495,3,2,1296,324,player_destroyed,False,6,5,1210.0,106.6464,43,32,0.744186,4,285.0,Pulse Cannon,3,2,0,damage:2;shield:1
+5,9004,203.224874,4,3,1872,468,player_destroyed,False,24,8,3035.1,251.328,153,116,0.75817,6,595.0,Multi-Beam Array,5,3,1,hull:2;multishot:1;piercing:1
+6,9005,667.58269,8,7,3538,885,player_destroyed,False,55,25,9489.85,106.4,468,296,0.632479,9,1600.0,Prism Laser,8,7,2,damage:1;fire_rate:2;multishot:3;laser:1;piercing:1
+7,9006,486.372747,7,6,2867,717,player_destroyed,False,29,19,5899.95,240.688,339,183,0.539823,9,1105.0,Nova Payload,8,6,2,damage:2;fire_rate:2;multishot:3;splash:1
+8,9007,494.793593,7,6,2925,732,player_destroyed,False,44,18,6868.45,210.56,279,187,0.670251,9,1220.0,Prism Laser,8,6,2,hull:1;damage:2;fire_rate:1;multishot:1;laser:1;piercing:1
+9,9008,984.985535,11,10,4775,1194,player_destroyed,False,104,34,17191.1,236.32,860,492,0.572093,9,2480.0,Multi-Beam Array,8,10,3,damage:3;multishot:4;piercing:1
+10,9009,38.957983,2,1,908,227,player_destroyed,False,5,3,732.0,157.92,43,22,0.511628,3,180.0,Pulse Cannon,2,1,0,hull:2
+11,9010,117.842172,3,2,1161,291,player_destroyed,False,10,5,1494.15,105.28,48,44,0.916667,5,325.0,Prism Laser,4,2,0,damage:1;fire_rate:1;laser:1;splash:1
+12,9011,177.602515,4,3,1588,397,player_destroyed,False,8,7,1929.8,181.44,143,70,0.48951,5,400.0,Nova Payload,4,3,1,hull:1;multishot:1;piercing:1;splash:1
+13,9012,232.721885,4,3,2103,526,player_destroyed,False,31,9,3620.3,138.7456,144,93,0.645833,7,700.0,Prism Laser,6,3,1,hull:1;multishot:1;laser:1;splash:2;shield:1
+14,9013,647.747365,8,7,3344,836,player_destroyed,False,38,26,8526.75,243.824,395,270,0.683544,9,1465.0,Prism Laser,8,7,2,damage:1;fire_rate:1;multishot:3;laser:1;piercing:1;splash:1
+15,9014,98.963244,3,2,1456,364,player_destroyed,False,4,5,1097.7,189.0515,53,40,0.754717,4,265.0,Prism Laser,3,2,0,laser:1;splash:1;shield:1
+16,9015,100.894131,3,2,1424,356,player_destroyed,False,5,5,1264.95,251.664,64,45,0.703125,4,275.0,Prism Laser,3,2,0,hull:1;damage:1;laser:1
+17,9016,166.523638,4,3,1752,438,player_destroyed,False,14,6,2161.9,195.552,90,70,0.777778,5,425.0,Prism Laser,4,3,1,hull:1;damage:1;fire_rate:1;laser:1
+18,9017,47.767148,2,1,868,217,player_destroyed,False,5,3,760.0,101.36,39,20,0.512821,3,180.0,Rapid Pulse,2,1,0,damage:1;fire_rate:1
+19,9018,57.668903,2,1,974,244,player_destroyed,False,3,4,799.75,101.92,35,23,0.657143,4,195.0,Nova Payload,3,1,0,damage:1;fire_rate:1;splash:1
+20,9019,334.840052,5,4,2088,522,player_destroyed,False,26,14,4157.85,193.424,248,145,0.584677,8,850.0,Multi-Beam Array,7,4,1,hull:1;damage:1;fire_rate:2;multishot:2;piercing:1

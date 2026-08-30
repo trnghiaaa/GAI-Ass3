@@ -3,6 +3,7 @@
 from arena.environment import (
     ArenaEnv,
     DIRECT_ACTIONS,
+    ENVIRONMENT_SCHEMA_VERSION,
     OBSERVATION_NAMES,
     ROTATION_ACTIONS,
     ObservationIndex,
@@ -13,6 +14,7 @@ __all__ = [
     "ArenaEnv",
     "LegacyArenaEnv",
     "DIRECT_ACTIONS",
+    "ENVIRONMENT_SCHEMA_VERSION",
     "ROTATION_ACTIONS",
     "ObservationIndex",
     "OBSERVATION_NAMES",

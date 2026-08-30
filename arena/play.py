@@ -50,7 +50,7 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
     renderer = ArenaRenderer(env, mode="human")
 
     if control_style == "direct":
-        footer = "WASD / ARROWS move + aim   •   SPACE fire forward   •   R restart   •   ESC quit"
+        footer = "WASD / ARROWS move   •   SPACE fire (close target assist)   •   R restart   •   ESC quit"
         choose_action = _direct_action
     else:
         footer = "W / UP thrust   •   A/D rotate   •   SPACE fire   •   R restart   •   ESC quit"

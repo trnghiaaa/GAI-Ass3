@@ -49,8 +49,10 @@ schemes. Direct manual play is also available from the command line:
 python -m arena.play --control-style direct
 ```
 
-Use `WASD` or the arrow keys to move and aim, then `Space` to fire forward. To try
-rotation and thrust controls instead:
+Use `WASD` or the arrow keys to move, then `Space` to fire. Direct mode snaps
+shots to the nearest hostile when its reticle turns green inside assist range;
+outside that range it fires along the current heading. To try rotation and
+thrust controls instead:
 
 ```bash
 python -m arena.play --control-style rotation
@@ -68,8 +70,10 @@ The arena provides:
 - Enemies that continuously steer toward and damage the player on contact
 - Projectile collisions with separate enemy and spawner health bars
 - Increasing phases after all active spawners are destroyed
+- Clean phase hand-offs that withdraw surviving hostiles and clear old shots
+  without awarding fake kills, XP, or RL reward
 - A gradual phase director plus a special boss rift every third phase
-- Episode endings for player destruction or the 120-second maximum step count
+- A fresh 60-second combat deadline for every phase, plus a long episode safety cap
 - Headless, human-window, and RGB-array rendering modes
 - Targeting reticles, impact particles, projectile trails, damage feedback,
   readable HUD telemetry, phase banners, and report-ready RGB screenshots
@@ -121,7 +125,7 @@ normalized features. It never receives the rendered pixels.
 | 12–15 | Nearest-spawner direction X/Y, distance, health | mixed normalized | Unit relative direction, arena-diagonal distance, and health |
 | 16–17 | `enemy_count`, `spawner_count` | `[0, 1]` | Active counts divided by configured maxima |
 | 18 | `phase` | `[0, 1]` | Current phase divided by the configured observation cap |
-| 19 | `time_remaining` | `[0, 1]` | Fraction of the episode step budget remaining |
+| 19 | `time_remaining` | `[0, 1]` | Fraction of the current phase deadline remaining |
 | 20–21 | Enemy/spawner aim alignment | `[-1, 1]` | Cosine alignment between ship heading and each nearest target |
 | 22–24 | Active-target direction X/Y and distance | mixed normalized | The exact closest target used by the targeting reticle |
 | 25 | `active_target_is_spawner` | `[0, 1]` | Distinguishes a progression target from an enemy |
@@ -183,24 +187,25 @@ model metadata:
 
 ```bash
 # Reproduce the two tuned final models
-python -m arena.train --control-style direct --timesteps 200000 --profile fast_exploration --benchmark-episodes 20 --seed 5200
-python -m arena.train --control-style rotation --timesteps 300000 --profile balanced --benchmark-episodes 20 --seed 6200
+python -m arena.train --control-style direct --timesteps 200000 --profile long_exploration --benchmark-episodes 20 --seed 5200
+python -m arena.train --control-style rotation --timesteps 300000 --profile fast_exploration --benchmark-episodes 20 --seed 6200
 
 # Generic training is also supported (300,000 decisions by default)
 python -m arena.train --control-style both
 
 # Reproduce the three-profile hyperparameter comparison
-python -m arena.tune --control-style both --timesteps 25000 --benchmark-episodes 6 --seed 8300
+python -m arena.tune --control-style both --timesteps 25000 --benchmark-episodes 6 --seed 7300
 ```
 
 Final models are saved separately as `models/arena/dqn_direct.zip` and
 `models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
 checkpoints, deterministic seeded benchmarks, plots, and summaries are written
 under `logs/arena`. In the submitted held-out 20-episode benchmarks, direct
-control achieved mean reward 141.32, 100% phase progression, mean phase 3.2,
-and mean ship level 5.2; rotation/thrust achieved 215.29, 100%, phase 4.15, and
-level 6.0 respectively. The policies destroyed boss rifts in 55% and 85% of
-episodes, while seeded random-action baselines never cleared phase 1.
+control achieved mean reward 872.52, 100% phase progression, mean phase 9.9,
+and mean ship level 8.3; rotation/thrust achieved 241.72, 100%, phase 4.25, and
+level 5.95 respectively. The policies averaged 2.75 and 0.8 destroyed boss
+rifts per episode. A seeded random direct baseline averaged phase 1.25 and only
+25% progression, while random rotation never cleared phase 1.
 
 ### Visual Evaluation
 
@@ -216,8 +221,9 @@ python -m arena.evaluate_rotation
 Playback is deterministic (`model.predict(..., deterministic=True)`) and shows
 the saved model controlling the actual submitted environment. Use `P` to pause,
 `.` to single-step, `+/-` to change speed, `Tab` to inspect the current build,
-`R` to replay, and `Esc` to exit. Launcher playback runs one episode by default,
-so the longer 120-second cap does not trap the user in a multi-episode demo.
+`R` to replay, and `Esc` to exit. Launcher playback runs one episode by default.
+Each cleared phase refreshes its 60-second deadline, so successful play can
+continue while an agent that stalls still reaches a clear terminal condition.
 
 Build and verify the final report evidence after training:
 

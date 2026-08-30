@@ -35,7 +35,7 @@ COLORS = {
     "bar_bg": (38, 45, 68),
     "hud": (13, 18, 38),
     "text": (232, 241, 255),
-    "muted": (150, 167, 196),
+    "muted": (184, 199, 222),
     "accent": (106, 173, 255),
 }
 
@@ -61,10 +61,12 @@ class ArenaRenderer:
             self.surface = pygame.Surface(size)
 
         self.clock = pygame.time.Clock()
-        self.font_tiny = pygame.font.SysFont("segoeui", 12)
-        self.font_small = pygame.font.SysFont("segoeui", 14)
-        self.font_medium = pygame.font.SysFont("segoeui", 20, bold=True)
-        self.font_large = pygame.font.SysFont("segoeui", 38, bold=True)
+        # Bahnschrift has clean, wide counters at game-HUD sizes. Pygame falls
+        # back to its default font on platforms where it is unavailable.
+        self.font_tiny = pygame.font.SysFont("bahnschrift", 13, bold=True)
+        self.font_small = pygame.font.SysFont("bahnschrift", 15)
+        self.font_medium = pygame.font.SysFont("bahnschrift", 21, bold=True)
+        self.font_large = pygame.font.SysFont("bahnschrift", 40, bold=True)
         self.effect_rng = random.Random(4207)
         self.particles: list[dict[str, object]] = []
         self.last_effect_step = -1
@@ -308,7 +310,22 @@ class ArenaRenderer:
         target = self.env._nearest_target()
         if target is None:
             return
-        color = COLORS["spawner_core"] if target in self.env.spawners else COLORS["enemy"]
+        target_distance = math.hypot(
+            target.x - self.env.player.x, target.y - self.env.player.y
+        )
+        assist_locked = (
+            self.env.control_style == "direct"
+            and target_distance <= float(self.env.player_cfg["target_assist_range"])
+        )
+        color = (
+            COLORS["xp"]
+            if assist_locked
+            else (
+                COLORS["spawner_core"]
+                if target in self.env.spawners
+                else COLORS["enemy"]
+            )
+        )
         center = (round(target.x), round(target.y))
         radius = round(target.radius + 11 + 2 * math.sin(self.env.step_count * 0.1))
         for start, end in ((-45, 35), (45, 125), (135, 215), (225, 305)):
@@ -327,26 +344,34 @@ class ArenaRenderer:
         )
 
     def _draw_hud(self, footer_text: str | None) -> None:
-        panel = pygame.Surface((self.env.width, 74), pygame.SRCALPHA)
+        hud_height = round(self.env.playfield_top)
+        panel = pygame.Surface((self.env.width, hud_height), pygame.SRCALPHA)
         panel.fill((*COLORS["hud"], 225))
         self.surface.blit(panel, (0, 0))
 
         phase_label = f"BOSS {self.env.phase}" if self.env.is_boss_phase else f"PHASE {self.env.phase}"
         phase_color = COLORS["boss"] if self.env.is_boss_phase else COLORS["accent"]
-        self._text(phase_label, 18, 12, self.font_medium, phase_color)
-        time_remaining = max(0.0, (self.env.max_steps - self.env.step_count) / self.env.fps)
+        self._text(phase_label, 16, 10, self.font_medium, phase_color)
+        time_remaining = max(
+            0.0,
+            (self.env.phase_max_steps - self.env.phase_step_count) / self.env.fps,
+        )
         self._text(
-            f"TIME {time_remaining:05.1f}s", 18, 42, self.font_small, COLORS["muted"]
+            f"PHASE TIME  {time_remaining:04.1f}s",
+            16,
+            49,
+            self.font_tiny,
+            COLORS["muted"],
         )
 
-        self._text("HULL", 135, 15, self.font_small, COLORS["muted"])
+        self._text("HULL", 150, 12, self.font_tiny, COLORS["muted"])
         health_ratio = self.env.player.health / self.env.player.max_health
-        self._draw_health_bar(135, 40, 135, health_ratio, height=13)
+        self._draw_health_bar(150, 47, 112, health_ratio, height=13)
         self._text(
             f"{max(0, math.ceil(self.env.player.health))}/{math.ceil(self.env.player.max_health)}",
-            278,
-            35,
-            self.font_small,
+            270,
+            43,
+            self.font_tiny,
             COLORS["text"],
         )
 
@@ -357,9 +382,9 @@ class ArenaRenderer:
             205,
             COLORS["xp"],
         )
-        self.surface.blit(level_label, (330, 13))
-        self._text("XP", 330, 42, self.font_tiny, COLORS["muted"])
-        xp_rect = pygame.Rect(354, 44, 116, 8)
+        self.surface.blit(level_label, (330, 11))
+        self._text("XP", 330, 49, self.font_tiny, COLORS["muted"])
+        xp_rect = pygame.Rect(356, 52, 106, 9)
         pygame.draw.rect(self.surface, COLORS["bar_bg"], xp_rect, border_radius=4)
         xp_fill = round(xp_rect.width * self.env.xp_progress())
         if xp_fill > 0:
@@ -374,27 +399,28 @@ class ArenaRenderer:
             if self.env.player.level >= self.env.maximum_player_level
             else f"{math.ceil(self.env.xp_to_next_level())} TO NEXT"
         )
-        self._text(xp_text, 477, 40, self.font_tiny, COLORS["muted"])
+        self._text(xp_text, 470, 47, self.font_tiny, COLORS["muted"])
 
         stats = f"RIFTS {len(self.env.spawners)}   HOSTILES {len(self.env.enemies)}"
         stats_surface = self.font_medium.render(stats, True, COLORS["text"])
-        self.surface.blit(stats_surface, (self.env.width - stats_surface.get_width() - 18, 14))
+        self.surface.blit(stats_surface, (self.env.width - stats_surface.get_width() - 16, 11))
         destroyed = int(self.env.episode_stats.get("enemies_destroyed", 0))
         rifts = int(self.env.episode_stats.get("spawners_destroyed", 0))
         mode = f"KILLS {destroyed}  •  RIFTS DESTROYED {rifts}"
         mode_surface = self.font_small.render(mode, True, COLORS["muted"])
-        self.surface.blit(mode_surface, (self.env.width - mode_surface.get_width() - 18, 45))
+        self.surface.blit(mode_surface, (self.env.width - mode_surface.get_width() - 16, 49))
 
         if footer_text:
-            footer = pygame.Surface((self.env.width, 28), pygame.SRCALPHA)
+            footer_height = 32
+            footer = pygame.Surface((self.env.width, footer_height), pygame.SRCALPHA)
             footer.fill((*COLORS["hud"], 205))
-            self.surface.blit(footer, (0, self.env.height - 28))
+            self.surface.blit(footer, (0, self.env.height - footer_height))
             text_surface = self._fit_text(
                 footer_text, self.font_small, self.env.width - 32, COLORS["muted"]
             )
             self.surface.blit(
                 text_surface,
-                ((self.env.width - text_surface.get_width()) // 2, self.env.height - 22),
+                ((self.env.width - text_surface.get_width()) // 2, self.env.height - 26),
             )
 
     def _draw_health_bar(
@@ -416,8 +442,15 @@ class ArenaRenderer:
         pygame.draw.rect(banner, COLORS["spawner"], banner.get_rect(), 2, border_radius=12)
         title_text = f"BOSS PHASE {self.env.phase}" if self.env.is_boss_phase else f"PHASE {self.env.phase}"
         title = self.font_large.render(title_text, True, COLORS["text"])
-        subtitle = self.font_small.render(
-            f"Rift signatures arriving in {remaining:0.1f}s", True, COLORS["muted"]
+        cleanup = self.env.last_phase_cleanup_count
+        subtitle_text = (
+            f"{cleanup} remaining hostile{'s' if cleanup != 1 else ''} withdrew  •  "
+            f"new rifts in {remaining:0.1f}s"
+            if cleanup
+            else f"New rift signatures in {remaining:0.1f}s"
+        )
+        subtitle = self._fit_text(
+            subtitle_text, self.font_small, banner.get_width() - 28, COLORS["muted"]
         )
         banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 8))
         banner.blit(subtitle, ((banner.get_width() - subtitle.get_width()) // 2, 61))
@@ -433,7 +466,11 @@ class ArenaRenderer:
         overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
         overlay.fill((4, 6, 16, 185))
         self.surface.blit(overlay, (0, 0))
-        title_text = "SHIP DESTROYED" if self.env.last_end_reason == "player_destroyed" else "TIME LIMIT"
+        title_text = {
+            "player_destroyed": "SHIP DESTROYED",
+            "phase_timeout": "PHASE TIME EXPIRED",
+            "safety_limit": "MISSION LIMIT REACHED",
+        }.get(self.env.last_end_reason, "MISSION COMPLETE")
         title = self.font_large.render(title_text, True, COLORS["text"])
         subtitle = self.font_medium.render(
             f"Reached phase {self.env.phase}  •  Press R to restart",
@@ -558,6 +595,10 @@ class ArenaRenderer:
                 maximum = int(choice.get("max_stacks", 1))
                 stack_text = "INSTANT REPAIR" if choice_id == "repair" else f"TIER {stacks + 1} / {maximum}"
                 self._text(stack_text, rect.x + 16, rect.bottom - 30, self.font_tiny, accent)
+        self._draw_modal_footer(
+            "BATTLE PAUSED  •  SELECT WITH MOUSE OR KEYS 1–3",
+            accent,
+        )
 
     def _draw_build_panel(self) -> None:
         overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
@@ -605,6 +646,18 @@ class ArenaRenderer:
             support.append("NOVA BOMB ARMED")
         support_text = "  •  ".join(support) if support else "No temporary support"
         self._text(support_text, panel.x + 330, panel.bottom - 42, self.font_tiny, COLORS["drone"] if support else COLORS["muted"])
+        self._draw_modal_footer("BATTLE PAUSED  •  PRESS TAB TO RETURN", COLORS["xp"])
+
+    def _draw_modal_footer(
+        self, text: str, accent: tuple[int, int, int]
+    ) -> None:
+        footer_height = 32
+        footer = pygame.Surface((self.env.width, footer_height), pygame.SRCALPHA)
+        footer.fill((7, 12, 29, 248))
+        pygame.draw.line(footer, accent, (0, 0), (self.env.width, 0), 1)
+        label = self.font_tiny.render(text, True, COLORS["text"])
+        footer.blit(label, label.get_rect(center=(self.env.width // 2, 17)))
+        self.surface.blit(footer, (0, self.env.height - footer_height))
 
     def _sync_effects(self) -> None:
         if self.env.step_count == self.last_effect_step:

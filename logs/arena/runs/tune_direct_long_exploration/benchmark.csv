@@ -1,7 +1,7 @@
 episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
-1,18302,42.729187,2,1,872,218,player_destroyed,False,5,3,589.0,101.92,45,14,0.311111,3,180.0,Multi-Beam Array,2,1,0,multishot:2
-2,18303,85.75885,2,1,2954,739,player_destroyed,False,21,4,1543.5,101.92,181,44,0.243094,5,375.0,Rapid Pulse,4,1,0,damage:3;fire_rate:1
-3,18304,-21.39643,1,0,603,151,player_destroyed,False,0,1,100.0,112.0,11,4,0.363636,1,35.0,Pulse Cannon,0,0,0,
-4,18305,-23.330289,1,0,577,145,player_destroyed,False,0,1,100.0,112.0,8,4,0.5,1,35.0,Pulse Cannon,0,0,0,
-5,18306,26.983529,2,1,711,178,player_destroyed,False,3,2,599.5,101.92,21,14,0.666667,3,125.0,Multi-Beam Array,2,1,0,multishot:1;piercing:1
-6,18307,-37.516252,1,0,544,136,player_destroyed,False,0,0,25.0,112.0,14,1,0.071429,1,0.0,Pulse Cannon,0,0,0,
+1,17302,260.856652,4,3,3233,809,player_destroyed,False,48,9,4588.4,137.984,183,120,0.655738,8,870.0,Prism Laser,7,3,1,hull:1;damage:1;fire_rate:1;laser:1;splash:2;shield:1
+2,17303,2084.969816,17,16,12281,3071,player_destroyed,False,434,55,65723.25,221.76,1830,1840,1.005464,9,6665.0,Prism Laser,8,16,5,damage:2;fire_rate:2;multishot:1;laser:1;piercing:1;splash:1
+3,17304,2167.08581,19,18,11962,2991,player_destroyed,False,336,62,57866.8,156.912,2813,1815,0.645219,9,5980.0,Prism Laser,8,18,6,damage:1;fire_rate:1;multishot:3;laser:1;piercing:2
+4,17305,2368.390586,16,15,16608,4152,phase_timeout,True,653,54,93160.25,0.0,3746,2307,0.615857,9,8795.0,Nova Payload,8,15,5,damage:4;multishot:3;splash:1
+5,17306,1280.080558,10,9,12320,3080,phase_timeout,True,356,31,39572.7,16.7552,1566,914,0.583653,9,4870.0,Prism Laser,8,9,3,damage:4;fire_rate:1;multishot:1;laser:1;shield:1
+6,17307,947.356586,10,9,5797,1450,player_destroyed,False,137,31,18417.3,235.2,976,580,0.594262,9,2680.0,Nova Payload,8,9,3,damage:1;fire_rate:3;multishot:2;splash:2

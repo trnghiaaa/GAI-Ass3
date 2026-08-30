@@ -5,12 +5,14 @@ video.
 
 1. Open `python part2.py` and briefly show the four-card launcher. Explain that
    manual play and both saved DQN policies use the same environment.
-2. Open **Watch Direct DQN**. Point out continuous movement, heading-based shooting,
+2. Open **Watch Direct DQN**. Point out continuous movement, the green reticle
+   for close-range target assist (and heading-based fire outside lock range),
    enemy spawning/steering, health bars, projectile collisions, and the
    deterministic trained-policy footer. Continue until the phase and weapon
    upgrade banners appear; briefly point out that XP is separate from RL reward.
    In manual mode, show one three-card draft and choose an upgrade with the mouse.
-   Press `Tab` once to show the composed build statistics, then close it.
+   Press `Tab` once to show the composed build statistics, then close it. When a
+   phase clears, point out the fresh 60-second phase clock and clean battlefield.
 3. Return to the launcher and open **Watch Rotation DQN**. Explain that this
    agent must learn heading, signed turn direction, thrust, and forward shooting.
    The launcher's default seed 42 reaches phase 4 and visibly defeats the
