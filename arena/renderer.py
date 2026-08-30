@@ -25,6 +25,9 @@ COLORS = {
     "spawner": (181, 82, 255),
     "spawner_core": (255, 116, 226),
     "projectile": (255, 235, 99),
+    "laser": (82, 242, 255),
+    "nova": (141, 112, 255),
+    "xp": (78, 229, 181),
     "health": (63, 220, 135),
     "health_low": (244, 71, 88),
     "bar_bg": (38, 45, 68),
@@ -56,9 +59,13 @@ class ArenaRenderer:
             self.surface = pygame.Surface(size)
 
         self.clock = pygame.time.Clock()
-        self.font_small = pygame.font.SysFont("consolas", 15)
-        self.font_medium = pygame.font.SysFont("consolas", 21, bold=True)
-        self.font_large = pygame.font.SysFont("consolas", 38, bold=True)
+        self.font_tiny = pygame.font.SysFont("segoeui", 12)
+        self.font_small = pygame.font.SysFont("segoeui", 14)
+        self.font_medium = pygame.font.SysFont("segoeui", 20, bold=True)
+        self.font_large = pygame.font.SysFont("segoeui", 38, bold=True)
+        self.effect_rng = random.Random(4207)
+        self.particles: list[dict[str, object]] = []
+        self.last_effect_step = -1
 
         star_rng = random.Random(8071)
         self.stars = [
@@ -82,15 +89,21 @@ class ArenaRenderer:
                 if event.type == pygame.QUIT:
                     self.close_requested = True
 
+        self._sync_effects()
         self._draw_background()
         self._draw_spawners()
         self._draw_projectiles()
         self._draw_enemies()
+        self._draw_targeting_reticle()
         self._draw_player()
+        self._draw_particles()
+        self._draw_vignette()
         self._draw_hud(footer_text)
 
         if self.env.phase_transition_steps > 0 and not self.env.done:
             self._draw_phase_banner()
+        if self.env.upgrade_banner_steps > 0 and not self.env.done:
+            self._draw_upgrade_banner()
         if self.env.done:
             self._draw_episode_end()
 
@@ -120,11 +133,18 @@ class ArenaRenderer:
         self.surface.blit(nebula, (0, 0))
 
         shimmer = self.env.step_count % 90
+        parallax_x = int((self.env.player.x - self.env.width / 2) * 0.012)
+        parallax_y = int((self.env.player.y - self.env.height / 2) * 0.012)
         for index, (x, y, radius, brightness) in enumerate(self.stars):
             pulse = 20 if (index * 13 + shimmer) % 90 < 4 else 0
             color = tuple(min(255, component + pulse) for component in COLORS["star"])
             scaled = tuple(component * brightness // 220 for component in color)
-            pygame.draw.circle(self.surface, scaled, (x, y), radius)
+            pygame.draw.circle(
+                self.surface,
+                scaled,
+                ((x - parallax_x) % self.env.width, (y - parallax_y) % self.env.height),
+                radius,
+            )
 
     def _draw_player(self) -> None:
         player = self.env.player
@@ -157,6 +177,10 @@ class ArenaRenderer:
         pygame.draw.circle(
             self.surface, COLORS["player_core"], (round(player.x), round(player.y)), 4
         )
+        shield_alpha = 55 + int(20 * math.sin(self.env.step_count * 0.08))
+        shield = pygame.Surface((52, 52), pygame.SRCALPHA)
+        pygame.draw.circle(shield, (*COLORS["player"], shield_alpha), (26, 26), 24, 1)
+        self.surface.blit(shield, (round(player.x) - 26, round(player.y) - 26))
 
     def _draw_enemies(self) -> None:
         for enemy in self.env.enemies:
@@ -216,8 +240,49 @@ class ArenaRenderer:
     def _draw_projectiles(self) -> None:
         for projectile in self.env.projectiles:
             center = (round(projectile.x), round(projectile.y))
-            pygame.draw.circle(self.surface, (255, 184, 54), center, 8)
-            pygame.draw.circle(self.surface, COLORS["projectile"], center, 4)
+            speed = max(1.0, math.hypot(projectile.vx, projectile.vy))
+            is_beam = projectile.weapon_kind in ("laser", "nova")
+            tail_length = 30 if is_beam else 15
+            tail = (
+                round(projectile.x - projectile.vx / speed * tail_length),
+                round(projectile.y - projectile.vy / speed * tail_length),
+            )
+            if projectile.weapon_kind == "nova":
+                outer, core = COLORS["nova"], COLORS["player_core"]
+            elif projectile.weapon_kind == "laser":
+                outer, core = COLORS["laser"], COLORS["player_core"]
+            elif projectile.weapon_kind == "rapid":
+                outer, core = (255, 137, 58), COLORS["projectile"]
+            elif projectile.weapon_kind == "twin":
+                outer, core = COLORS["player"], COLORS["projectile"]
+            else:
+                outer, core = (255, 132, 44), COLORS["projectile"]
+            pygame.draw.line(self.surface, outer, tail, center, 5 if is_beam else 3)
+            pygame.draw.line(self.surface, core, tail, center, 2)
+            pygame.draw.circle(self.surface, outer, center, 7 if is_beam else 8)
+            pygame.draw.circle(self.surface, core, center, 3 if is_beam else 4)
+
+    def _draw_targeting_reticle(self) -> None:
+        target = self.env._nearest_target()
+        if target is None:
+            return
+        color = COLORS["spawner_core"] if target in self.env.spawners else COLORS["enemy"]
+        center = (round(target.x), round(target.y))
+        radius = round(target.radius + 11 + 2 * math.sin(self.env.step_count * 0.1))
+        for start, end in ((-45, 35), (45, 125), (135, 215), (225, 305)):
+            pygame.draw.arc(
+                self.surface,
+                color,
+                pygame.Rect(center[0] - radius, center[1] - radius, radius * 2, radius * 2),
+                math.radians(start),
+                math.radians(end),
+                2,
+            )
+        heading_x = self.env.player.x + math.cos(self.env.player.angle) * 44
+        heading_y = self.env.player.y + math.sin(self.env.player.angle) * 44
+        pygame.draw.circle(
+            self.surface, COLORS["player"], (round(heading_x), round(heading_y)), 3, 1
+        )
 
     def _draw_hud(self, footer_text: str | None) -> None:
         panel = pygame.Surface((self.env.width, 74), pygame.SRCALPHA)
@@ -230,21 +295,49 @@ class ArenaRenderer:
             f"TIME {time_remaining:05.1f}s", 18, 42, self.font_small, COLORS["muted"]
         )
 
-        self._text("HULL", 155, 15, self.font_small, COLORS["muted"])
+        self._text("HULL", 135, 15, self.font_small, COLORS["muted"])
         health_ratio = self.env.player.health / self.env.player.max_health
-        self._draw_health_bar(155, 40, 205, health_ratio, height=13)
+        self._draw_health_bar(135, 40, 150, health_ratio, height=13)
         self._text(
             f"{max(0, math.ceil(self.env.player.health)):3d}",
-            368,
+            292,
             35,
             self.font_small,
             COLORS["text"],
         )
 
-        stats = f"SPAWNERS {len(self.env.spawners)}   HOSTILES {len(self.env.enemies)}"
+        weapon_name = str(self.env.weapon_profile()["name"]).upper()
+        level_label = self._fit_text(
+            f"LVL {self.env.player.level}  •  {weapon_name}",
+            self.font_small,
+            205,
+            COLORS["xp"],
+        )
+        self.surface.blit(level_label, (330, 13))
+        self._text("XP", 330, 42, self.font_tiny, COLORS["muted"])
+        xp_rect = pygame.Rect(354, 44, 116, 8)
+        pygame.draw.rect(self.surface, COLORS["bar_bg"], xp_rect, border_radius=4)
+        xp_fill = round(xp_rect.width * self.env.xp_progress())
+        if xp_fill > 0:
+            pygame.draw.rect(
+                self.surface,
+                COLORS["xp"],
+                pygame.Rect(xp_rect.x, xp_rect.y, xp_fill, xp_rect.height),
+                border_radius=4,
+            )
+        xp_text = (
+            "MAX"
+            if self.env.player.level >= self.env.maximum_player_level
+            else f"{math.ceil(self.env.xp_to_next_level())} TO NEXT"
+        )
+        self._text(xp_text, 477, 40, self.font_tiny, COLORS["muted"])
+
+        stats = f"RIFTS {len(self.env.spawners)}   HOSTILES {len(self.env.enemies)}"
         stats_surface = self.font_medium.render(stats, True, COLORS["text"])
         self.surface.blit(stats_surface, (self.env.width - stats_surface.get_width() - 18, 14))
-        mode = f"{self.env.control_style.upper()} CONTROL"
+        destroyed = int(self.env.episode_stats.get("enemies_destroyed", 0))
+        rifts = int(self.env.episode_stats.get("spawners_destroyed", 0))
+        mode = f"KILLS {destroyed}  •  RIFTS DESTROYED {rifts}"
         mode_surface = self.font_small.render(mode, True, COLORS["muted"])
         self.surface.blit(mode_surface, (self.env.width - mode_surface.get_width() - 18, 45))
 
@@ -252,7 +345,9 @@ class ArenaRenderer:
             footer = pygame.Surface((self.env.width, 28), pygame.SRCALPHA)
             footer.fill((*COLORS["hud"], 205))
             self.surface.blit(footer, (0, self.env.height - 28))
-            text_surface = self.font_small.render(footer_text, True, COLORS["muted"])
+            text_surface = self._fit_text(
+                footer_text, self.font_small, self.env.width - 32, COLORS["muted"]
+            )
             self.surface.blit(
                 text_surface,
                 ((self.env.width - text_surface.get_width()) // 2, self.env.height - 22),
@@ -308,6 +403,144 @@ class ArenaRenderer:
             subtitle,
             ((self.env.width - subtitle.get_width()) // 2, self.env.height // 2 + 10),
         )
+        stats = self.env.episode_stats
+        detail = self.font_small.render(
+            f"Enemies {int(stats.get('enemies_destroyed', 0))}  •  "
+            f"Rifts {int(stats.get('spawners_destroyed', 0))}  •  "
+            f"Level {self.env.player.level}  •  "
+            f"Reward {float(stats.get('reward', 0.0)):.1f}",
+            True,
+            COLORS["muted"],
+        )
+        self.surface.blit(
+            detail,
+            ((self.env.width - detail.get_width()) // 2, self.env.height // 2 + 45),
+        )
+
+    def _draw_upgrade_banner(self) -> None:
+        """Show a readable unlock notification without pausing the simulation."""
+
+        duration = max(
+            1,
+            int(float(self.env.progression_cfg["upgrade_banner_seconds"]) * self.env.fps),
+        )
+        ratio = self.env.upgrade_banner_steps / duration
+        alpha = min(230, round(255 * min(1.0, ratio * 3.0)))
+        banner = pygame.Surface((430, 66), pygame.SRCALPHA)
+        banner.fill((8, 19, 36, alpha))
+        pygame.draw.rect(banner, (*COLORS["xp"], alpha), banner.get_rect(), 2, border_radius=14)
+        eyebrow = self.font_tiny.render(
+            f"SHIP LEVEL {self.env.player.level}  •  WEAPON UPGRADE",
+            True,
+            COLORS["xp"],
+        )
+        title = self.font_medium.render(self.env.last_upgrade_name.upper(), True, COLORS["text"])
+        banner.blit(eyebrow, ((banner.get_width() - eyebrow.get_width()) // 2, 8))
+        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 29))
+        self.surface.blit(banner, ((self.env.width - banner.get_width()) // 2, 88))
+
+    def _sync_effects(self) -> None:
+        if self.env.step_count == self.last_effect_step:
+            return
+        self.last_effect_step = self.env.step_count
+        events = self.env.last_events
+        for impact in events.get("impacts", []):
+            color = (
+                COLORS["spawner_core"]
+                if impact.get("kind") == "spawner"
+                else COLORS["enemy"]
+            )
+            count = 24 if impact.get("destroyed") else 10
+            self._burst(float(impact["x"]), float(impact["y"]), color, count)
+        if events.get("player_hit"):
+            self._burst(
+                self.env.player.x,
+                self.env.player.y,
+                COLORS["player"],
+                18,
+            )
+        if events.get("levels_gained"):
+            self._burst(
+                self.env.player.x,
+                self.env.player.y,
+                COLORS["xp"],
+                42,
+            )
+
+    def _burst(
+        self, x: float, y: float, color: tuple[int, int, int], count: int
+    ) -> None:
+        for index in range(count):
+            angle = self.effect_rng.uniform(0.0, math.tau)
+            speed = self.effect_rng.uniform(55.0, 180.0)
+            life = self.effect_rng.uniform(0.28, 0.65)
+            self.particles.append(
+                {
+                    "x": x,
+                    "y": y,
+                    "vx": math.cos(angle) * speed,
+                    "vy": math.sin(angle) * speed,
+                    "life": life,
+                    "maximum": life,
+                    "size": 2 + index % 3,
+                    "color": color,
+                }
+            )
+
+    def _draw_particles(self) -> None:
+        alive: list[dict[str, object]] = []
+        for particle in self.particles:
+            life = float(particle["life"]) - 1.0 / self.env.fps
+            if life <= 0:
+                continue
+            particle["life"] = life
+            particle["x"] = float(particle["x"]) + float(particle["vx"]) / self.env.fps
+            particle["y"] = float(particle["y"]) + float(particle["vy"]) / self.env.fps
+            ratio = life / float(particle["maximum"])
+            color = tuple(int(component * ratio) for component in particle["color"])
+            pygame.draw.circle(
+                self.surface,
+                color,
+                (round(float(particle["x"])), round(float(particle["y"]))),
+                int(particle["size"]),
+            )
+            alive.append(particle)
+        self.particles = alive
+
+    def _draw_vignette(self) -> None:
+        health_ratio = max(0.0, self.env.player.health / self.env.player.max_health)
+        if health_ratio > 0.45 and not self.env.last_events.get("player_hit"):
+            return
+        alpha = int((1.0 - health_ratio) * 75)
+        if self.env.last_events.get("player_hit"):
+            alpha = max(alpha, 55)
+        overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        pygame.draw.rect(
+            overlay,
+            (*COLORS["health_low"], alpha),
+            overlay.get_rect(),
+            width=14,
+        )
+        self.surface.blit(overlay, (0, 0))
+
+    @staticmethod
+    def _fit_text(
+        text: str,
+        font: pygame.font.Font,
+        max_width: int,
+        color: tuple[int, int, int],
+    ) -> pygame.Surface:
+        if font.size(text)[0] <= max_width:
+            return font.render(text, True, color)
+        suffix = "…"
+        low, high = 0, len(text)
+        while low < high:
+            middle = (low + high + 1) // 2
+            if font.size(text[:middle] + suffix)[0] <= max_width:
+                low = middle
+            else:
+                high = middle - 1
+        return font.render(text[:low].rstrip() + suffix, True, color)
 
     def _text(
         self,

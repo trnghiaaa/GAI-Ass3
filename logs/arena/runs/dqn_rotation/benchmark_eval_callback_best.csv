@@ -1,0 +1,21 @@
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
+1,16200,270.982545,4,3,3162,791,player_destroyed,False,41,12,4153.5,112.0,465,278,0.597849,5,905.0,Nova Tri-Beam
+2,16201,-14.209967,1,0,322,81,player_destroyed,False,2,1,200.0,112.0,19,8,0.421053,2,55.0,Rapid Loader
+3,16202,93.655793,3,2,1204,301,player_destroyed,False,13,5,1399.0,112.0,86,69,0.802326,4,355.0,Laser Array
+4,16203,377.861088,5,4,3105,777,player_destroyed,False,55,16,5783.0,112.0,586,407,0.694539,5,1210.0,Nova Tri-Beam
+5,16204,401.318043,4,3,3600,900,time_limit,True,71,12,6221.0,14.0,637,426,0.66876,5,1205.0,Nova Tri-Beam
+6,16205,-23.383005,1,0,444,111,player_destroyed,False,2,0,225.0,112.0,18,9,0.5,1,20.0,Pulse Cannon
+7,16206,152.614195,3,2,1683,421,player_destroyed,False,25,7,2424.5,112.0,209,151,0.722488,5,545.0,Nova Tri-Beam
+8,16207,256.145429,4,3,2623,656,player_destroyed,False,40,11,3835.5,112.0,433,256,0.591224,5,860.0,Nova Tri-Beam
+9,16208,111.747786,3,2,1438,360,player_destroyed,False,12,7,1555.0,112.0,121,83,0.68595,5,415.0,Nova Tri-Beam
+10,16209,203.278638,4,3,1984,496,player_destroyed,False,30,9,2902.5,112.0,289,186,0.643599,5,690.0,Nova Tri-Beam
+11,16210,427.565961,4,3,3600,900,time_limit,True,89,10,7248.0,98.0,812,505,0.621921,5,1315.0,Nova Tri-Beam
+12,16211,116.984779,3,2,1448,362,player_destroyed,False,11,8,1646.0,112.0,146,85,0.582192,5,440.0,Nova Tri-Beam
+13,16212,175.698806,4,3,1684,421,player_destroyed,False,21,9,2434.0,112.0,230,148,0.643478,5,600.0,Nova Tri-Beam
+14,16213,87.937335,3,2,1126,282,player_destroyed,False,12,5,1274.5,112.0,95,65,0.684211,4,345.0,Laser Array
+15,16214,35.849545,2,1,753,189,player_destroyed,False,6,3,749.0,112.0,67,44,0.656716,3,190.0,Twin Pulse
+16,16215,232.78322,4,3,2294,574,player_destroyed,False,33,11,3307.5,112.0,374,206,0.550802,5,790.0,Nova Tri-Beam
+17,16216,398.492881,4,3,3600,900,time_limit,True,77,11,6181.5,56.0,717,438,0.610879,5,1230.0,Nova Tri-Beam
+18,16217,66.629618,3,2,724,181,player_destroyed,False,5,5,847.75,112.0,61,49,0.803279,4,275.0,Laser Array
+19,16218,100.616879,3,2,1174,294,player_destroyed,False,9,7,1291.0,112.0,94,65,0.691489,5,385.0,Nova Tri-Beam
+20,16219,259.900391,4,3,2629,658,player_destroyed,False,44,10,4072.5,112.0,469,274,0.584222,5,865.0,Nova Tri-Beam

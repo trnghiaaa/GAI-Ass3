@@ -62,6 +62,20 @@ class ObservationIndex(IntEnum):
     SPAWNER_COUNT = 17
     PHASE = 18
     TIME_REMAINING = 19
+    NEAREST_ENEMY_AIM_ALIGNMENT = 20
+    NEAREST_SPAWNER_AIM_ALIGNMENT = 21
+    ACTIVE_TARGET_DIRECTION_X = 22
+    ACTIVE_TARGET_DIRECTION_Y = 23
+    ACTIVE_TARGET_DISTANCE = 24
+    ACTIVE_TARGET_IS_SPAWNER = 25
+    ACTIVE_TARGET_AIM_ALIGNMENT = 26
+    ACTIVE_TARGET_TURN_DIRECTION = 27
+    PLAYER_LEVEL = 28
+    XP_PROGRESS = 29
+    WEAPON_SHOT_COUNT = 30
+    WEAPON_FIRE_RATE = 31
+    WEAPON_DAMAGE = 32
+    WEAPON_IS_LASER = 33
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
@@ -122,6 +136,7 @@ class ArenaEnv(gym.Env):
         self.spawner_cfg = self.config["spawner"]
         self.projectile_cfg = self.config["projectile"]
         self.phase_cfg = self.config["phase"]
+        self.progression_cfg = self.config["progression"]
         self.reward_cfg = self.config["rewards"]
 
         self.width = int(self.sim_cfg["window_width"])
@@ -138,7 +153,13 @@ class ArenaEnv(gym.Env):
         # The layout is fixed even when there are no enemies or spawners.
         self.observation_names = OBSERVATION_NAMES
         low = np.array(
-            [-1, -1, -1, -1, -1, -1, 0, 0, -1, -1, 0, 0, -1, -1, 0, 0, 0, 0, 0, 0],
+            [
+                -1, -1, -1, -1, -1, -1, 0, 0,
+                -1, -1, 0, 0, -1, -1, 0, 0,
+                0, 0, 0, 0, -1, -1,
+                -1, -1, 0, 0, -1, -1,
+                0, 0, 0, 0, 0, 0,
+            ],
             dtype=np.float32,
         )
         high = np.ones(len(self.observation_names), dtype=np.float32)
@@ -155,6 +176,10 @@ class ArenaEnv(gym.Env):
         self.last_end_reason: str | None = None
         self._next_entity_id = 1
         self._renderer = None
+        self.last_events: dict[str, Any] = {}
+        self.episode_stats: dict[str, float | int] = {}
+        self.upgrade_banner_steps = 0
+        self.last_upgrade_name = "Pulse Cannon"
 
     # ------------------------------------------------------------------
     # Gymnasium API
@@ -180,6 +205,23 @@ class ArenaEnv(gym.Env):
         self.enemies = []
         self.spawners = []
         self.projectiles = []
+        self.last_events = {}
+        self.upgrade_banner_steps = 0
+        self.last_upgrade_name = str(self._weapon_tiers()[0]["name"])
+        self.episode_stats = {
+            "reward": 0.0,
+            "enemies_destroyed": 0,
+            "spawners_destroyed": 0,
+            "phases_advanced": 0,
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
+            "damage_taken": 0.0,
+            "shots_fired": 0,
+            "volleys_fired": 0,
+            "projectile_hits": 0,
+            "xp_earned": 0.0,
+            "levels_gained": 0,
+        }
 
         radius = float(self.player_cfg["radius"])
         max_health = float(self.player_cfg["max_health"])
@@ -206,19 +248,39 @@ class ArenaEnv(gym.Env):
         self.step_count += 1
         events: dict[str, Any] = {
             "shot_fired": False,
+            "projectiles_fired": 0,
+            "projectile_hits": 0,
             "enemies_spawned": 0,
             "enemies_destroyed": 0,
             "spawners_destroyed": 0,
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
             "damage_taken": 0.0,
             "phase_advanced": False,
+            "spawner_progress": 0.0,
+            "aim_improvement": 0.0,
+            "shot_alignment": 0.0,
+            "impacts": [],
+            "player_hit": False,
+            "xp_gained": 0.0,
+            "levels_gained": 0,
+            "upgrade_unlocked": None,
         }
 
+        shaping_before = self._shaping_snapshot()
         self._tick_cooldowns()
-        events["shot_fired"] = self._apply_player_action(int(action))
+        events["projectiles_fired"] = self._apply_player_action(int(action))
+        events["shot_fired"] = events["projectiles_fired"] > 0
+        if events["shot_fired"]:
+            events["shot_alignment"] = float(
+                self._shaping_snapshot()["target_alignment"]
+            )
         self._update_projectiles(events)
         self._update_enemies(events)
         self._update_spawners(events)
         self._update_phase(events)
+        self._apply_combat_progression(events)
+        self._apply_shaping_delta(events, shaping_before)
 
         terminated = self.player.health <= 0.0
         truncated = self.step_count >= self.max_steps and not terminated
@@ -229,9 +291,12 @@ class ArenaEnv(gym.Env):
             self.last_end_reason = "time_limit"
         self.done = terminated or truncated
 
-        reward = self._calculate_reward(events, terminated)
+        reward, reward_breakdown = self._calculate_reward(events, terminated)
+        self._update_episode_stats(events, reward)
+        self.last_events = dict(events)
         info = self._get_info()
         info.update(events)
+        info["reward_breakdown"] = reward_breakdown
         if self.done:
             info["episode_end"] = self.last_end_reason
 
@@ -263,8 +328,8 @@ class ArenaEnv(gym.Env):
     # Player controls
     # ------------------------------------------------------------------
 
-    def _apply_player_action(self, action: int) -> bool:
-        shot_fired = False
+    def _apply_player_action(self, action: int) -> int:
+        projectiles_fired = 0
 
         if self.control_style == "direct":
             speed = float(self.player_cfg["direct_speed"])
@@ -283,7 +348,7 @@ class ArenaEnv(gym.Env):
                 self.player.vx = speed
                 self.player.angle = 0.0
             elif action == DIRECT_ACTIONS["SHOOT"]:
-                shot_fired = self._fire_projectile(auto_aim=True)
+                projectiles_fired = self._fire_projectile(auto_aim=True)
         else:
             rotation_speed = math.radians(float(self.player_cfg["rotation_speed_degrees"]))
             if action == ROTATION_ACTIONS["ROTATE_LEFT"]:
@@ -295,7 +360,7 @@ class ArenaEnv(gym.Env):
                 self.player.vx += math.cos(self.player.angle) * acceleration * self.dt
                 self.player.vy += math.sin(self.player.angle) * acceleration * self.dt
             elif action == ROTATION_ACTIONS["SHOOT"]:
-                shot_fired = self._fire_projectile(auto_aim=False)
+                projectiles_fired = self._fire_projectile(auto_aim=False)
 
             drag = float(self.player_cfg["drag"])
             self.player.vx *= drag
@@ -318,11 +383,11 @@ class ArenaEnv(gym.Env):
                 self.height - self.player.radius,
             )
         )
-        return shot_fired
+        return projectiles_fired
 
-    def _fire_projectile(self, auto_aim: bool) -> bool:
+    def _fire_projectile(self, auto_aim: bool) -> int:
         if self.player.fire_cooldown_steps > 0:
-            return False
+            return 0
 
         angle = self.player.angle
         if auto_aim:
@@ -331,23 +396,136 @@ class ArenaEnv(gym.Env):
                 angle = math.atan2(target.y - self.player.y, target.x - self.player.x)
                 self.player.angle = angle
 
-        speed = float(self.projectile_cfg["speed"])
-        offset = self.player.radius + float(self.projectile_cfg["radius"]) + 2.0
-        projectile = Projectile(
-            x=self.player.x + math.cos(angle) * offset,
-            y=self.player.y + math.sin(angle) * offset,
-            radius=float(self.projectile_cfg["radius"]),
-            entity_id=self._new_id(),
-            vx=math.cos(angle) * speed,
-            vy=math.sin(angle) * speed,
-            damage=float(self.projectile_cfg["damage"]),
-            lifetime_steps=int(self.projectile_cfg["lifetime_seconds"] * self.fps),
+        profile = self.weapon_profile()
+        shot_count = int(profile["shot_count"])
+        spread = math.radians(float(profile["spread_degrees"]))
+        offsets = (
+            [0.0]
+            if shot_count == 1
+            else [
+                spread * (index / (shot_count - 1) - 0.5)
+                for index in range(shot_count)
+            ]
         )
-        self.projectiles.append(projectile)
-        self.player.fire_cooldown_steps = max(
-            1, int(float(self.player_cfg["fire_cooldown_seconds"]) * self.fps)
+        speed = float(self.projectile_cfg["speed"]) * float(
+            profile["speed_multiplier"]
         )
-        return True
+        damage = float(self.projectile_cfg["damage"]) * float(
+            profile["damage_multiplier"]
+        )
+        kind = str(profile["kind"])
+        radius = float(self.projectile_cfg["radius"])
+        if kind == "laser":
+            radius = max(2.0, radius - 1.0)
+        offset = self.player.radius + radius + 2.0
+
+        for angle_offset in offsets:
+            projectile_angle = angle + angle_offset
+            self.projectiles.append(
+                Projectile(
+                    x=self.player.x + math.cos(projectile_angle) * offset,
+                    y=self.player.y + math.sin(projectile_angle) * offset,
+                    radius=radius,
+                    entity_id=self._new_id(),
+                    vx=math.cos(projectile_angle) * speed,
+                    vy=math.sin(projectile_angle) * speed,
+                    damage=damage,
+                    lifetime_steps=int(
+                        float(self.projectile_cfg["lifetime_seconds"]) * self.fps
+                    ),
+                    weapon_kind=kind,
+                )
+            )
+
+        self.player.fire_cooldown_steps = self.weapon_cooldown_steps()
+        return shot_count
+
+    def _weapon_tiers(self) -> list[dict[str, Any]]:
+        tiers = list(self.progression_cfg["weapon_tiers"])
+        thresholds = list(self.progression_cfg["level_thresholds"])
+        if not tiers or len(tiers) != len(thresholds):
+            raise ValueError(
+                "progression.weapon_tiers and level_thresholds must have equal non-zero lengths"
+            )
+        return tiers
+
+    @property
+    def maximum_player_level(self) -> int:
+        """Highest automatic combat-progression level available this episode."""
+
+        return len(self._weapon_tiers())
+
+    def weapon_profile(self) -> dict[str, Any]:
+        """Return the active immutable-by-convention weapon-tier configuration."""
+
+        level = int(np.clip(self.player.level, 1, self.maximum_player_level))
+        return dict(self._weapon_tiers()[level - 1])
+
+    def weapon_cooldown_steps(self) -> int:
+        """Return the active weapon's cooldown in simulation frames."""
+
+        multiplier = float(self.weapon_profile()["cooldown_multiplier"])
+        return max(
+            1,
+            int(float(self.player_cfg["fire_cooldown_seconds"]) * multiplier * self.fps),
+        )
+
+    def xp_progress(self) -> float:
+        """Return normalized progress from the current level to the next one."""
+
+        thresholds = [float(value) for value in self.progression_cfg["level_thresholds"]]
+        level_index = int(np.clip(self.player.level - 1, 0, len(thresholds) - 1))
+        if level_index >= len(thresholds) - 1:
+            return 1.0
+        current = thresholds[level_index]
+        following = thresholds[level_index + 1]
+        return float(np.clip((self.player.xp - current) / (following - current), 0.0, 1.0))
+
+    def xp_to_next_level(self) -> float:
+        """Return remaining XP, or zero once the final tier is unlocked."""
+
+        thresholds = [float(value) for value in self.progression_cfg["level_thresholds"]]
+        if self.player.level >= len(thresholds):
+            return 0.0
+        return max(0.0, thresholds[self.player.level] - self.player.xp)
+
+    def _apply_combat_progression(self, events: dict[str, Any]) -> None:
+        """Convert completed combat objectives into non-RL experience points."""
+
+        xp_gained = (
+            int(events["enemies_destroyed"])
+            * float(self.progression_cfg["enemy_xp"])
+            + int(events["spawners_destroyed"])
+            * float(self.progression_cfg["spawner_xp"])
+            + int(bool(events["phase_advanced"]))
+            * float(self.progression_cfg["phase_xp"])
+        )
+        events["xp_gained"] = xp_gained
+        if xp_gained <= 0.0:
+            return
+
+        self.player.xp += xp_gained
+        thresholds = [float(value) for value in self.progression_cfg["level_thresholds"]]
+        previous_level = self.player.level
+        while (
+            self.player.level < len(thresholds)
+            and self.player.xp >= thresholds[self.player.level]
+        ):
+            self.player.level += 1
+
+        levels_gained = self.player.level - previous_level
+        events["levels_gained"] = levels_gained
+        if levels_gained > 0:
+            profile = self.weapon_profile()
+            self.last_upgrade_name = str(profile["name"])
+            events["upgrade_unlocked"] = self.last_upgrade_name
+            self.upgrade_banner_steps = max(
+                1,
+                int(
+                    float(self.progression_cfg["upgrade_banner_seconds"])
+                    * self.fps
+                ),
+            )
 
     # ------------------------------------------------------------------
     # Simulation updates
@@ -355,6 +533,7 @@ class ArenaEnv(gym.Env):
 
     def _tick_cooldowns(self) -> None:
         self.player.fire_cooldown_steps = max(0, self.player.fire_cooldown_steps - 1)
+        self.upgrade_banner_steps = max(0, self.upgrade_banner_steps - 1)
         for enemy in self.enemies:
             enemy.attack_cooldown_steps = max(0, enemy.attack_cooldown_steps - 1)
 
@@ -382,7 +561,18 @@ class ArenaEnv(gym.Env):
                 if enemy.entity_id in destroyed_enemy_ids:
                     continue
                 if circles_overlap(projectile, enemy):
+                    damage = min(projectile.damage, max(0.0, enemy.health))
                     enemy.health -= projectile.damage
+                    events["damage_dealt_enemy"] += damage
+                    events["projectile_hits"] += 1
+                    events["impacts"].append(
+                        {
+                            "x": float(projectile.x),
+                            "y": float(projectile.y),
+                            "kind": "enemy",
+                            "destroyed": enemy.health <= 0.0,
+                        }
+                    )
                     hit = True
                     if enemy.health <= 0.0:
                         destroyed_enemy_ids.add(enemy.entity_id)
@@ -393,7 +583,18 @@ class ArenaEnv(gym.Env):
                     if spawner.entity_id in destroyed_spawner_ids:
                         continue
                     if circles_overlap(projectile, spawner):
+                        damage = min(projectile.damage, max(0.0, spawner.health))
                         spawner.health -= projectile.damage
+                        events["damage_dealt_spawner"] += damage
+                        events["projectile_hits"] += 1
+                        events["impacts"].append(
+                            {
+                                "x": float(projectile.x),
+                                "y": float(projectile.y),
+                                "kind": "spawner",
+                                "destroyed": spawner.health <= 0.0,
+                            }
+                        )
                         hit = True
                         if spawner.health <= 0.0:
                             destroyed_spawner_ids.add(spawner.entity_id)
@@ -434,6 +635,7 @@ class ArenaEnv(gym.Env):
             if circles_overlap(enemy, self.player) and enemy.attack_cooldown_steps == 0:
                 self.player.health -= contact_damage
                 events["damage_taken"] += contact_damage
+                events["player_hit"] = True
                 enemy.attack_cooldown_steps = cooldown_steps
 
                 if distance > 1e-8:
@@ -534,12 +736,19 @@ class ArenaEnv(gym.Env):
     def _spawn_enemy(self, spawner: Spawner) -> None:
         angle = float(self.np_random.uniform(0.0, math.tau))
         distance = spawner.radius + float(self.enemy_cfg["radius"]) + 5.0
-        x = float(np.clip(spawner.x + math.cos(angle) * distance, 0.0, self.width))
+        enemy_radius = float(self.enemy_cfg["radius"])
+        x = float(
+            np.clip(
+                spawner.x + math.cos(angle) * distance,
+                enemy_radius,
+                self.width - enemy_radius,
+            )
+        )
         y = float(
             np.clip(
                 spawner.y + math.sin(angle) * distance,
-                self.playfield_top + float(self.enemy_cfg["radius"]),
-                self.height,
+                self.playfield_top + enemy_radius,
+                self.height - enemy_radius,
             )
         )
         health_scale = 1.0 + (self.phase - 1) * float(self.phase_cfg["enemy_health_growth"])
@@ -549,7 +758,7 @@ class ArenaEnv(gym.Env):
             Enemy(
                 x=x,
                 y=y,
-                radius=float(self.enemy_cfg["radius"]),
+                radius=enemy_radius,
                 entity_id=self._new_id(),
                 max_health=max_health,
                 health=max_health,
@@ -613,13 +822,140 @@ class ArenaEnv(gym.Env):
         health = float(np.clip(target.health / target.max_health, 0.0, 1.0))
         return direction_x, direction_y, distance, health
 
+    def _aim_alignment(self, targets: list[Enemy] | list[Spawner]) -> float:
+        """Return heading/target cosine alignment, or zero when no target exists."""
+
+        if not targets:
+            return 0.0
+        target = min(
+            targets,
+            key=lambda item: (item.x - self.player.x) ** 2
+            + (item.y - self.player.y) ** 2,
+        )
+        dx = target.x - self.player.x
+        dy = target.y - self.player.y
+        distance = math.hypot(dx, dy)
+        if distance <= 1e-8:
+            return 1.0
+        return float(
+            np.clip(
+                math.cos(self.player.angle) * dx / distance
+                + math.sin(self.player.angle) * dy / distance,
+                -1.0,
+                1.0,
+            )
+        )
+
+    def _aim_turn_direction(self, targets: list[Enemy] | list[Spawner]) -> float:
+        """Return signed heading-to-target cross product for left/right steering."""
+
+        if not targets:
+            return 0.0
+        target = min(
+            targets,
+            key=lambda item: (item.x - self.player.x) ** 2
+            + (item.y - self.player.y) ** 2,
+        )
+        dx = target.x - self.player.x
+        dy = target.y - self.player.y
+        distance = math.hypot(dx, dy)
+        if distance <= 1e-8:
+            return 0.0
+        return float(
+            np.clip(
+                math.cos(self.player.angle) * dy / distance
+                - math.sin(self.player.angle) * dx / distance,
+                -1.0,
+                1.0,
+            )
+        )
+
+    def _active_target_features(self) -> tuple[float, float, float, float, float, float]:
+        """Encode the same nearest target used by direct auto-aim and the reticle."""
+
+        target = self._nearest_target()
+        if target is None:
+            return 0.0, 0.0, 1.0, 0.0, 0.0, 0.0
+        direction_x, direction_y, distance, _ = self._target_features([target])
+        is_spawner = float(isinstance(target, Spawner))
+        return (
+            direction_x,
+            direction_y,
+            distance,
+            is_spawner,
+            self._aim_alignment([target]),
+            self._aim_turn_direction([target]),
+        )
+
+    def _shaping_snapshot(self) -> dict[str, float | int | None]:
+        """Capture potential features used for small, explainable shaping terms."""
+
+        spawner = min(
+            self.spawners,
+            key=lambda item: (item.x - self.player.x) ** 2
+            + (item.y - self.player.y) ** 2,
+            default=None,
+        )
+        target = self._nearest_target()
+        diagonal = math.hypot(self.width, self.height - self.playfield_top)
+        return {
+            "spawner_id": None if spawner is None else spawner.entity_id,
+            "spawner_distance": (
+                0.0
+                if spawner is None
+                else math.hypot(spawner.x - self.player.x, spawner.y - self.player.y)
+                / diagonal
+            ),
+            "target_id": None if target is None else target.entity_id,
+            "target_alignment": (
+                0.0
+                if target is None
+                else self._aim_alignment([target])
+            ),
+        }
+
+    def _apply_shaping_delta(
+        self,
+        events: dict[str, Any],
+        before: dict[str, float | int | None],
+    ) -> None:
+        """Measure progress only while the same target remains active.
+
+        Restricting the delta to a stable entity avoids artificial reward jumps
+        when a target is destroyed or a new phase appears.
+        """
+
+        after = self._shaping_snapshot()
+        if before["spawner_id"] is not None and before["spawner_id"] == after["spawner_id"]:
+            events["spawner_progress"] = float(before["spawner_distance"]) - float(
+                after["spawner_distance"]
+            )
+        if before["target_id"] is not None and before["target_id"] == after["target_id"]:
+            events["aim_improvement"] = float(after["target_alignment"]) - float(
+                before["target_alignment"]
+            )
+
     def _get_observation(self) -> np.ndarray:
         max_speed = max(
             float(self.player_cfg["max_speed"]), float(self.player_cfg["direct_speed"])
         )
         enemy_features = self._target_features(self.enemies)
         spawner_features = self._target_features(self.spawners)
-        fire_cooldown = max(1, int(float(self.player_cfg["fire_cooldown_seconds"]) * self.fps))
+        active_target_features = self._active_target_features()
+        fire_cooldown = self.weapon_cooldown_steps()
+        profile = self.weapon_profile()
+        tiers = self._weapon_tiers()
+        max_shots = max(int(tier["shot_count"]) for tier in tiers)
+        max_damage_multiplier = max(float(tier["damage_multiplier"]) for tier in tiers)
+        cooldown_multipliers = [float(tier["cooldown_multiplier"]) for tier in tiers]
+        slowest_cooldown = max(cooldown_multipliers)
+        fastest_cooldown = min(cooldown_multipliers)
+        fire_rate_progress = (
+            1.0
+            if math.isclose(slowest_cooldown, fastest_cooldown)
+            else (slowest_cooldown - float(profile["cooldown_multiplier"]))
+            / (slowest_cooldown - fastest_cooldown)
+        )
 
         observation = np.array(
             [
@@ -640,6 +976,15 @@ class ArenaEnv(gym.Env):
                 np.clip(len(self.spawners) / max(1, int(self.phase_cfg["maximum_spawners"])), 0.0, 1.0),
                 np.clip(self.phase / max(1, int(self.phase_cfg["observation_phase_cap"])), 0.0, 1.0),
                 np.clip(1.0 - self.step_count / self.max_steps, 0.0, 1.0),
+                self._aim_alignment(self.enemies),
+                self._aim_alignment(self.spawners),
+                *active_target_features,
+                (self.player.level - 1) / max(1, self.maximum_player_level - 1),
+                self.xp_progress(),
+                int(profile["shot_count"]) / max(1, max_shots),
+                fire_rate_progress,
+                float(profile["damage_multiplier"]) / max_damage_multiplier,
+                float(str(profile["kind"]) in ("laser", "nova")),
             ],
             dtype=np.float32,
         )
@@ -664,18 +1009,72 @@ class ArenaEnv(gym.Env):
             for name, value in zip(self.observation_names, vector, strict=True)
         }
 
-    def _calculate_reward(self, events: dict[str, Any], terminated: bool) -> float:
-        """Provide configurable event rewards; detailed tuning is a later task."""
+    def _calculate_reward(
+        self, events: dict[str, Any], terminated: bool
+    ) -> tuple[float, dict[str, float]]:
+        """Return the total and an auditable breakdown of every reward term."""
 
-        reward = float(self.reward_cfg["survival"])
-        reward += events["enemies_destroyed"] * float(self.reward_cfg["enemy_destroyed"])
-        reward += events["spawners_destroyed"] * float(self.reward_cfg["spawner_destroyed"])
-        reward += float(events["damage_taken"]) * float(self.reward_cfg["damage_taken_per_hp"])
-        if events["phase_advanced"]:
-            reward += float(self.reward_cfg["phase_advanced"])
-        if terminated:
-            reward += float(self.reward_cfg["death"])
-        return reward
+        breakdown = {
+            "survival": float(self.reward_cfg["survival"]),
+            "enemy_damage": float(events["damage_dealt_enemy"])
+            * float(self.reward_cfg["enemy_damage_per_hp"]),
+            "spawner_damage": float(events["damage_dealt_spawner"])
+            * float(self.reward_cfg["spawner_damage_per_hp"]),
+            "enemy_destroyed": int(events["enemies_destroyed"])
+            * float(self.reward_cfg["enemy_destroyed"]),
+            "spawner_destroyed": int(events["spawners_destroyed"])
+            * float(self.reward_cfg["spawner_destroyed"]),
+            "phase_advanced": (
+                float(self.reward_cfg["phase_advanced"])
+                if events["phase_advanced"]
+                else 0.0
+            ),
+            "damage_taken": float(events["damage_taken"])
+            * float(self.reward_cfg["damage_taken_per_hp"]),
+            "spawner_approach": float(events["spawner_progress"])
+            * float(self.reward_cfg["spawner_approach"]),
+            "aim_improvement": float(events["aim_improvement"])
+            * float(self.reward_cfg["aim_improvement"]),
+            "shot_quality": (
+                0.0
+                if not events["shot_fired"]
+                else (
+                    max(0.0, float(events["shot_alignment"])) ** 4
+                    * float(self.reward_cfg["well_aimed_shot"])
+                    + (1.0 - max(0.0, float(events["shot_alignment"])))
+                    * float(self.reward_cfg["poorly_aimed_shot"])
+                )
+            ),
+            "death": float(self.reward_cfg["death"]) if terminated else 0.0,
+        }
+        return float(sum(breakdown.values())), breakdown
+
+    def _update_episode_stats(self, events: dict[str, Any], reward: float) -> None:
+        self.episode_stats["reward"] = float(self.episode_stats["reward"]) + reward
+        for key in (
+            "enemies_destroyed",
+            "spawners_destroyed",
+            "damage_dealt_enemy",
+            "damage_dealt_spawner",
+            "damage_taken",
+            "projectile_hits",
+        ):
+            self.episode_stats[key] = self.episode_stats[key] + events[key]
+        self.episode_stats["shots_fired"] = int(self.episode_stats["shots_fired"]) + int(
+            events["projectiles_fired"]
+        )
+        self.episode_stats["volleys_fired"] = int(
+            self.episode_stats["volleys_fired"]
+        ) + int(events["shot_fired"])
+        self.episode_stats["xp_earned"] = float(
+            self.episode_stats["xp_earned"]
+        ) + float(events["xp_gained"])
+        self.episode_stats["levels_gained"] = int(
+            self.episode_stats["levels_gained"]
+        ) + int(events["levels_gained"])
+        self.episode_stats["phases_advanced"] = int(
+            self.episode_stats["phases_advanced"]
+        ) + int(events["phase_advanced"])
 
     def _get_info(self) -> dict[str, Any]:
         return {
@@ -684,9 +1083,26 @@ class ArenaEnv(gym.Env):
             "step": self.step_count,
             "time_seconds": self.step_count * self.dt,
             "player_health": self.player.health,
+            "player_level": self.player.level,
+            "player_xp": self.player.xp,
+            "xp_progress": self.xp_progress(),
+            "xp_to_next_level": self.xp_to_next_level(),
+            "weapon_name": str(self.weapon_profile()["name"]),
+            "weapon_kind": str(self.weapon_profile()["kind"]),
             "active_enemies": len(self.enemies),
             "active_spawners": len(self.spawners),
             "active_projectiles": len(self.projectiles),
+            "episode_enemies_destroyed": int(
+                self.episode_stats["enemies_destroyed"]
+            ),
+            "episode_spawners_destroyed": int(
+                self.episode_stats["spawners_destroyed"]
+            ),
+            "episode_phases_advanced": int(self.episode_stats["phases_advanced"]),
+            "episode_damage_taken": float(self.episode_stats["damage_taken"]),
+            "episode_xp_earned": float(self.episode_stats["xp_earned"]),
+            "episode_max_level": self.player.level,
+            "episode_stats": dict(self.episode_stats),
         }
 
 

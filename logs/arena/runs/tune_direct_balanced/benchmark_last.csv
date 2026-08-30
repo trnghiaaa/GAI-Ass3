@@ -1,0 +1,9 @@
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
+1,14201,612.807144,6,5,3600,900,time_limit,True,92,20,10024.0,0.0,978,722,0.738241,5,1745.0,Nova Tri-Beam
+2,14202,360.057169,5,4,2593,649,player_destroyed,False,47,16,5420.5,112.0,579,375,0.647668,5,1130.0,Nova Tri-Beam
+3,14203,40.159199,2,1,1320,330,player_destroyed,False,8,3,721.0,112.0,74,34,0.459459,3,210.0,Twin Pulse
+4,14204,602.168528,6,5,3600,900,time_limit,True,87,21,9561.5,42.0,984,693,0.704268,5,1730.0,Nova Tri-Beam
+5,14205,100.175112,3,2,1460,365,player_destroyed,False,11,6,1446.75,112.0,114,73,0.640351,4,370.0,Laser Array
+6,14206,591.461351,6,5,3600,900,time_limit,True,82,22,9119.5,0.0,916,658,0.718341,5,1715.0,Nova Tri-Beam
+7,14207,494.239742,6,5,3600,900,time_limit,True,59,20,7033.0,14.0,738,503,0.681572,5,1415.0,Nova Tri-Beam
+8,14208,635.542875,7,6,3600,900,time_limit,True,79,25,9570.5,14.0,960,690,0.71875,5,1815.0,Nova Tri-Beam

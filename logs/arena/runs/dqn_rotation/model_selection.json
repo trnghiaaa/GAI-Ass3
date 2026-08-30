@@ -1,0 +1,49 @@
+{
+  "selected": "last",
+  "candidates": [
+    {
+      "candidate": "last",
+      "selection_score": 224.841294,
+      "control_style": "rotation",
+      "episodes": 20,
+      "action_repeat": 4,
+      "seed_start": 16200,
+      "deterministic": true,
+      "mean_reward": 186.841294,
+      "reward_std": 162.707943,
+      "mean_phase": 3.1,
+      "max_phase": 5,
+      "phase_progression_rate": 0.9,
+      "survival_rate": 0.25,
+      "mean_enemies_destroyed": 31.5,
+      "mean_spawners_destroyed": 7.4,
+      "mean_damage_taken": 98.0,
+      "mean_accuracy": 0.610077,
+      "mean_player_level": 4.05,
+      "max_player_level": 5,
+      "mean_xp_earned": 626.5
+    },
+    {
+      "candidate": "eval_callback_best",
+      "selection_score": 223.823498,
+      "control_style": "rotation",
+      "episodes": 20,
+      "action_repeat": 4,
+      "seed_start": 16200,
+      "deterministic": true,
+      "mean_reward": 186.623498,
+      "reward_std": 134.984065,
+      "mean_phase": 3.3,
+      "max_phase": 5,
+      "phase_progression_rate": 0.9,
+      "survival_rate": 0.15,
+      "mean_enemies_destroyed": 29.9,
+      "mean_spawners_destroyed": 7.95,
+      "mean_damage_taken": 103.6,
+      "mean_accuracy": 0.637849,
+      "mean_player_level": 4.4,
+      "max_player_level": 5,
+      "mean_xp_earned": 634.75
+    }
+  ]
+}

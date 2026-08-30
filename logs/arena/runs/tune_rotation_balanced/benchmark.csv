@@ -1,0 +1,9 @@
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
+1,14301,-18.965333,1,0,420,105,player_destroyed,False,0,1,125.0,112.0,27,5,0.185185,1,35.0,Pulse Cannon
+2,14302,-23.194019,1,0,590,148,player_destroyed,False,2,0,125.0,112.0,30,5,0.166667,1,20.0,Pulse Cannon
+3,14303,54.950668,1,0,3174,794,player_destroyed,False,20,1,1100.0,112.0,437,66,0.15103,4,235.0,Laser Array
+4,14304,43.852621,1,0,2788,697,player_destroyed,False,17,1,979.0,112.0,397,58,0.146096,3,205.0,Twin Pulse
+5,14305,-26.491051,1,0,542,136,player_destroyed,False,1,0,50.0,112.0,36,2,0.055556,1,10.0,Pulse Cannon
+6,14306,-11.793262,1,0,650,163,player_destroyed,False,3,1,250.0,112.0,20,10,0.5,2,65.0,Rapid Loader
+7,14307,-4.831881,1,0,766,192,player_destroyed,False,5,1,350.0,112.0,43,14,0.325581,2,85.0,Rapid Loader
+8,14308,17.396306,1,0,1790,448,player_destroyed,False,11,1,650.0,112.0,223,32,0.143498,3,145.0,Twin Pulse

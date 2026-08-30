@@ -1,0 +1,40 @@
+{
+  "control_styles": [
+    {
+      "control_style": "direct",
+      "algorithm": "DQN",
+      "timesteps": 150000,
+      "network": "256x256",
+      "mean_reward": 622.977534,
+      "reward_std": 125.461096,
+      "mean_phase": 6.9,
+      "max_phase": 8,
+      "phase_progression_rate": 1.0,
+      "survival_rate": 0.9,
+      "mean_enemies_destroyed": 75.5,
+      "mean_spawners_destroyed": 25.65,
+      "mean_accuracy": 0.919274,
+      "mean_player_level": 4.95,
+      "max_player_level": 5,
+      "mean_xp_earned": 1800.25
+    },
+    {
+      "control_style": "rotation",
+      "algorithm": "DQN",
+      "timesteps": 250000,
+      "network": "128x128",
+      "mean_reward": 186.841294,
+      "reward_std": 162.707943,
+      "mean_phase": 3.1,
+      "max_phase": 5,
+      "phase_progression_rate": 0.9,
+      "survival_rate": 0.25,
+      "mean_enemies_destroyed": 31.5,
+      "mean_spawners_destroyed": 7.4,
+      "mean_accuracy": 0.610077,
+      "mean_player_level": 4.05,
+      "max_player_level": 5,
+      "mean_xp_earned": 626.5
+    }
+  ]
+}

@@ -4,7 +4,7 @@
         "window_height": 600,
         "hud_height": 74,
         "fps": 60,
-        "max_steps": 1800
+        "max_steps": 3600
     },
     "player": {
         "radius": 18,
@@ -48,17 +48,115 @@
         "spawn_rate_growth": 0.12,
         "observation_phase_cap": 10
     },
+    "progression": {
+        "enemy_xp": 10,
+        "spawner_xp": 35,
+        "phase_xp": 25,
+        "level_thresholds": [0, 40, 110, 220, 380],
+        "upgrade_banner_seconds": 2.6,
+        "weapon_tiers": [
+            {
+                "name": "Pulse Cannon",
+                "kind": "pulse",
+                "shot_count": 1,
+                "spread_degrees": 0,
+                "cooldown_multiplier": 1.0,
+                "speed_multiplier": 1.0,
+                "damage_multiplier": 1.0
+            },
+            {
+                "name": "Rapid Loader",
+                "kind": "rapid",
+                "shot_count": 1,
+                "spread_degrees": 0,
+                "cooldown_multiplier": 0.82,
+                "speed_multiplier": 1.05,
+                "damage_multiplier": 1.0
+            },
+            {
+                "name": "Twin Pulse",
+                "kind": "twin",
+                "shot_count": 2,
+                "spread_degrees": 4,
+                "cooldown_multiplier": 0.78,
+                "speed_multiplier": 1.08,
+                "damage_multiplier": 0.58
+            },
+            {
+                "name": "Laser Array",
+                "kind": "laser",
+                "shot_count": 1,
+                "spread_degrees": 0,
+                "cooldown_multiplier": 0.66,
+                "speed_multiplier": 1.55,
+                "damage_multiplier": 1.15
+            },
+            {
+                "name": "Nova Tri-Beam",
+                "kind": "nova",
+                "shot_count": 3,
+                "spread_degrees": 10,
+                "cooldown_multiplier": 0.62,
+                "speed_multiplier": 1.35,
+                "damage_multiplier": 0.58
+            }
+        ]
+    },
     "rewards": {
         "survival": 0.001,
+        "enemy_damage_per_hp": 0.012,
+        "spawner_damage_per_hp": 0.02,
         "enemy_destroyed": 2.0,
         "spawner_destroyed": 8.0,
         "phase_advanced": 15.0,
-        "damage_taken_per_hp": -0.05,
-        "death": -20.0
+        "damage_taken_per_hp": -0.06,
+        "spawner_approach": 1.25,
+        "aim_improvement": 0.2,
+        "well_aimed_shot": 0.08,
+        "poorly_aimed_shot": -0.015,
+        "death": -25.0
     },
     "training": {
+        "algorithm": "DQN",
         "total_timesteps": 300000,
-        "learning_rate": 0.0003,
-        "gamma": 0.99
+        "seed": 2026,
+        "action_repeat": 4,
+        "learning_rate": 0.00025,
+        "buffer_size": 120000,
+        "learning_starts": 5000,
+        "batch_size": 128,
+        "gamma": 0.99,
+        "train_freq": 4,
+        "gradient_steps": 1,
+        "target_update_interval": 2000,
+        "exploration_fraction": 0.35,
+        "exploration_initial_eps": 1.0,
+        "exploration_final_eps": 0.04,
+        "net_arch": [256, 256],
+        "checkpoint_frequency": 50000,
+        "evaluation_frequency": 25000,
+        "evaluation_episodes": 8,
+        "profiles": {
+            "balanced": {},
+            "fast_exploration": {
+                "learning_rate": 0.0005,
+                "exploration_fraction": 0.2,
+                "net_arch": [128, 128]
+            },
+            "long_exploration": {
+                "learning_rate": 0.00015,
+                "exploration_fraction": 0.55,
+                "net_arch": [256, 256]
+            }
+        },
+        "style_overrides": {
+            "direct": {
+                "exploration_fraction": 0.3
+            },
+            "rotation": {
+                "exploration_fraction": 0.5,
+                "learning_rate": 0.0002
+            }
+        }
     }
 }

@@ -42,22 +42,14 @@ def _rotation_action(keys: pygame.key.ScancodeWrapper) -> int:
     return ROTATION_ACTIONS["NOOP"]
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Interactively play the Part II arena")
-    parser.add_argument(
-        "--control-style",
-        choices=("direct", "rotation"),
-        default="direct",
-        help="Ship control scheme",
-    )
-    parser.add_argument("--seed", type=int, default=42, help="Environment seed")
-    args = parser.parse_args()
+def play_manual(control_style: str = "direct", seed: int = 42) -> None:
+    """Run one interactive manual session and return when its window closes."""
 
-    env = ArenaEnv(control_style=args.control_style)
-    env.reset(seed=args.seed)
+    env = ArenaEnv(control_style=control_style)
+    env.reset(seed=seed)
     renderer = ArenaRenderer(env, mode="human")
 
-    if args.control_style == "direct":
+    if control_style == "direct":
         footer = "WASD / ARROWS move   •   SPACE auto-aim fire   •   R restart   •   ESC quit"
         choose_action = _direct_action
     else:
@@ -73,7 +65,7 @@ def main() -> None:
                 if event.key in (pygame.K_ESCAPE, pygame.K_q):
                     running = False
                 elif event.key == pygame.K_r:
-                    env.reset(seed=args.seed)
+                    env.reset(seed=seed)
 
         if running and not env.done:
             action = choose_action(pygame.key.get_pressed())
@@ -84,6 +76,19 @@ def main() -> None:
 
     renderer.close()
     env.close()
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Interactively play the Part II arena")
+    parser.add_argument(
+        "--control-style",
+        choices=("direct", "rotation"),
+        default="direct",
+        help="Ship control scheme",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Environment seed")
+    args = parser.parse_args()
+    play_manual(args.control_style, args.seed)
 
 
 if __name__ == "__main__":

@@ -12,5 +12,7 @@ ENV/
 # OS / Editor files
 .DS_Store
 Thumbs.db
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
 .idea/

@@ -1,0 +1,4 @@
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name
+1,7300,642.426743,7,6,3600,900,time_limit,True,84,25,9788.5,14.0,760,707,0.930263,5,1865.0,Nova Tri-Beam
+2,7301,671.597766,8,7,3600,900,time_limit,True,67,30,9680.0,28.0,756,689,0.911376,5,1895.0,Nova Tri-Beam
+3,7302,639.421924,7,6,3600,900,time_limit,True,82,25,9690.0,0.0,741,697,0.940621,5,1845.0,Nova Tri-Beam

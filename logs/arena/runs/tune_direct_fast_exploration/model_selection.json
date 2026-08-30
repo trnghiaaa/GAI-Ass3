@@ -1,0 +1,27 @@
+{
+  "selected": "last",
+  "candidates": [
+    {
+      "candidate": "last",
+      "selection_score": 436.437923,
+      "control_style": "direct",
+      "episodes": 8,
+      "action_repeat": 4,
+      "seed_start": 14200,
+      "deterministic": true,
+      "mean_reward": 400.437923,
+      "reward_std": 250.821136,
+      "mean_phase": 4.625,
+      "max_phase": 6,
+      "phase_progression_rate": 0.75,
+      "survival_rate": 0.75,
+      "mean_enemies_destroyed": 55.125,
+      "mean_spawners_destroyed": 15.375,
+      "mean_damage_taken": 28.0,
+      "mean_accuracy": 0.528946,
+      "mean_player_level": 4.0,
+      "max_player_level": 5,
+      "mean_xp_earned": 1180.0
+    }
+  ]
+}

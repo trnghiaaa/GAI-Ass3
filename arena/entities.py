@@ -22,6 +22,8 @@ class Player(Body):
     vx: float = 0.0
     vy: float = 0.0
     fire_cooldown_steps: int = 0
+    level: int = 1
+    xp: float = 0.0
 
 
 @dataclass
@@ -50,6 +52,7 @@ class Projectile(Body):
     vy: float
     damage: float
     lifetime_steps: int
+    weapon_kind: str = "pulse"
 
 
 def circles_overlap(first: Body, second: Body) -> bool:

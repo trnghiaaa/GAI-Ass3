@@ -19,7 +19,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
         observation, info = self.env.reset(seed=7)
 
         self.assertTrue(self.env.observation_space.contains(observation))
-        self.assertEqual(observation.shape, (20,))
+        self.assertEqual(observation.shape, (34,))
         self.assertEqual(self.env.player.health, self.env.player.max_health)
         self.assertEqual(info["phase"], 1)
         self.assertEqual(len(self.env.spawners), 2)
@@ -87,14 +87,21 @@ class ArenaEnvironmentTests(unittest.TestCase):
         self.env.step(DIRECT_ACTIONS["SHOOT"])
 
         destroyed = 0
+        damage_reward_seen = False
         for _ in range(12):
             _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
             destroyed += info["enemies_destroyed"]
+            damage_reward_seen = damage_reward_seen or (
+                info["reward_breakdown"]["enemy_damage"] > 0
+            )
             if destroyed:
                 break
 
         self.assertEqual(destroyed, 1)
+        self.assertTrue(damage_reward_seen)
         self.assertEqual(self.env.enemies, [])
+        self.assertEqual(self.env.episode_stats["enemies_destroyed"], 1)
+        self.assertEqual(self.env.episode_stats["projectile_hits"], 1)
 
     def test_destroying_last_spawner_advances_phase(self) -> None:
         spawner = Spawner(
@@ -159,6 +166,58 @@ class ArenaEnvironmentTests(unittest.TestCase):
             self.assertEqual(info["episode_end"], "time_limit")
         finally:
             env.close()
+
+    def test_xp_unlocks_rapid_twin_laser_and_nova_weapon_tiers(self) -> None:
+        expected = (
+            (1, "Pulse Cannon", 1, "pulse"),
+            (2, "Rapid Loader", 1, "rapid"),
+            (3, "Twin Pulse", 2, "twin"),
+            (4, "Laser Array", 1, "laser"),
+            (5, "Nova Tri-Beam", 3, "nova"),
+        )
+
+        for level, name, shot_count, kind in expected:
+            with self.subTest(level=level):
+                self.env.player.level = level
+                self.env.player.fire_cooldown_steps = 0
+                self.env.projectiles = []
+                fired = self.env._fire_projectile(auto_aim=False)
+                self.assertEqual(self.env.weapon_profile()["name"], name)
+                self.assertEqual(fired, shot_count)
+                self.assertEqual(len(self.env.projectiles), shot_count)
+                self.assertTrue(
+                    all(projectile.weapon_kind == kind for projectile in self.env.projectiles)
+                )
+
+    def test_combat_xp_levels_up_without_changing_environment_reward(self) -> None:
+        events = {
+            "enemies_destroyed": 4,
+            "spawners_destroyed": 0,
+            "phase_advanced": False,
+        }
+        self.env._apply_combat_progression(events)
+
+        self.assertEqual(events["xp_gained"], 40.0)
+        self.assertEqual(events["levels_gained"], 1)
+        self.assertEqual(events["upgrade_unlocked"], "Rapid Loader")
+        self.assertEqual(self.env.player.level, 2)
+        self.assertEqual(self.env.player.xp, 40.0)
+
+        reward_events = {
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
+            "enemies_destroyed": 0,
+            "spawners_destroyed": 0,
+            "phase_advanced": False,
+            "damage_taken": 0.0,
+            "spawner_progress": 0.0,
+            "aim_improvement": 0.0,
+            "shot_fired": False,
+            "shot_alignment": 0.0,
+            "xp_gained": 999.0,
+        }
+        _, breakdown = self.env._calculate_reward(reward_events, terminated=False)
+        self.assertNotIn("xp", breakdown)
 
 
 if __name__ == "__main__":

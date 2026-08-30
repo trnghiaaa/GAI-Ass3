@@ -25,17 +25,17 @@ class ArenaObservationTests(unittest.TestCase):
     def test_observation_is_fixed_numeric_vector_not_pixels(self) -> None:
         observation = self.env._get_observation()
 
-        self.assertEqual(observation.shape, (20,))
+        self.assertEqual(observation.shape, (34,))
         self.assertEqual(observation.ndim, 1)
         self.assertEqual(observation.dtype, np.float32)
-        self.assertEqual(len(OBSERVATION_NAMES), 20)
+        self.assertEqual(len(OBSERVATION_NAMES), 34)
         self.assertTrue(self.env.observation_space.contains(observation))
 
         # Removing every variable-length entity list must not alter the shape.
         self.env.enemies = []
         self.env.spawners = []
         self.env.projectiles = []
-        self.assertEqual(self.env._get_observation().shape, (20,))
+        self.assertEqual(self.env._get_observation().shape, (34,))
 
     def test_vectors_remain_in_bounds_during_both_control_styles(self) -> None:
         for style in ("direct", "rotation"):
@@ -133,6 +133,53 @@ class ArenaObservationTests(unittest.TestCase):
         self.assertAlmostEqual(observation[ObservationIndex.NEAREST_SPAWNER_HEALTH], 0.75)
         self.assertAlmostEqual(observation[ObservationIndex.PHASE], 0.4)
 
+    def test_explicit_aim_alignment_supports_rotation_learning(self) -> None:
+        self.env.enemies = [
+            Enemy(
+                x=self.env.player.x + 100.0,
+                y=self.env.player.y,
+                radius=15.0,
+                entity_id=903,
+                max_health=50.0,
+                health=50.0,
+                speed=0.0,
+            )
+        ]
+        self.env.player.angle = 0.0
+        observation = self.env._get_observation()
+        self.assertAlmostEqual(
+            observation[ObservationIndex.NEAREST_ENEMY_AIM_ALIGNMENT], 1.0
+        )
+
+        self.env.player.angle = math.pi
+        observation = self.env._get_observation()
+        self.assertAlmostEqual(
+            observation[ObservationIndex.NEAREST_ENEMY_AIM_ALIGNMENT], -1.0
+        )
+
+    def test_active_target_exposes_signed_turn_direction(self) -> None:
+        self.env.enemies = [
+            Enemy(
+                x=self.env.player.x + 100.0,
+                y=self.env.player.y,
+                radius=15.0,
+                entity_id=904,
+                max_health=50.0,
+                health=50.0,
+                speed=0.0,
+            )
+        ]
+        self.env.spawners = []
+        self.env.player.angle = -math.pi / 2
+        observation = self.env._get_observation()
+        self.assertAlmostEqual(
+            observation[ObservationIndex.ACTIVE_TARGET_AIM_ALIGNMENT], 0.0, places=6
+        )
+        self.assertGreater(
+            observation[ObservationIndex.ACTIVE_TARGET_TURN_DIRECTION], 0.0
+        )
+        self.assertEqual(observation[ObservationIndex.ACTIVE_TARGET_IS_SPAWNER], 0.0)
+
     def test_missing_target_sentinel_is_unambiguous(self) -> None:
         self.env.enemies = []
         self.env.spawners = []
@@ -158,6 +205,17 @@ class ArenaObservationTests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.env.observation_as_dict(np.zeros(3, dtype=np.float32))
+
+    def test_combat_level_and_weapon_upgrade_state_are_encoded(self) -> None:
+        self.env.player.level = 4
+        self.env.player.xp = 270.0
+
+        observation = self.env._get_observation()
+
+        self.assertAlmostEqual(observation[ObservationIndex.PLAYER_LEVEL], 0.75)
+        self.assertGreater(observation[ObservationIndex.XP_PROGRESS], 0.0)
+        self.assertGreater(observation[ObservationIndex.WEAPON_FIRE_RATE], 0.0)
+        self.assertEqual(observation[ObservationIndex.WEAPON_IS_LASER], 1.0)
 
 
 if __name__ == "__main__":
