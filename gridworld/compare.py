@@ -444,7 +444,10 @@ def run_intrinsic_comparison(args, config: Mapping[str, Any]) -> dict[str, Any]:
                 f"level{level_id}_{agent_kind}_{variant}_seed{seed}.pkl",
                 metadata={"purpose": "level6_intrinsic_comparison",
                           "variant": variant, "level_id": level_id,
-                          "seed": seed, "profile": profile},
+                          "seed": seed, "profile": profile,
+                          "layout_fingerprint": make_environment(
+                              level_id, config, seed
+                          ).layout_fingerprint},
             )
 
     output = Path(LOGS_DIR)

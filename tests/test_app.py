@@ -96,7 +96,65 @@ def test_ai_result_popup_controls_replay_speed_and_next_level_resets(monkeypatch
         app.speed_index = len(app.speed_options) - 1
         app._next_level()
         assert app.current_level == 1
+        assert app.current_agent_kind == "sarsa"
+        assert not app.current_intrinsic
         assert app.speed_options[app.speed_index] == DEFAULT_AI_SPEED == 1.0
+    finally:
+        pygame.quit()
+
+
+def test_free_ai_next_level_keeps_supported_policy_then_uses_safe_fallback(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import DEFAULT_AI_SPEED, GridworldApp
+
+    app = GridworldApp(max_steps=500)
+    try:
+        app._start_level(4, "ai", "sarsa", False, "showcase")
+        assert app.scene == "play"
+
+        # SARSA is a supported saved policy on Level 5, so the selection stays.
+        app.run_done = True
+        app.result_kind = "victory"
+        app._next_level()
+        assert app.scene == "play"
+        assert app.current_level == 5
+        assert (app.current_agent_kind, app.current_intrinsic) == ("sarsa", False)
+
+        # Level 6's rubric showcase is baseline Q versus Q + Intrinsic. The app
+        # must switch to its recommended trained model instead of showing the
+        # missing Level 6 SARSA recovery screen.
+        app.speed_index = len(app.speed_options) - 1
+        app.run_done = True
+        app.result_kind = "victory"
+        assert app._resolve_next_ai_policy(6) == ("qlearning", True)
+        app._next_level()
+        assert app.scene == "play"
+        assert app.current_level == 6
+        assert (app.current_agent_kind, app.current_intrinsic) == ("qlearning", True)
+        assert app.speed_options[app.speed_index] == DEFAULT_AI_SPEED == 1.0
+        assert app.notice == "Level 6: switched to Q + Intrinsic"
+    finally:
+        pygame.quit()
+
+
+def test_manual_blocked_input_is_presented_as_a_counted_action(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import GridworldApp
+    from gridworld.environment import LEFT
+
+    app = GridworldApp(max_steps=20)
+    try:
+        app._start_level(0, "manual", None, False, "free")
+        start = tuple(app.env.agent_pos)
+        app._perform_step(LEFT)
+        assert tuple(app.env.agent_pos) == start
+        assert app.steps == 1
+        assert app.info["blocked_reason"] == "boundary"
+        assert "action still counted" in app.event_text
     finally:
         pygame.quit()
 

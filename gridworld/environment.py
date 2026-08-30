@@ -19,6 +19,7 @@ thousands of stochastic layouts while never hiding how many monsters exist.
 
 from collections import deque
 from collections.abc import Mapping, Sequence
+import hashlib
 import math
 from numbers import Integral, Real
 import random
@@ -141,6 +142,23 @@ def validate_level_definition(level_id, level):
     return tuple(raw_grid)
 
 
+def level_layout_fingerprint(level_id: int) -> str:
+    """Return a stable identity for the current tile layout of one level.
+
+    Tabular policies are map-specific.  Persisting this fingerprint with each
+    model prevents a visually valid but obsolete Q-table from being played
+    after a level redesign.
+    """
+
+    if level_id not in LEVELS:
+        raise ValueError(
+            f"Unknown level {level_id!r}. Available levels: {sorted(LEVELS)}"
+        )
+    grid = validate_level_definition(level_id, LEVELS[level_id])
+    payload = "gridworld-layout-v1\n" + "\n".join(grid)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _validate_monster_move_chance(value):
     if isinstance(value, bool) or not isinstance(value, Real):
         raise TypeError("monster_move_chance must be a real number between 0 and 1")
@@ -165,6 +183,7 @@ class GridWorldEnv:
         raw_grid = validate_level_definition(level_id, level)
 
         self.level_id = level_id
+        self.layout_fingerprint = level_layout_fingerprint(level_id)
         self.level_metadata = {
             key: value for key, value in level.items() if key != "grid"
         }

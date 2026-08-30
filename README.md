@@ -80,7 +80,7 @@ python main.py --mode ai --level 6 --agent qlearning --intrinsic
 | Mechanic | Implemented behavior | Environment reward |
 |---|---|---:|
 | Movement | Up, down, left, right | 0 |
-| Rock / boundary | Agent remains in its current cell | 0 |
+| Rock / boundary | Agent remains in its current cell; the attempted action still advances the turn | 0 |
 | Fire | Immediate death | 0 |
 | Monster collision | Immediate death, whether the agent enters its tile or it enters the agent's tile | 0 |
 | Apple | Consumed | +1 |
@@ -90,24 +90,27 @@ python main.py --mode ai --level 6 --agent qlearning --intrinsic
 | Monster phase | Each monster independently has the configured 40% chance to make one valid random move after an agent action | 0 |
 | Episode terminal | All collectible rewards obtained, or agent death | — |
 
-There is no hidden step penalty, death penalty, bonus environment reward, or altered terminal rule. Level 6's intrinsic bonus exists only in the agent's learning target and is logged separately.
+There is no hidden step penalty, death penalty, bonus environment reward, or altered terminal rule. A blocked input is still an agent action, so it counts toward the action limit and still triggers the post-action monster phase. Level 6's intrinsic bonus exists only in the agent's learning target and is logged separately.
 
 ## Levels and rubric coverage
 
 | Level | Assignment task | Main evidence |
 |---:|---|---|
-| 0 | Task 1: basic Q-learning | Greedy Q-learning completes the verified optimum in **16 steps** |
-| 1 | Task 2: SARSA | Q-learning uses a 5-step fire-edge route; SARSA uses a 7-step safe route |
-| 2 | Task 3 | Two apples, key, chest; Q-learning and SARSA |
-| 3 | Task 3 | Harder maze with two apples, key, chest; both algorithms |
+| 0 | Task 1: basic Q-learning | Redesigned orchard; greedy Q-learning completes the verified optimum in **22 steps** |
+| 1 | Task 2: SARSA | Q-learning uses a 7-step fire-edge route; SARSA uses a 9-step safe route |
+| 2 | Task 3 | Branching garden with three apples, key, chest; Q-learning and SARSA |
+| 3 | Task 3 | Dense maze with three apples, key, chest; both algorithms |
 | 4 | Task 4 | One stochastic monster; both algorithms and learning curves |
 | 5 | Task 4 | Two stochastic monsters; both algorithms and learning curves |
 | 6 | Task 5 | Baseline versus exact per-episode count-bonus Q-learning |
 
 Level definitions and display metadata live in `gridworld/levels/levels.py`.
+Level 0's three apples are compliant with the Task 1 wording: they are all on
+the right side and are the only collectible type present. Levels 2–3 introduce
+the required combined planning problem of multiple apples, a key, and a chest.
 
-The final independent seeded benchmark records **96.9% / 98.0%** success for
-Level 4 Q-learning / SARSA and **98.3% / 97.9%** for Level 5 over 1,000 episodes
+The final independent seeded benchmark records **96.7% / 97.6%** success for
+Level 4 Q-learning / SARSA and **97.5% / 97.5%** for Level 5 over 1,000 episodes
 per monster policy. All deterministic policies and both Level 6 variants achieve
 100% over 300 episodes. Full results are in `logs/gridworld/policy_benchmark.json`.
 
@@ -141,6 +144,7 @@ Both implementations use:
 - independent seeded random generators;
 - terminal targets without bootstrap and explicit time-limit truncation handling;
 - versioned, metadata-rich model files that remain backward-compatible with the original pickle format.
+- a level-layout fingerprint that rejects stale Q-tables after any future map edit.
 
 ## Task 5: intrinsic reward
 

@@ -11,6 +11,7 @@ from typing import Any
 from gridworld.agents.q_learning import QLearningAgent
 from gridworld.agents.sarsa import SARSAAgent
 from gridworld.compare import evaluate_policy, greedy_rollout
+from gridworld.environment import GridWorldEnv
 from gridworld.train import LOGS_DIR, MODELS_DIR, load_config, resolve_training_profile
 
 
@@ -45,6 +46,11 @@ def run_benchmark(episodes: int = 100, monster_episodes: int = 300,
         agent, metadata = _load(kind, path, run_seed)
         saved_q_table_states = len(agent.q_table)
         profile = resolve_training_profile(config, level, kind)
+        environment = GridWorldEnv(level, seed=run_seed)
+        if metadata.get("layout_fingerprint") != environment.layout_fingerprint:
+            raise ValueError(
+                f"Saved model layout does not match current Level {level}: {path}"
+            )
         count = monster_episodes if level in (4, 5) else episodes
         evaluation = evaluate_policy(
             level, agent, config, seed=run_seed, episodes=count, epsilon=0.0,
@@ -75,6 +81,7 @@ def run_benchmark(episodes: int = 100, monster_episodes: int = 300,
             "representative_steps": rollout["steps"],
             "representative_reward": rollout["environment_reward"],
             "training_seed": metadata.get("seed", ""),
+            "layout_fingerprint": metadata.get("layout_fingerprint", ""),
             "state_schema": "|".join(metadata.get("state_schema", [])),
         }
         rows.append(row)

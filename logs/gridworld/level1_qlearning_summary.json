@@ -1,6 +1,7 @@
 {
   "algorithm": "qlearning",
   "intrinsic_enabled": false,
+  "layout_fingerprint": "f020b157735fbc75687ba6f9d08e8c7e7f8bef0e3350de6bb2ceb0330e44260d",
   "level_id": 1,
   "profile": {
     "alpha": 0.1,
@@ -24,21 +25,21 @@
   ],
   "summary": {
     "episodes": 3000,
-    "first_success_episode": 16,
+    "first_success_episode": 11,
     "overall": {
-      "death_rate": 0.41933333333333334,
-      "mean_extrinsic_reward": 0.5763333333333334,
+      "death_rate": 0.42133333333333334,
+      "mean_extrinsic_reward": 0.541,
       "mean_intrinsic_reward": 0.0,
-      "truncation_rate": 0.004333333333333333,
-      "victory_rate": 0.5763333333333334
+      "truncation_rate": 0.03766666666666667,
+      "victory_rate": 0.541
     },
     "tail": {
-      "death_rate": 0.04,
-      "mean_extrinsic_reward": 0.96,
+      "death_rate": 0.11,
+      "mean_extrinsic_reward": 0.89,
       "mean_intrinsic_reward": 0.0,
-      "mean_steps_on_victory": 5.34375,
+      "mean_steps_on_victory": 7.52808988764045,
       "truncation_rate": 0.0,
-      "victory_rate": 0.96
+      "victory_rate": 0.89
     },
     "tail_window": 100
   }

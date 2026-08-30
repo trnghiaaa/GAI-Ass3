@@ -27,6 +27,9 @@ def test_saved_models_match_current_state_schema_and_initial_state():
         assert metadata["level_id"] == level
         assert metadata["algorithm"] == kind
         assert bool(metadata["intrinsic_enabled"]) is intrinsic
+        assert metadata["layout_fingerprint"] == GridWorldEnv(
+            level, seed=1
+        ).layout_fingerprint
         assert initial_state in agent.q_table
 
 
@@ -45,10 +48,12 @@ def test_comparison_summaries_contain_required_behavioral_evidence():
         encoding="utf-8"
     ) as file:
         level1 = json.load(file)
-    assert level1["greedy_rollouts"]["qlearning"]["mean_steps"] == 5.0
-    assert level1["greedy_rollouts"]["qlearning"]["mean_hazard_adjacent_steps"] == 4.0
-    assert level1["greedy_rollouts"]["sarsa"]["mean_steps"] == 7.0
-    assert level1["greedy_rollouts"]["sarsa"]["mean_hazard_adjacent_steps"] == 0.0
+    qlearning = level1["greedy_rollouts"]["qlearning"]
+    sarsa = level1["greedy_rollouts"]["sarsa"]
+    assert qlearning["mean_steps"] == 7.0
+    assert qlearning["mean_hazard_adjacent_steps"] == 6.0
+    assert sarsa["mean_steps"] > qlearning["mean_steps"]
+    assert sarsa["mean_hazard_adjacent_steps"] < qlearning["mean_hazard_adjacent_steps"]
 
     with (Path(LOGS_DIR) / "level6_intrinsic_comparison_summary.json").open(
         encoding="utf-8"

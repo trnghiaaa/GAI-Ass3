@@ -1,11 +1,12 @@
 {
   "algorithm": "sarsa",
   "intrinsic_enabled": false,
+  "layout_fingerprint": "da0ba93b1421509cd493078dd3704588ca6f6ca299b4f4466dffd7c5c3eb2139",
   "level_id": 2,
   "profile": {
     "alpha": 0.1,
     "bootstrap_on_truncation": true,
-    "episodes": 1000,
+    "episodes": 2500,
     "epsilon_end": 0.01,
     "epsilon_start": 1.0,
     "gamma": 0.99,
@@ -23,20 +24,20 @@
     "monster_observation"
   ],
   "summary": {
-    "episodes": 1000,
-    "first_success_episode": 26,
+    "episodes": 2500,
+    "first_success_episode": 244,
     "overall": {
       "death_rate": 0.0,
-      "mean_extrinsic_reward": 3.64,
+      "mean_extrinsic_reward": 4.4516,
       "mean_intrinsic_reward": 0.0,
-      "truncation_rate": 0.157,
-      "victory_rate": 0.843
+      "truncation_rate": 0.2228,
+      "victory_rate": 0.7772
     },
     "tail": {
       "death_rate": 0.0,
-      "mean_extrinsic_reward": 4.0,
+      "mean_extrinsic_reward": 5.0,
       "mean_intrinsic_reward": 0.0,
-      "mean_steps_on_victory": 21.54,
+      "mean_steps_on_victory": 37.18,
       "truncation_rate": 0.0,
       "victory_rate": 1.0
     },

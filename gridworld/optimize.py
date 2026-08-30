@@ -19,7 +19,7 @@ from typing import Any, Mapping
 from gridworld.agents.q_learning import QLearningAgent
 from gridworld.agents.sarsa import SARSAAgent
 from gridworld.compare import evaluate_policy
-from gridworld.environment import STATE_SCHEMA
+from gridworld.environment import STATE_SCHEMA, level_layout_fingerprint
 from gridworld.train import (
     LOGS_DIR,
     MODELS_DIR,
@@ -112,31 +112,35 @@ def optimize_model(
     stem = f"level{level}_{kind}{suffix}"
     model_path = Path(MODELS_DIR) / f"{stem}.pkl"
     candidates: list[dict[str, Any]] = []
+    expected_layout = level_layout_fingerprint(level)
 
     if include_current and model_path.exists():
         existing, existing_metadata = _load_existing(kind, model_path, validation_seed)
-        existing_profile = dict(existing_metadata.get("profile", {}))
-        existing_max_steps = int(
-            max_steps
-            or existing_profile.get("max_steps")
-            or resolve_training_profile(config, level, kind)["max_steps"]
-        )
-        evaluation = _evaluate_candidate(
-            level,
-            existing,
-            config,
-            seed=validation_seed,
-            episodes=validation_episodes,
-            max_steps=existing_max_steps,
-        )
-        candidates.append({
-            "source": "current_saved_model",
-            "seed": existing_metadata.get("seed"),
-            "agent": existing,
-            "metrics": None,
-            "profile": existing_profile,
-            "evaluation": evaluation,
-        })
+        if existing_metadata.get("layout_fingerprint") == expected_layout:
+            existing_profile = dict(existing_metadata.get("profile", {}))
+            existing_max_steps = int(
+                max_steps
+                or existing_profile.get("max_steps")
+                or resolve_training_profile(config, level, kind)["max_steps"]
+            )
+            evaluation = _evaluate_candidate(
+                level,
+                existing,
+                config,
+                seed=validation_seed,
+                episodes=validation_episodes,
+                max_steps=existing_max_steps,
+            )
+            candidates.append({
+                "source": "current_saved_model",
+                "seed": existing_metadata.get("seed"),
+                "agent": existing,
+                "metrics": None,
+                "profile": existing_profile,
+                "evaluation": evaluation,
+            })
+        elif not quiet:
+            print("Ignoring current saved model because its level layout is obsolete.")
 
     for seed in seeds:
         profile = resolve_training_profile(
@@ -233,6 +237,7 @@ def optimize_model(
     summary = summarize_metrics(metrics)
     metadata = {
         "level_id": level,
+        "layout_fingerprint": expected_layout,
         "algorithm": kind,
         "seed": champion["seed"],
         "intrinsic_enabled": intrinsic,

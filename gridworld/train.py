@@ -615,6 +615,7 @@ def main() -> None:
     summary = summarize_metrics(metrics)
     metadata = {
         "level_id": args.level,
+        "layout_fingerprint": env.layout_fingerprint,
         "algorithm": args.agent,
         "seed": seed,
         "intrinsic_enabled": args.intrinsic,

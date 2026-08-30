@@ -68,14 +68,14 @@ def test_training_records_truncation_and_reward_components():
 
 
 @pytest.mark.acceptance
-def test_level0_q_learning_reaches_verified_16_step_optimum():
+def test_level0_q_learning_reaches_verified_22_step_optimum():
     config, profile, agent, metrics = _trained(0, "qlearning", 1729)
     rollout = greedy_rollout(
         0, agent, config, seed=9001, max_steps=profile["max_steps"]
     )
     assert rollout["victory"] == 1
     assert rollout["environment_reward"] == 3.0
-    assert rollout["steps"] == 16
+    assert rollout["steps"] == 22
     assert np.mean([row["victory"] for row in metrics[-100:]]) >= 0.95
 
 
@@ -90,9 +90,9 @@ def test_level1_q_learning_and_sarsa_are_reliably_different():
         1, sarsa_agent, config, seed=777, max_steps=s_profile["max_steps"]
     )
     assert q_rollout["victory"] == sarsa_rollout["victory"] == 1
-    assert q_rollout["steps"] == 5
-    assert q_rollout["hazard_adjacent_steps"] == 4
-    assert sarsa_rollout["steps"] == 7
+    assert q_rollout["steps"] == 7
+    assert q_rollout["hazard_adjacent_steps"] == 6
+    assert sarsa_rollout["steps"] == 9
     assert sarsa_rollout["hazard_adjacent_steps"] == 0
 
 

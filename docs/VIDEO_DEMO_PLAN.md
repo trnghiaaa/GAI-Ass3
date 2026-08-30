@@ -20,9 +20,9 @@ Target length: **3–4 minutes** of the group's maximum 10-minute video, leaving
 ### 0:35–1:25 — Learned Level 1 behavior
 
 - Open AI Showcase, Level 1, Q-learning.
-- Toggle the policy lens and single-step the 5-step route beside fire.
-- Replay SARSA and show the 7-step upper lane.
-- Briefly display the evidence figure: 10 paired seeds, 4 versus 0 hazard-adjacent steps.
+- Toggle the policy lens and single-step the 7-step route beside fire.
+- Replay SARSA and show the 9-step upper lane.
+- Briefly display the evidence figure: 10 paired seeds, 6.0 versus 0.1 mean hazard-adjacent steps.
 - State clearly that epsilon is zero for the shown learned-policy replay; exact ties are still randomly broken as required.
 
 ### 1:25–2:15 — Stochastic monsters

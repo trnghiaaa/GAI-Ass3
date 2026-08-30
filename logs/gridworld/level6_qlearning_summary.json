@@ -1,6 +1,7 @@
 {
   "algorithm": "qlearning",
   "intrinsic_enabled": false,
+  "layout_fingerprint": "4b9f586c7350973c10c9717838242c748bcd21cc1ebb0f60602b58bca80952ba",
   "level_id": 6,
   "profile": {
     "alpha": 0.1,

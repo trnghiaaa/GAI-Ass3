@@ -25,6 +25,27 @@ def test_all_canonical_levels_validate_and_expose_metadata():
         assert len(state) == len(STATE_SCHEMA)
 
 
+def test_level_progression_keeps_each_rubric_role_and_unique_layout():
+    grids = {level: tuple(definition["grid"]) for level, definition in LEVELS.items()}
+    assert len(set(grids.values())) == 7
+    assert all(len(grid) == 10 and all(len(row) == 10 for row in grid)
+               for grid in grids.values())
+
+    assert set("".join(grids[0])) <= set(".SRA")
+    assert "".join(grids[0]).count("A") == 3
+    assert all(column >= 8 for row in range(10) for column, tile in enumerate(grids[0][row])
+               if tile == "A")
+    assert "".join(grids[1]).count("A") == 1
+    assert "F" in "".join(grids[1])
+    for level in (2, 3):
+        joined = "".join(grids[level])
+        assert joined.count("A") >= 2
+        assert joined.count("K") == joined.count("C") == 1
+    assert "".join(grids[4]).count("M") == 1
+    assert "".join(grids[5]).count("M") == 2
+    assert "".join(grids[6]).count("A") == 3
+
+
 @pytest.mark.parametrize(
     "definition, error",
     [
@@ -143,11 +164,13 @@ def test_monster_move_chance_zero_and_one_are_exact(level_factory):
     stationary = GridWorldEnv(level_id, monster_move_chance=0.0, seed=4)
     stationary.reset()
     _, _, _, info = stationary.step(LEFT)
+    assert info["blocked"] and info["blocked_reason"] == "boundary"
     assert info["monster_moves"] == []
 
     moving = GridWorldEnv(level_id, monster_move_chance=1.0, seed=4)
     moving.reset()
     _, _, _, info = moving.step(LEFT)
+    assert info["blocked"] and info["blocked_reason"] == "boundary"
     assert len(info["monster_moves"]) == 1
 
 
@@ -184,6 +207,6 @@ def test_invalid_actions_fail_clearly(action):
 def test_level1_has_deliberate_safe_and_risky_lanes():
     env = GridWorldEnv(1)
     env.reset()
-    assert env.start_pos == (8, 2)
-    assert env.initial_collectibles[0][:2] == (8, 7)
-    assert all(env.static_grid[9][column] == "F" for column in range(3, 7))
+    assert env.start_pos == (7, 1)
+    assert env.initial_collectibles[0][:2] == (7, 8)
+    assert all(env.static_grid[8][column] == "F" for column in range(2, 8))

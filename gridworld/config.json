@@ -29,19 +29,19 @@
             "max_steps": 50
         },
         "2": {
-            "episodes": 1000,
+            "episodes": 2500,
             "max_steps": 200
         },
         "3": {
-            "episodes": 1500,
+            "episodes": 2500,
             "max_steps": 250
         },
         "4": {
-            "episodes": 1500,
+            "episodes": 4000,
             "max_steps": 350
         },
         "5": {
-            "episodes": 6000,
+            "episodes": 9000,
             "max_steps": 400
         },
         "6": {
@@ -57,6 +57,12 @@
             },
             "sarsa": {
                 "epsilon_end": 0.05
+            }
+        },
+        "5": {
+            "sarsa": {
+                "episodes": 15000,
+                "epsilon_end": 0.02
             }
         }
     },

@@ -174,7 +174,7 @@ LEVEL_CARD_LABELS = {
 
 
 LEVEL_HELP = {
-    0: "Rocks block movement. A blocked action leaves the agent on its current tile.",
+    0: "Rocks and borders block movement. The agent stays put, but the attempted action still counts.",
     1: "Fire ends the episode immediately. The lower route is shorter but riskier during exploration.",
     2: "The key gives 0 reward but is required before the chest can be opened for +2.",
     3: "Plan around rock corridors: collect the key, then reach the chest and every apple.",
@@ -587,6 +587,46 @@ class GridworldApp:
             MODELS_DIR, f"level{level}_{agent_kind}{suffix}.pkl"
         )
 
+    @staticmethod
+    def _policy_label(agent_kind: str, intrinsic: bool) -> str:
+        """Return a concise, player-facing name for a saved policy."""
+        base = "Q-Learning" if agent_kind == "qlearning" else "SARSA"
+        if intrinsic:
+            return "Q + Intrinsic" if agent_kind == "qlearning" else f"{base} + Intrinsic"
+        return base
+
+    def _resolve_next_ai_policy(self, level: int) -> Tuple[str, bool]:
+        """Choose a rubric-relevant saved policy for an AI level transition.
+
+        Free showcase sessions keep the currently selected algorithm when that
+        policy is supported on the next level. If the combination is not part
+        of that level's evidence set (for example SARSA from Level 5 entering
+        the required Q/intrinsic comparison on Level 6), the campaign policy is
+        used instead. This prevents a normal Next-level click from leading to a
+        missing-model screen.
+        """
+        allowed = RUBRIC_POLICIES.get(level, ())
+        recommended = CAMPAIGN_AI_MODELS.get(
+            level, allowed[0] if allowed else ("qlearning", False)
+        )
+        preferred = (
+            recommended
+            if self.campaign_mode
+            else (self.current_agent_kind or recommended[0], self.current_intrinsic)
+        )
+
+        candidates = (preferred, recommended, *allowed)
+        for candidate in candidates:
+            if candidate not in allowed:
+                continue
+            kind, intrinsic = candidate
+            if os.path.exists(self._model_path(level, kind, intrinsic)):
+                return kind, intrinsic
+
+        # If all expected artifacts are genuinely absent, keep the recommended
+        # identity so the recovery screen can give an accurate training command.
+        return recommended
+
     def _load_agent(self, agent_kind: str, path: str) -> Any:
         if agent_kind == "qlearning":
             from gridworld.agents.q_learning import QLearningAgent
@@ -646,6 +686,14 @@ class GridworldApp:
                 else None
             )
             if agent is not None:
+                model_layout = getattr(agent, "model_metadata", {}).get(
+                    "layout_fingerprint"
+                )
+                if model_layout != env.layout_fingerprint:
+                    raise ValueError(
+                        "This policy was trained on an older map layout. "
+                        "Rebuild the model before AI playback."
+                    )
                 q_table = getattr(agent, "q_table", {})
                 if state not in q_table:
                     raise ValueError(
@@ -733,12 +781,15 @@ class GridworldApp:
             # A fast replay setting should never silently carry into an unseen
             # level.  The player can deliberately speed it up again afterwards.
             self.speed_index = self.speed_options.index(DEFAULT_AI_SPEED)
-
-        if self.campaign_mode and self.control_mode == "ai":
-            kind, intrinsic = CAMPAIGN_AI_MODELS.get(
-                next_level, ("qlearning", False)
-            )
-            self._start_level(next_level, "ai", kind, intrinsic, "campaign")
+            previous_policy = (self.current_agent_kind, self.current_intrinsic)
+            kind, intrinsic = self._resolve_next_ai_policy(next_level)
+            origin = "campaign" if self.campaign_mode else self.session_origin
+            self._start_level(next_level, "ai", kind, intrinsic, origin)
+            if self.scene == "play" and previous_policy != (kind, intrinsic):
+                self._set_notice(
+                    f"Level {next_level}: switched to {self._policy_label(kind, intrinsic)}",
+                    3.0,
+                )
         else:
             self._start_level(
                 next_level,
@@ -799,6 +850,10 @@ class GridworldApp:
             self.event_time = 2.0
             particle_color = COLORS["yellow"] if picked in ("key", "chest") else COLORS["green"]
             self._spawn_particles(tuple(self.env.agent_pos), particle_color, 18)
+        elif self.info.get("blocked"):
+            reason = str(self.info.get("blocked_reason") or "obstacle").capitalize()
+            self.event_text = f"{reason} blocked the move - action still counted"
+            self.event_time = 1.8
 
         self._refresh_policy_cache()
 
@@ -813,7 +868,7 @@ class GridworldApp:
         elif self.steps >= self.max_steps:
             self._finish_run(
                 "timeout",
-                f"Evaluation stopped safely at the {self.max_steps}-step limit.",
+                f"Evaluation stopped safely at the {self.max_steps}-action limit.",
             )
 
     def _finish_run(self, result_kind: str, detail: str) -> None:
@@ -2082,7 +2137,7 @@ class GridworldApp:
 
         stats_y = max(239, objective_bottom + 12)
         self._stat_card(pygame.Rect(804, stats_y, 124, 65), "ENV REWARD", f"{self.total_reward:.1f}", COLORS["green"])
-        self._stat_card(pygame.Rect(938, stats_y, 124, 65), "STEPS", f"{self.steps}/{self.max_steps}", COLORS["blue"])
+        self._stat_card(pygame.Rect(938, stats_y, 124, 65), "ACTIONS", f"{self.steps}/{self.max_steps}", COLORS["blue"])
         remaining = len(getattr(self.env, "collectibles", []))
         self._stat_card(pygame.Rect(1072, stats_y, 148, 65), "ITEMS LEFT", str(remaining), COLORS["yellow"])
 
@@ -2135,10 +2190,11 @@ class GridworldApp:
             self._text(label, (954, row_y), "small", COLORS["muted"])
 
         self._text(
-            "Tip: collect every reward to finish the episode.",
+            "Tip: a blocked move stays in place but still uses one action.",
             (804, y + 112),
             "tiny",
             COLORS["faint"],
+            max_width=410,
         )
 
     def _draw_ai_controls(self, y: int) -> None:
@@ -2286,7 +2342,7 @@ class GridworldApp:
                 title = "CAMPAIGN COMPLETE"
         elif self.result_kind == "timeout":
             accent = COLORS["yellow"]
-            title = "STEP LIMIT REACHED"
+            title = "ACTION LIMIT REACHED"
         elif self.result_kind == "error":
             accent = COLORS["orange"]
             title = "RUN STOPPED SAFELY"
@@ -2309,7 +2365,7 @@ class GridworldApp:
             max_lines=3,
         )
 
-        summary = f"Reward  {self.total_reward:.1f}     Steps  {self.steps}     Items left  {len(getattr(self.env, 'collectibles', []))}"
+        summary = f"Reward  {self.total_reward:.1f}     Actions  {self.steps}     Items left  {len(getattr(self.env, 'collectibles', []))}"
         summary_rect = pygame.Rect(card.x + 70, card.y + 263, card.width - 140, 48)
         pygame.draw.rect(self.canvas, COLORS["night_2"], summary_rect, border_radius=12)
         self._text(summary, summary_rect.center, "mono", accent, "center")
@@ -2379,7 +2435,22 @@ class GridworldApp:
         if self.campaign_mode and has_next and self.result_kind != "victory":
             self._text("Win this stage to unlock Next level.", (card.centerx, card.bottom - 27), "tiny", COLORS["yellow"], "center")
         elif self.control_mode == "ai" and has_next:
-            self._text("The next AI level starts safely at 1x.", (card.centerx, card.bottom - 27), "tiny", COLORS["cyan"], "center")
+            next_level = self.current_level + 1
+            kind, intrinsic = self._resolve_next_ai_policy(next_level)
+            policy = self._policy_label(kind, intrinsic)
+            transition = (
+                "switches to"
+                if (self.current_agent_kind, self.current_intrinsic) != (kind, intrinsic)
+                else "continues with"
+            )
+            self._text(
+                f"Level {next_level} {transition} {policy}  •  playback resets to 1x.",
+                (card.centerx, card.bottom - 27),
+                "tiny",
+                COLORS["cyan"],
+                "center",
+                max_width=card.width - 90,
+            )
         elif self.control_mode == "ai":
             self._text("Choose a replay speed above, then select Replay.", (card.centerx, card.bottom - 27), "tiny", COLORS["faint"], "center")
 

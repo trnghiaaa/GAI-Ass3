@@ -5,27 +5,27 @@
     "qlearning": {
       "episodes_per_seed": 200,
       "epsilon": 0.05,
-      "mean_fire_deaths": 9.4,
-      "mean_victory_rate": 0.953
+      "mean_fire_deaths": 15.2,
+      "mean_victory_rate": 0.924
     },
     "sarsa": {
       "episodes_per_seed": 200,
       "epsilon": 0.05,
-      "mean_fire_deaths": 0.4,
-      "mean_victory_rate": 0.998
+      "mean_fire_deaths": 0.9,
+      "mean_victory_rate": 0.9955
     }
   },
   "greedy_rollouts": {
     "qlearning": {
-      "mean_hazard_adjacent_steps": 4.0,
+      "mean_hazard_adjacent_steps": 6.0,
       "mean_minimum_fire_distance": 1.0,
-      "mean_steps": 5.0,
+      "mean_steps": 7.0,
       "victory_rate": 1.0
     },
     "sarsa": {
-      "mean_hazard_adjacent_steps": 0.0,
+      "mean_hazard_adjacent_steps": 0.1,
       "mean_minimum_fire_distance": 2.0,
-      "mean_steps": 7.0,
+      "mean_steps": 9.4,
       "victory_rate": 1.0
     }
   },

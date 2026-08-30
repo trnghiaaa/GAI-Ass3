@@ -1,20 +1,71 @@
 {
   "algorithm": "sarsa",
+  "champion_selection": {
+    "algorithm": "sarsa",
+    "candidates": [
+      {
+        "episodes": 1000,
+        "epsilon": 0.0,
+        "fire_deaths": 0,
+        "mean_environment_reward": 2.906,
+        "mean_steps_on_victory": 35.71578947368421,
+        "monster_deaths": 50,
+        "score": [
+          0.95,
+          -0.0,
+          -50.0,
+          -35.71578947368421
+        ],
+        "seed": 5772,
+        "source": "current_saved_model",
+        "timeouts": 0,
+        "victories": 950,
+        "victory_rate": 0.95
+      },
+      {
+        "episodes": 1000,
+        "epsilon": 0.0,
+        "fire_deaths": 0,
+        "mean_environment_reward": 2.943,
+        "mean_steps_on_victory": 39.89886480908153,
+        "monster_deaths": 31,
+        "score": [
+          0.969,
+          -0.0,
+          -31.0,
+          -39.89886480908153
+        ],
+        "seed": 5772,
+        "source": "trained_candidate",
+        "timeouts": 0,
+        "victories": 969,
+        "victory_rate": 0.969
+      }
+    ],
+    "intrinsic_enabled": false,
+    "level_id": 5,
+    "selected_seed": 5772,
+    "selected_source": "trained_candidate",
+    "selection_rule": "highest victory rate; then fewer timeouts, fewer monster deaths, and shorter successful paths",
+    "validation_episodes": 1000,
+    "validation_seed": 73000
+  },
   "intrinsic_enabled": false,
+  "layout_fingerprint": "3613a31fba54c2a841e1a0a049ff866999e727fb93f9b21decfa19250abb5445",
   "level_id": 5,
   "profile": {
     "alpha": 0.1,
     "bootstrap_on_truncation": true,
-    "episodes": 6000,
-    "epsilon_end": 0.01,
+    "episodes": 15000,
+    "epsilon_end": 0.02,
     "epsilon_start": 1.0,
     "gamma": 0.99,
     "intrinsic_strength": 0.0001,
     "max_steps": 400,
     "rolling_window": 50,
-    "seed": 1729
+    "seed": 5772
   },
-  "seed": 1729,
+  "seed": 5772,
   "state_schema": [
     "agent_row",
     "agent_column",
@@ -23,22 +74,22 @@
     "monster_observation"
   ],
   "summary": {
-    "episodes": 6000,
-    "first_success_episode": 38,
+    "episodes": 15000,
+    "first_success_episode": 75,
     "overall": {
-      "death_rate": 0.459,
-      "mean_extrinsic_reward": 1.917,
+      "death_rate": 0.5046,
+      "mean_extrinsic_reward": 1.9286,
       "mean_intrinsic_reward": 0.0,
-      "truncation_rate": 0.0021666666666666666,
-      "victory_rate": 0.5388333333333334
+      "truncation_rate": 0.0041333333333333335,
+      "victory_rate": 0.4912666666666667
     },
     "tail": {
-      "death_rate": 0.06,
-      "mean_extrinsic_reward": 2.89,
+      "death_rate": 0.05,
+      "mean_extrinsic_reward": 2.9,
       "mean_intrinsic_reward": 0.0,
-      "mean_steps_on_victory": 28.872340425531913,
+      "mean_steps_on_victory": 42.473684210526315,
       "truncation_rate": 0.0,
-      "victory_rate": 0.94
+      "victory_rate": 0.95
     },
     "tail_window": 100
   }

@@ -167,6 +167,8 @@ def main() -> None:
     probe_env = make_environment(args.level, config, seed)
     if expected_schema and list(expected_schema) != list(probe_env.state_schema):
         raise SystemExit("Saved model state schema differs from the current environment; retrain it.")
+    if metadata.get("layout_fingerprint") != probe_env.layout_fingerprint:
+        raise SystemExit("Saved model was trained on an older level layout; retrain it.")
 
     renderer = None
     if not args.headless:
