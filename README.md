@@ -13,13 +13,33 @@ python -m pip install -r requirements.txt
 python main.py
 ```
 
+`main.py` automatically hands execution to the repository `.venv` when the
+currently selected Python does not have Pygame. This hand-off does not pass the
+virtual-environment path through PowerShell, so it remains safe when a parent
+folder contains `&`, as in `A3_Game&AI`.
+
 On Windows, the easiest option is to double-click **`run_part1.bat`**. It automatically uses the project `.venv` when present, so nobody needs to type the interpreter path. The package-style command `python -m gridworld` remains an equivalent alternative.
 
 ### VS Code run button
 
-The repository includes `.vscode/launch.json`. Open `main.py` and use the play-button dropdown to select **Part I: Run Gridworld**, or press `F5` and select **Part I: Debug Gridworld**. The workspace launches the safe command `python` while placing `.venv/Scripts` first on the terminal `PATH`; this avoids inserting the absolute `A3_Game&AI` interpreter path into PowerShell syntax.
+The generic **Run Python File** triangle is owned by the Python extension and may
+still paste an unquoted cached interpreter path into PowerShell. This repository
+therefore includes two shell-safe launch routes that never parse the `.venv`
+path as PowerShell source:
+
+- press `F5` and select **Part I: Run Gridworld (safe)**; or
+- press `Ctrl+Shift+B` to run the default **Part I: Run Gridworld (shell-safe)** task.
+
+Both launch `main.py` without constructing the unsafe `& D:\A3_Game&AI...`
+command. The second route uses a VS Code `process` task rather than a shell task.
 
 After cloning or pulling these settings, run **Developer: Reload Window** once (or close all existing VS Code terminals) before using the configured run option. Existing terminals keep their previous environment. The folder name `A3_Game&AI` contains PowerShell's `&` operator, so the old unquoted absolute command cannot execute safely; `run_part1.bat` remains an unaffected alternative.
+
+If the top-right triangle still prints a command beginning with an absolute
+`.venv\\Scripts\\python.exe` path, VS Code is retaining its old workspace choice.
+Open the Command Palette, run **Python: Clear Workspace Interpreter Setting**,
+then run **Developer: Reload Window**. The repository intentionally launches the
+plain `python` command and lets `main.py` perform the shell-safe `.venv` hand-off.
 
 The single launcher provides:
 
@@ -40,7 +60,12 @@ Manual controls:
 | Space | Pause/resume AI |
 | `.` or Right Arrow while paused | Single AI step |
 | `+` / `-` | Change AI playback speed |
+| `1` or `0` on an AI result screen | Reset replay speed to 1x |
 | M or Esc | Menu |
+
+AI campaign transitions always begin the next level at 1x. The result screen also
+provides `-`, `+`, and **Reset to 1x** controls before replaying, so a fast playback
+setting never traps the player behind the completion popup.
 
 Direct links remain available for assessors and quick recording:
 
@@ -81,7 +106,10 @@ There is no hidden step penalty, death penalty, bonus environment reward, or alt
 
 Level definitions and display metadata live in `gridworld/levels/levels.py`.
 
-The final seeded benchmark records 95.0% / 96.3% success for Level 4 Q-learning / SARSA and 97.7% / 99.0% for Level 5. All deterministic policies and both Level 6 variants achieve 100% benchmark success. Full results are in `logs/gridworld/policy_benchmark.json`.
+The final independent seeded benchmark records **96.9% / 98.0%** success for
+Level 4 Q-learning / SARSA and **98.3% / 97.9%** for Level 5 over 1,000 episodes
+per monster policy. All deterministic policies and both Level 6 variants achieve
+100% over 300 episodes. Full results are in `logs/gridworld/policy_benchmark.json`.
 
 ## RL implementation
 
@@ -144,7 +172,10 @@ One command trains every rubric-required policy and produces both comparisons:
 python -m gridworld.build_evidence
 ```
 
-This builds 13 main model runs plus the multi-seed Level 1 and Level 6 experiments, benchmarks every saved policy, then verifies 62 required artifacts. A quick plumbing-only run is available, but should not be submitted:
+This builds 13 rubric policy bundles, uses held-out multi-seed champion selection
+for the four stochastic monster policies, produces the Level 1 and Level 6
+comparisons, benchmarks every saved policy, then verifies all required artifacts.
+A quick plumbing-only run is available, but should not be submitted:
 
 ```bash
 python -m gridworld.build_evidence --quick
@@ -156,9 +187,15 @@ python -m gridworld.build_evidence --quick
 python -m gridworld.train --level 0 --agent qlearning
 python -m gridworld.train --level 3 --agent sarsa
 python -m gridworld.train --level 6 --agent qlearning --intrinsic
+python -m gridworld.optimize --level 4 --agent qlearning
 ```
 
 Useful overrides include `--episodes`, `--alpha`, `--gamma`, `--epsilon-start`, `--epsilon-end`, `--max-steps`, `--seed`, and `--intrinsic-strength`. Defaults and per-level profiles are in `gridworld/config.json`.
+
+`gridworld.optimize` trains several configured candidate seeds, evaluates every
+candidate on the same held-out stochastic episodes, and saves only the most
+reliable model. Completion rate is ranked before timeouts, deaths, and path
+length; environment rewards and the Q-learning/SARSA rules are unchanged.
 
 ### Visual or headless evaluation
 
@@ -232,6 +269,6 @@ The suite covers:
 
 ## Originality and presentation features
 
-All visual art is drawn procedurally with Pygame primitives; there are no copied sprites or third-party game assets. Creative work beyond the base specification includes the connected campaign, AI tour, responsive interface, animated interpolation, particles, trail rendering, policy lens, live Q-value inspector, deterministic playback controls, evidence dashboards, exploration heatmap, multi-seed confidence bands, config provenance, and automated rubric acceptance tests.
+All visual art is drawn procedurally with Pygame primitives; there are no copied sprites or third-party game assets. Creative work beyond the base specification includes the connected campaign, AI tour, responsive interface, animated interpolation, particles, trail rendering, policy lens, live Q-value inspector, deterministic playback controls, in-window benchmark evidence, held-out champion selection, evidence dashboards, exploration heatmap, multi-seed confidence bands, config provenance, and automated rubric acceptance tests.
 
 See `docs/PART1_RUBRIC_EVIDENCE.md` for the code/artifact mapping and `docs/VIDEO_DEMO_PLAN.md` for a concise recording plan.

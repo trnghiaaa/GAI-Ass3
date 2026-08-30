@@ -1,0 +1,88 @@
+{
+  "algorithm": "qlearning",
+  "candidates": [
+    {
+      "episodes": 1000,
+      "epsilon": 0.0,
+      "fire_deaths": 0,
+      "mean_environment_reward": 2.949,
+      "mean_steps_on_victory": 32.49128205128205,
+      "monster_deaths": 24,
+      "score": [
+        0.975,
+        -1.0,
+        -24.0,
+        -32.49128205128205
+      ],
+      "seed": 1729,
+      "source": "current_saved_model",
+      "timeouts": 1,
+      "victories": 975,
+      "victory_rate": 0.975
+    },
+    {
+      "episodes": 1000,
+      "epsilon": 0.0,
+      "fire_deaths": 0,
+      "mean_environment_reward": 2.949,
+      "mean_steps_on_victory": 32.49128205128205,
+      "monster_deaths": 24,
+      "score": [
+        0.975,
+        -1.0,
+        -24.0,
+        -32.49128205128205
+      ],
+      "seed": 1729,
+      "source": "trained_candidate",
+      "timeouts": 1,
+      "victories": 975,
+      "victory_rate": 0.975
+    },
+    {
+      "episodes": 1000,
+      "epsilon": 0.0,
+      "fire_deaths": 0,
+      "mean_environment_reward": 2.935,
+      "mean_steps_on_victory": 32.216271884654994,
+      "monster_deaths": 27,
+      "score": [
+        0.971,
+        -2.0,
+        -27.0,
+        -32.216271884654994
+      ],
+      "seed": 2718,
+      "source": "trained_candidate",
+      "timeouts": 2,
+      "victories": 971,
+      "victory_rate": 0.971
+    },
+    {
+      "episodes": 1000,
+      "epsilon": 0.0,
+      "fire_deaths": 0,
+      "mean_environment_reward": 2.921,
+      "mean_steps_on_victory": 31.78341968911917,
+      "monster_deaths": 33,
+      "score": [
+        0.965,
+        -2.0,
+        -33.0,
+        -31.78341968911917
+      ],
+      "seed": 3141,
+      "source": "trained_candidate",
+      "timeouts": 2,
+      "victories": 965,
+      "victory_rate": 0.965
+    }
+  ],
+  "intrinsic_enabled": false,
+  "level_id": 5,
+  "selected_seed": 1729,
+  "selected_source": "current_saved_model",
+  "selection_rule": "highest victory rate; then fewer timeouts, fewer monster deaths, and shorter successful paths",
+  "validation_episodes": 1000,
+  "validation_seed": 73000
+}

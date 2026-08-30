@@ -74,6 +74,11 @@
         "fps": 8,
         "hold_window": false
     },
+    "model_selection": {
+        "monster_candidate_seeds": [1729, 2718, 3141],
+        "validation_episodes": 1000,
+        "validation_seed": 73000
+    },
     "evidence": {
         "rolling_window": 50,
         "level1": {

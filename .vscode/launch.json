@@ -2,16 +2,13 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Part I: Run Gridworld",
+            "name": "Part I: Run Gridworld (safe)",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
             "cwd": "${workspaceFolder}",
-            "console": "integratedTerminal",
+            "console": "internalConsole",
             "python": "python",
-            "purpose": [
-                "debug-in-terminal"
-            ],
             "justMyCode": true,
             "redirectOutput": true,
             "env": {

@@ -37,6 +37,9 @@ from gridworld.levels import LEVELS
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
 MODELS_DIR = os.path.join(PROJECT_ROOT, "models", "gridworld")
+BENCHMARK_PATH = os.path.join(
+    PROJECT_ROOT, "logs", "gridworld", "policy_benchmark.json"
+)
 
 VIRTUAL_WIDTH = 1280
 VIRTUAL_HEIGHT = 800
@@ -45,15 +48,15 @@ DEFAULT_AI_SPEED = 1.0
 
 
 COLORS = {
-    "ink": (229, 238, 250),
-    "muted": (151, 168, 191),
-    # Secondary copy still needs to remain readable after window scaling.
-    "faint": (116, 134, 160),
+    "ink": (238, 245, 255),
+    # Keep secondary copy comfortably readable on ordinary laptop displays.
+    "muted": (184, 199, 218),
+    "faint": (148, 166, 191),
     "night": (8, 14, 29),
     "night_2": (14, 24, 45),
     "panel": (20, 32, 56),
     "panel_2": (27, 43, 72),
-    "line": (58, 78, 108),
+    "line": (72, 96, 130),
     "blue": (77, 157, 255),
     "cyan": (77, 222, 224),
     "green": (91, 214, 151),
@@ -142,6 +145,21 @@ CAMPAIGN_AI_MODELS: Dict[int, Tuple[str, bool]] = {
 }
 
 
+# Only policies that directly support the assessment task are presented as
+# normal showcase choices. Earlier versions displayed optional combinations
+# without model files and labelled them "Not trained", which looked like a
+# broken feature even though all required artifacts were present.
+RUBRIC_POLICIES: Dict[int, Tuple[Tuple[str, bool], ...]] = {
+    0: (("qlearning", False),),
+    1: (("qlearning", False), ("sarsa", False)),
+    2: (("qlearning", False), ("sarsa", False)),
+    3: (("qlearning", False), ("sarsa", False)),
+    4: (("qlearning", False), ("sarsa", False)),
+    5: (("qlearning", False), ("sarsa", False)),
+    6: (("qlearning", False), ("qlearning", True)),
+}
+
+
 # Compact labels keep the level cards scannable.  The full task names remain in
 # the play sidebar and documentation, where there is enough room for them.
 LEVEL_CARD_LABELS = {
@@ -223,15 +241,16 @@ class GridworldApp:
             "h1": pygame.font.SysFont("segoeui", 36, bold=True),
             "h2": pygame.font.SysFont("segoeui", 25, bold=True),
             "h3": pygame.font.SysFont("segoeui", 19, bold=True),
-            "card_title": pygame.font.SysFont("segoeui", 17, bold=True),
-            "body": pygame.font.SysFont("segoeui", 17),
-            "small": pygame.font.SysFont("segoeui", 14),
-            "tiny": pygame.font.SysFont("segoeui", 12),
+            "card_title": pygame.font.SysFont("segoeui", 18, bold=True),
+            "body": pygame.font.SysFont("segoeui", 18),
+            "small": pygame.font.SysFont("segoeui", 15),
+            "tiny": pygame.font.SysFont("segoeui", 13),
             "mono": pygame.font.SysFont("consolas", 15),
             "mono_small": pygame.font.SysFont("consolas", 12),
         }
 
         config = self._load_config()
+        self.benchmark_rows = self._load_benchmark_rows()
         self.monster_move_chance = float(
             config.get("monster", {}).get("move_chance", 0.4)
         )
@@ -300,6 +319,28 @@ class GridworldApp:
                 return json.load(handle)
         except (OSError, ValueError):
             return {}
+
+    @staticmethod
+    def _load_benchmark_rows() -> Dict[Tuple[int, str, bool], Dict[str, Any]]:
+        """Load saved-policy evidence for concise in-window quality cards."""
+
+        try:
+            with open(BENCHMARK_PATH, "r", encoding="utf-8") as handle:
+                rows = json.load(handle).get("rows", [])
+        except (OSError, ValueError, AttributeError):
+            return {}
+        indexed: Dict[Tuple[int, str, bool], Dict[str, Any]] = {}
+        for row in rows:
+            try:
+                key = (
+                    int(row["level"]),
+                    str(row["algorithm"]),
+                    bool(row.get("intrinsic", False)),
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+            indexed[key] = dict(row)
+        return indexed
 
     def run(self) -> None:
         """Run the app until the player closes the window."""
@@ -398,6 +439,24 @@ class GridworldApp:
                 self._next_level()
             elif event.key == pygame.K_m:
                 self._go_menu()
+            elif self.control_mode == "ai" and event.key in (
+                pygame.K_EQUALS,
+                pygame.K_PLUS,
+                pygame.K_RIGHTBRACKET,
+            ):
+                self._change_speed(1)
+            elif self.control_mode == "ai" and event.key in (
+                pygame.K_MINUS,
+                pygame.K_LEFTBRACKET,
+            ):
+                self._change_speed(-1)
+            elif self.control_mode == "ai" and event.key in (
+                pygame.K_0,
+                pygame.K_1,
+                pygame.K_KP0,
+                pygame.K_KP1,
+            ):
+                self._reset_speed()
             return
 
         if event.key == pygame.K_r:
@@ -485,6 +544,8 @@ class GridworldApp:
                 self._perform_ai_step()
         elif name == "speed":
             self._change_speed(int(action[1]))
+        elif name == "speed_reset":
+            self._reset_speed()
         elif name == "policy":
             self.show_policy = not self.show_policy
         elif name == "back_to_levels":
@@ -668,6 +729,11 @@ class GridworldApp:
             self._set_notice("Clear this level to unlock the next campaign stage")
             return
 
+        if self.control_mode == "ai":
+            # A fast replay setting should never silently carry into an unseen
+            # level.  The player can deliberately speed it up again afterwards.
+            self.speed_index = self.speed_options.index(DEFAULT_AI_SPEED)
+
         if self.campaign_mode and self.control_mode == "ai":
             kind, intrinsic = CAMPAIGN_AI_MODELS.get(
                 next_level, ("qlearning", False)
@@ -767,6 +833,11 @@ class GridworldApp:
         )
         self.ai_accumulator = 0.0
         self._set_notice(f"Playback speed: {self.speed_options[self.speed_index]:g}x")
+
+    def _reset_speed(self) -> None:
+        self.speed_index = self.speed_options.index(DEFAULT_AI_SPEED)
+        self.ai_accumulator = 0.0
+        self._set_notice("Playback speed reset to 1x")
 
     def _set_notice(self, text: str, seconds: float = 2.0) -> None:
         self.notice = text
@@ -1286,13 +1357,13 @@ class GridworldApp:
         subtitle = (
             "Manual play - every level is available."
             if self.level_select_context == "free"
-            else "Next, choose Q-Learning, SARSA, or an intrinsic-reward model."
+            else "Open a level to watch its assessment-ready learned policy."
         )
         self._section_heading("Level Select", title, subtitle)
 
         levels = sorted(LEVELS)
         card_width = 274
-        card_height = 244
+        card_height = 248
         gap = 18
         top_y = 176
         for index, level in enumerate(levels):
@@ -1345,28 +1416,31 @@ class GridworldApp:
                 max_width=rect.width - 89,
             )
             self._wrapped_text(
-                meta.get("objective", LEVELS[level].get("description", "")),
-                pygame.Rect(rect.x + 17, rect.y + 75, rect.width - 34, 70),
+                LEVELS[level].get("description", meta.get("objective", "")),
+                pygame.Rect(rect.x + 17, rect.y + 76, rect.width - 34, 58),
                 "small",
                 COLORS["muted"],
-                line_gap=2,
-                max_lines=4,
+                line_gap=3,
+                max_lines=3,
             )
 
             mechanics = LEVELS[level].get("mechanics", ())
             self._draw_chips(
                 mechanics,
-                pygame.Rect(rect.x + 17, rect.y + 153, rect.width - 34, 47),
+                pygame.Rect(rect.x + 17, rect.y + 145, rect.width - 34, 52),
                 accent,
                 max_rows=2,
             )
 
-            footer = pygame.Rect(rect.x + 11, rect.bottom - 34, rect.width - 22, 25)
+            footer = pygame.Rect(rect.x + 11, rect.bottom - 38, rect.width - 22, 29)
             pygame.draw.rect(self.canvas, COLORS["night_2"], footer, border_radius=9)
             if self.level_select_context == "showcase":
                 ready = self._available_model_count(level)
-                noun = "policy" if ready == 1 else "policies"
-                status = f"{ready} trained {noun}  •  Choose AI"
+                status = (
+                    "1 READY  •  Watch learned policy"
+                    if ready == 1
+                    else f"{ready} READY  •  Compare policies"
+                )
             else:
                 status = "Play manually  •  Open level"
             self._text(
@@ -1386,8 +1460,7 @@ class GridworldApp:
     def _available_model_count(self, level: int) -> int:
         return sum(
             os.path.exists(self._model_path(level, kind, intrinsic))
-            for kind in ("qlearning", "sarsa")
-            for intrinsic in (False, True)
+            for kind, intrinsic in RUBRIC_POLICIES.get(level, ())
         )
 
     @staticmethod
@@ -1431,50 +1504,33 @@ class GridworldApp:
             meta.get("objective", LEVELS[self.selected_level].get("description", "")),
         )
 
-        choices = [
-            (
-                "qlearning",
-                False,
+        catalogue = {
+            ("qlearning", False): (
                 "Q-Learning",
-                "Off-policy: learns from the best next-state action.",
+                "Off-policy learning from the best next-state action.",
                 COLORS["blue"],
             ),
-            (
-                "sarsa",
-                False,
+            ("sarsa", False): (
                 "SARSA",
-                "On-policy: learns from the next action it actually chooses.",
+                "On-policy learning from the next action it actually chooses.",
                 COLORS["purple"],
             ),
+            ("qlearning", True): (
+                "Q + Intrinsic",
+                "Required count-based exploration bonus for the Level 6 A/B comparison.",
+                COLORS["cyan"],
+            ),
+        }
+        choices = [
+            (kind, intrinsic, *catalogue[(kind, intrinsic)])
+            for kind, intrinsic in RUBRIC_POLICIES[self.selected_level]
         ]
-        if self.selected_level == 6:
-            choices.extend(
-                [
-                    (
-                        "qlearning",
-                        True,
-                        "Q + Intrinsic",
-                        "Adds the required per-episode count-based exploration bonus.",
-                        COLORS["cyan"],
-                    ),
-                    (
-                        "sarsa",
-                        True,
-                        "SARSA + Intrinsic",
-                        "Optional on-policy curiosity variant for experimentation.",
-                        COLORS["green"],
-                    ),
-                ]
-            )
 
-        two_card_layout = len(choices) == 2
         for index, (kind, intrinsic, title, subtitle, accent) in enumerate(choices):
-            col = index % 2
-            row = index // 2
             rect = (
-                pygame.Rect(150 + col * 500, 255, 480, 210)
-                if two_card_layout
-                else pygame.Rect(150 + col * 500, 205 + row * 205, 480, 175)
+                pygame.Rect(330, 235, 620, 240)
+                if len(choices) == 1
+                else pygame.Rect(135 + index * 515, 235, 495, 240)
             )
             path = self._model_path(self.selected_level, kind, intrinsic)
             ready = os.path.exists(path)
@@ -1494,7 +1550,7 @@ class GridworldApp:
                 (rect.x + 85, rect.y + 27),
                 "h2",
                 COLORS["ink"],
-                max_width=rect.width - 115,
+                max_width=rect.width - (215 if recommended else 115),
             )
             self._wrapped_text(
                 subtitle,
@@ -1504,16 +1560,42 @@ class GridworldApp:
                 line_gap=2,
                 max_lines=2,
             )
+            benchmark = self.benchmark_rows.get(
+                (self.selected_level, kind, intrinsic)
+            )
+            if benchmark:
+                episodes = int(benchmark.get("episodes", 0))
+                victory_rate = float(benchmark.get("victory_rate", 0.0))
+                mean_steps = benchmark.get("mean_steps_on_victory")
+                steps_text = (
+                    f"{float(mean_steps):.1f} avg victory steps"
+                    if mean_steps is not None
+                    else "no successful paths"
+                )
+                self._text(
+                    "SEEDED BENCHMARK EVIDENCE",
+                    (rect.x + 24, rect.y + 126),
+                    "tiny",
+                    accent,
+                    max_width=rect.width - 48,
+                )
+                self._text(
+                    f"{episodes} episodes  •  {victory_rate:.1%} victories  •  {steps_text}",
+                    (rect.x + 24, rect.y + 151),
+                    "small",
+                    COLORS["ink"],
+                    max_width=rect.width - 48,
+                )
             if recommended:
                 tag = pygame.Rect(rect.right - 132, rect.y + 17, 108, 24)
                 pygame.draw.rect(self.canvas, COLORS["night_2"], tag, border_radius=12)
                 pygame.draw.rect(self.canvas, accent, tag, 1, border_radius=12)
                 self._text("CAMPAIGN PICK", tag.center, "tiny", accent, "center")
-            status_color = COLORS["green"] if ready else COLORS["yellow"]
+            status_color = COLORS["green"] if ready else COLORS["red"]
             status = (
-                "Ready  •  Click to watch the trained policy"
+                "READY TO WATCH  •  Greedy playback (epsilon = 0)"
                 if ready
-                else "Not trained  •  Click to see the training command"
+                else "MODEL FILE MISSING  •  Click for rebuild instructions"
             )
             footer = pygame.Rect(rect.x + 22, rect.bottom - 47, rect.width - 44, 29)
             pygame.draw.rect(self.canvas, COLORS["night_2"], footer, border_radius=10)
@@ -1530,24 +1612,30 @@ class GridworldApp:
                 UIButton(rect.copy(), ("start_ai", kind, intrinsic), True)
             )
 
-        scope_note = (
-            "Level 6 includes baseline and intrinsic variants for the required exploration comparison."
-            if self.selected_level == 6
-            else "Intrinsic reward is a Level 6 requirement, so curiosity variants are shown there."
+        scope_notes = {
+            0: "TASK 1 FOCUS  •  Q-Learning demonstrates the learned shortest complete route.",
+            1: "TASK 2 COMPARISON  •  Q-Learning takes the short fire-edge lane; SARSA learns the safer lane.",
+            2: "TASK 3 COVERAGE  •  Both agents plan around multiple apples, the key, and the locked chest.",
+            3: "TASK 3 COVERAGE  •  Both agents solve the key-and-chest labyrinth with correct termination.",
+            4: "TASK 4 STOCHASTICITY  •  Both policies react to a monster that moves with 40% probability.",
+            5: "TASK 4 STOCHASTICITY  •  Both policies adapt to two independently moving monsters.",
+            6: "TASK 5 A/B TEST  •  Compare the same Q-Learning agent with and without intrinsic reward.",
+        }
+        note_rect = pygame.Rect(170, 525, 940, 68)
+        self._panel(note_rect, COLORS["night_2"], COLORS["line"], radius=16)
+        self._text(
+            scope_notes[self.selected_level],
+            (VIRTUAL_WIDTH // 2, note_rect.centery),
+            "small",
+            COLORS["ink"],
+            "center",
+            max_width=note_rect.width - 40,
         )
         self._text(
-            scope_note,
-            (VIRTUAL_WIDTH // 2, 645),
+            "Saved-policy playback does not explore. Exact Q-value ties and stochastic monster movement can still vary.",
+            (VIRTUAL_WIDTH // 2, 635),
             "small",
             COLORS["muted"],
-            "center",
-            max_width=950,
-        )
-        self._text(
-            "Playback uses ε = 0 (no exploration). Exact ties and random monster movement can still vary.",
-            (VIRTUAL_WIDTH // 2, 685),
-            "small",
-            COLORS["faint"],
             "center",
             max_width=950,
         )
@@ -2221,14 +2309,49 @@ class GridworldApp:
             max_lines=3,
         )
 
-        summary = f"Reward  {self.total_reward:.1f}     Steps  {self.steps}     Remaining  {len(getattr(self.env, 'collectibles', []))}"
+        summary = f"Reward  {self.total_reward:.1f}     Steps  {self.steps}     Items left  {len(getattr(self.env, 'collectibles', []))}"
         summary_rect = pygame.Rect(card.x + 70, card.y + 263, card.width - 140, 48)
         pygame.draw.rect(self.canvas, COLORS["night_2"], summary_rect, border_radius=12)
         self._text(summary, summary_rect.center, "mono", accent, "center")
 
+        if self.control_mode == "ai":
+            speed_y = card.y + 321
+            self._text("REPLAY SPEED", (card.x + 72, speed_y + 10), "tiny", COLORS["faint"], "midleft")
+            self._button(
+                pygame.Rect(card.x + 205, speed_y, 42, 36),
+                "-",
+                ("speed", -1),
+                kind="secondary",
+                enabled=self.speed_index > 0,
+            )
+            speed_rect = pygame.Rect(card.x + 254, speed_y, 62, 36)
+            pygame.draw.rect(self.canvas, COLORS["night_2"], speed_rect, border_radius=10)
+            pygame.draw.rect(self.canvas, COLORS["line"], speed_rect, 1, border_radius=10)
+            self._text(
+                f"{self.speed_options[self.speed_index]:g}x",
+                speed_rect.center,
+                "small",
+                COLORS["cyan"],
+                "center",
+            )
+            self._button(
+                pygame.Rect(card.x + 323, speed_y, 42, 36),
+                "+",
+                ("speed", 1),
+                kind="secondary",
+                enabled=self.speed_index < len(self.speed_options) - 1,
+            )
+            self._button(
+                pygame.Rect(card.x + 376, speed_y, 172, 36),
+                "Reset to 1x",
+                ("speed_reset",),
+                kind="secondary",
+                enabled=self.speed_options[self.speed_index] != DEFAULT_AI_SPEED,
+            )
+
         self._button(
             pygame.Rect(card.x + 44, card.bottom - 102, 162, 58),
-            "Retry",
+            "Replay" if self.control_mode == "ai" else "Retry",
             ("retry",),
             kind="primary",
             badge="R",
@@ -2255,6 +2378,10 @@ class GridworldApp:
 
         if self.campaign_mode and has_next and self.result_kind != "victory":
             self._text("Win this stage to unlock Next level.", (card.centerx, card.bottom - 27), "tiny", COLORS["yellow"], "center")
+        elif self.control_mode == "ai" and has_next:
+            self._text("The next AI level starts safely at 1x.", (card.centerx, card.bottom - 27), "tiny", COLORS["cyan"], "center")
+        elif self.control_mode == "ai":
+            self._text("Choose a replay speed above, then select Replay.", (card.centerx, card.bottom - 27), "tiny", COLORS["faint"], "center")
 
     def _draw_toast(self, text: str) -> None:
         width = min(620, self.fonts["small"].size(text)[0] + 50)

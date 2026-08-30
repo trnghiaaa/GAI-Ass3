@@ -1,6 +1,7 @@
 {
     "python.defaultInterpreterPath": "python",
     "python.terminal.activateEnvironment": false,
+    "python-envs.terminal.autoActivationType": "off",
     "python.testing.pytestEnabled": true,
     "python.testing.pytestArgs": [
         "tests"

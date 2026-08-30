@@ -64,6 +64,66 @@ def test_level_cards_contain_text_and_ai_entry_resets_to_normal_speed(monkeypatc
         pygame.quit()
 
 
+def test_ai_result_popup_controls_replay_speed_and_next_level_resets(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import DEFAULT_AI_SPEED, GridworldApp
+
+    app = GridworldApp(max_steps=500)
+    try:
+        app._start_level(0, "ai", "qlearning", False, "campaign")
+        app.speed_index = len(app.speed_options) - 1
+        app.run_done = True
+        app.result_kind = "victory"
+        app.result_detail = "Every collectible reward was obtained."
+        app._draw()
+
+        actions = [button.action for button in app.buttons]
+        assert ("speed", -1) in actions
+        assert ("speed", 1) in actions
+        assert ("speed_reset",) in actions
+
+        app._handle_action(("speed_reset",))
+        assert app.speed_options[app.speed_index] == DEFAULT_AI_SPEED == 1.0
+
+        app.speed_index = len(app.speed_options) - 1
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_MINUS))
+        assert app.speed_options[app.speed_index] == 4.0
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_1))
+        assert app.speed_options[app.speed_index] == 1.0
+
+        app.speed_index = len(app.speed_options) - 1
+        app._next_level()
+        assert app.current_level == 1
+        assert app.speed_options[app.speed_index] == DEFAULT_AI_SPEED == 1.0
+    finally:
+        pygame.quit()
+
+
+def test_showcase_only_offers_rubric_relevant_saved_policies(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import GridworldApp, RUBRIC_POLICIES
+
+    app = GridworldApp(max_steps=20)
+    try:
+        for level, expected in RUBRIC_POLICIES.items():
+            app.selected_level = level
+            app.buttons = []
+            app._draw_algorithm_select()
+            offered = [
+                (button.action[1], button.action[2])
+                for button in app.buttons
+                if button.action[0] == "start_ai"
+            ]
+            assert offered == list(expected)
+            assert app._available_model_count(level) == len(expected)
+    finally:
+        pygame.quit()
+
+
 def test_legacy_renderer_does_not_consume_keyboard_events(monkeypatch):
     monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
     monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")

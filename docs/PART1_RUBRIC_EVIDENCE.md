@@ -59,9 +59,14 @@ Artifacts: Level 2 and 3 Q-learning/SARSA models, dashboards, metrics CSVs, and 
 - The state records exact relative offsets for threats within distance two plus a count of every farther monster. This produces useful local-threat generalisation without visually hiding any monster.
 - Environment and agent randomness use independent seeded streams.
 
-Artifacts: Level 4 and 5 Q-learning/SARSA models, dashboards, full metrics CSVs, summaries, and `policy_benchmark.json`.
+Artifacts: Level 4 and 5 Q-learning/SARSA models, dashboards, full metrics CSVs,
+held-out seed-selection JSON, summaries, and `policy_benchmark.json`.
 
-Final seeded benchmark (300 episodes per policy): Level 4 Q-learning **95.0%**, Level 4 SARSA **96.3%**, Level 5 Q-learning **97.7%**, and Level 5 SARSA **99.0%** success.
+Each monster policy competes across three training seeds on a common 1,000-episode
+held-out set. A separate 1,000-episode benchmark seed range records Level 4
+Q-learning **96.9%**, Level 4 SARSA **98.0%**, Level 5 Q-learning **98.3%**, and
+Level 5 SARSA **97.9%** success. Stochastic deaths remain possible because the
+required 40% random monster transition occurs after the agent commits an action.
 
 ## F — Task 5: intrinsic reward Level 6
 
@@ -96,6 +101,7 @@ Artifacts: baseline/intrinsic main models, per-seed evidence models, evidence PN
 - Animated movement, hazards, particles, trail, and result overlays.
 - Pause, single-step, five playback speeds, reproducible greedy ties, and safe timeouts.
 - Multi-seed plots with confidence bands, route overlays, hazard metrics, and exploration heatmap.
+- Held-out champion selection for stochastic policies and in-window benchmark cards.
 - One-command evidence builder and automated rubric acceptance suite.
 - Entirely procedural original art; no external sprites or asset licences required.
 

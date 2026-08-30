@@ -53,6 +53,8 @@ def expected_artifacts() -> list[Path]:
             Path(LOGS_DIR) / f"{stem}_rewards.csv",
             Path(LOGS_DIR) / f"{stem}_summary.json",
         ])
+        if level in (4, 5):
+            artifacts.append(Path(LOGS_DIR) / f"{stem}_selection.json")
     artifacts.extend([
         Path(LOGS_DIR) / "level1_qlearning_vs_sarsa_evidence.png",
         Path(LOGS_DIR) / "level1_algorithm_comparison_metrics.csv",
@@ -81,11 +83,18 @@ def main() -> None:
 
     if not args.comparisons_only:
         for level, agent, intrinsic in MODEL_RUNS:
-            command = ["gridworld.train", "--level", str(level), "--agent", agent]
+            module = "gridworld.optimize" if level in (4, 5) else "gridworld.train"
+            command = [module, "--level", str(level), "--agent", agent]
+            if level in (4, 5):
+                command.append("--exclude-current")
             if intrinsic:
                 command.append("--intrinsic")
             if args.quick:
                 command.extend(["--episodes", "20", "--max-steps", "50"])
+                if level in (4, 5):
+                    command.extend([
+                        "--seeds", "1729", "--validation-episodes", "20"
+                    ])
             if args.quiet:
                 command.append("--quiet")
             _run(command)

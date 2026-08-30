@@ -9,6 +9,24 @@ from gridworld.train import (
     resolve_training_profile,
     train,
 )
+from gridworld.optimize import candidate_score, parse_seeds
+
+
+def test_champion_selection_prioritizes_reliable_held_out_completion():
+    strong = {
+        "victory_rate": 0.97,
+        "timeouts": 2,
+        "monster_deaths": 28,
+        "mean_steps_on_victory": 35.0,
+    }
+    shorter_but_weaker = {
+        "victory_rate": 0.96,
+        "timeouts": 0,
+        "monster_deaths": 40,
+        "mean_steps_on_victory": 20.0,
+    }
+    assert candidate_score(strong) > candidate_score(shorter_but_weaker)
+    assert parse_seeds("3, 3, 5", [1]) == [3, 5]
 
 
 def _trained(level_id, kind, seed, episodes=None, intrinsic=False, max_steps=None):
