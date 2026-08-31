@@ -25,6 +25,9 @@ COLORS = {
     "spawner": (181, 82, 255),
     "spawner_core": (255, 116, 226),
     "boss": (255, 84, 176),
+    "miniboss": (255, 154, 54),
+    "hazard": (255, 67, 112),
+    "hazard_safe": (255, 195, 67),
     "drone": (78, 229, 181),
     "projectile": (255, 235, 99),
     "laser": (82, 242, 255),
@@ -96,6 +99,7 @@ class ArenaRenderer:
 
         self._sync_effects()
         self._draw_background()
+        self._draw_danger_zones()
         self._draw_spawners()
         self._draw_projectiles()
         self._draw_enemies()
@@ -103,6 +107,7 @@ class ArenaRenderer:
         self._draw_player()
         self._draw_support_drone()
         self._draw_particles()
+        self._draw_progression_fx()
         self._draw_vignette()
         self._draw_hud(footer_text)
 
@@ -112,7 +117,7 @@ class ArenaRenderer:
             and not self.env.done
         ):
             self._draw_phase_banner()
-        elif (
+        if (
             self.env.upgrade_banner_steps > 0
             and self.env.pending_choice_kind is None
             and not self.env.done
@@ -164,6 +169,78 @@ class ArenaRenderer:
                 radius,
             )
 
+    def _draw_danger_zones(self) -> None:
+        """Render boss attacks as strong telegraphs before their damage frame."""
+
+        labeled_attacks: set[int] = set()
+        for zone in self.env.danger_zones:
+            layer = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+            telegraphing = zone.telegraph_steps > 0
+            progress = (
+                1.0 - zone.telegraph_steps / max(1, zone.maximum_telegraph_steps)
+                if telegraphing
+                else 1.0
+            )
+            pulse = 0.5 + 0.5 * math.sin(self.env.step_count * 0.34)
+            color = COLORS["hazard_safe"] if telegraphing else COLORS["hazard"]
+            alpha = int(28 + 58 * progress + (22 * pulse if telegraphing else 90))
+            outline = 2 + int(3 * progress)
+            if zone.kind == "circle":
+                center = (round(zone.x), round(zone.y))
+                radius = max(1, round(zone.radius))
+                pygame.draw.circle(layer, (*color, alpha), center, radius)
+                pygame.draw.circle(layer, (*color, 245), center, radius, outline)
+                if telegraphing:
+                    inner = max(4, round(radius * progress))
+                    pygame.draw.circle(layer, (*color, 210), center, inner, 2)
+            else:
+                along_x = math.cos(zone.angle) * zone.half_length
+                along_y = math.sin(zone.angle) * zone.half_length
+                across_x = -math.sin(zone.angle) * zone.half_width
+                across_y = math.cos(zone.angle) * zone.half_width
+                points = [
+                    (zone.x - along_x - across_x, zone.y - along_y - across_y),
+                    (zone.x + along_x - across_x, zone.y + along_y - across_y),
+                    (zone.x + along_x + across_x, zone.y + along_y + across_y),
+                    (zone.x - along_x + across_x, zone.y - along_y + across_y),
+                ]
+                pygame.draw.polygon(layer, (*color, alpha), points)
+                pygame.draw.polygon(layer, (*color, 235), points, outline)
+                if telegraphing:
+                    pygame.draw.line(
+                        layer,
+                        (*color, 245),
+                        (zone.x - along_x, zone.y - along_y),
+                        (zone.x + along_x, zone.y + along_y),
+                        2,
+                    )
+            self.surface.blit(layer, (0, 0))
+
+            if telegraphing and zone.attack_id not in labeled_attacks:
+                labeled_attacks.add(zone.attack_id)
+                seconds = zone.telegraph_steps / self.env.fps
+                message = f"{zone.attack_name}  •  MOVE  •  {seconds:.1f}s"
+                label = self._fit_text(
+                    message, self.font_small, 310, COLORS["text"]
+                )
+                label_box = pygame.Rect(
+                    (self.env.width - min(330, label.get_width() + 28)) // 2,
+                    round(self.env.playfield_top + 14),
+                    min(330, label.get_width() + 28),
+                    34,
+                )
+                pill = pygame.Surface(label_box.size, pygame.SRCALPHA)
+                pill.fill((18, 10, 28, 220))
+                pygame.draw.rect(
+                    pill,
+                    COLORS["hazard_safe"],
+                    pill.get_rect(),
+                    2,
+                    border_radius=12,
+                )
+                pill.blit(label, label.get_rect(center=pill.get_rect().center))
+                self.surface.blit(pill, label_box.topleft)
+
     def _draw_player(self) -> None:
         player = self.env.player
         angle = player.angle
@@ -199,32 +276,54 @@ class ArenaRenderer:
         shield = pygame.Surface((52, 52), pygame.SRCALPHA)
         pygame.draw.circle(shield, (*COLORS["player"], shield_alpha), (26, 26), 24, 1)
         self.surface.blit(shield, (round(player.x) - 26, round(player.y) - 26))
+        for charge in range(min(3, self.env.barrier_charges)):
+            pygame.draw.circle(
+                self.surface,
+                COLORS["xp"],
+                (round(player.x), round(player.y)),
+                27 + charge * 3,
+                1,
+            )
 
     def _draw_support_drone(self) -> None:
         if not self.env.support_drone_active:
             return
-        orbit = self.env.step_count * 0.055
-        x = self.env.player.x + math.cos(orbit) * 34.0
-        y = self.env.player.y + math.sin(orbit) * 34.0
-        center = (round(x), round(y))
-        pygame.draw.circle(self.surface, COLORS["drone"], center, 8)
-        pygame.draw.circle(self.surface, COLORS["player_core"], center, 3)
-        pygame.draw.arc(
-            self.surface,
-            COLORS["drone"],
-            pygame.Rect(center[0] - 13, center[1] - 13, 26, 26),
-            self.env.step_count * 0.08,
-            self.env.step_count * 0.08 + math.pi,
-            2,
-        )
+        for drone_index in range(self.env.drone_count):
+            orbit = (
+                self.env.step_count * 0.055
+                + math.tau * drone_index / self.env.drone_count
+            )
+            orbit_radius = 34.0 + 8.0 * (drone_index % 2)
+            x = self.env.player.x + math.cos(orbit) * orbit_radius
+            y = self.env.player.y + math.sin(orbit) * orbit_radius
+            center = (round(x), round(y))
+            pygame.draw.circle(self.surface, COLORS["drone"], center, 8)
+            pygame.draw.circle(self.surface, COLORS["player_core"], center, 3)
+            pygame.draw.arc(
+                self.surface,
+                COLORS["drone"],
+                pygame.Rect(center[0] - 13, center[1] - 13, 26, 26),
+                self.env.step_count * 0.08,
+                self.env.step_count * 0.08 + math.pi,
+                2,
+            )
 
     def _draw_enemies(self) -> None:
         for enemy in self.env.enemies:
             center = (round(enemy.x), round(enemy.y))
-            enemy_color = COLORS["boss"] if enemy.is_elite else COLORS["enemy"]
-            glow = pygame.Surface((48, 48), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*enemy_color, 35), (24, 24), 22)
-            self.surface.blit(glow, (center[0] - 24, center[1] - 24))
+            enemy_color = (
+                COLORS["miniboss"]
+                if enemy.is_miniboss
+                else (COLORS["boss"] if enemy.is_elite else COLORS["enemy"])
+            )
+            glow_size = 76 if enemy.is_miniboss else 48
+            glow = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
+            pygame.draw.circle(
+                glow, (*enemy_color, 42), (glow_size // 2, glow_size // 2), glow_size // 2 - 2
+            )
+            self.surface.blit(
+                glow, (center[0] - glow_size // 2, center[1] - glow_size // 2)
+            )
 
             pygame.draw.circle(self.surface, COLORS["enemy_dark"], center, round(enemy.radius))
             pygame.draw.circle(self.surface, enemy_color, center, round(enemy.radius), 3)
@@ -234,10 +333,16 @@ class ArenaRenderer:
                 round(enemy.y + math.sin(heading) * 7),
             )
             pygame.draw.circle(self.surface, COLORS["player_core"], eye, 3)
+            if enemy.is_miniboss:
+                label = self.font_tiny.render("RIFT HUNTER", True, COLORS["miniboss"])
+                self.surface.blit(
+                    label,
+                    label.get_rect(center=(center[0], center[1] + enemy.radius + 18)),
+                )
             self._draw_health_bar(
-                enemy.x - 18,
+                enemy.x - (38 if enemy.is_miniboss else 18),
                 enemy.y - enemy.radius - 10,
-                36,
+                76 if enemy.is_miniboss else 36,
                 enemy.health / enemy.max_health,
                 height=4,
             )
@@ -268,7 +373,22 @@ class ArenaRenderer:
             pygame.draw.circle(self.surface, COLORS["spawner_core"], center, 8)
             pygame.draw.circle(self.surface, COLORS["player_core"], center, 3)
             if spawner.is_boss:
-                label = self.font_tiny.render("BOSS RIFT", True, COLORS["boss"])
+                channeling = any(
+                    zone.telegraph_steps > 0 for zone in self.env.danger_zones
+                )
+                if channeling:
+                    pygame.draw.circle(
+                        self.surface,
+                        COLORS["hazard_safe"],
+                        center,
+                        round(spawner.radius + 14 + pulse),
+                        3,
+                    )
+                label = self.font_tiny.render(
+                    "CHANNEL SHIELD" if channeling else "BOSS RIFT",
+                    True,
+                    COLORS["hazard_safe"] if channeling else COLORS["boss"],
+                )
                 self.surface.blit(label, label.get_rect(center=(center[0], center[1] + spawner.radius + 18)))
             bar_width = 100 if spawner.is_boss else 56
             self._draw_health_bar(
@@ -301,6 +421,10 @@ class ArenaRenderer:
                 outer, core = COLORS["player"], COLORS["projectile"]
             else:
                 outer, core = (255, 132, 44), COLORS["projectile"]
+            if projectile.is_critical:
+                outer, core = (255, 198, 62), (255, 255, 255)
+                pulse = 10 + int(2 * math.sin(self.env.step_count * 0.4))
+                pygame.draw.circle(self.surface, outer, center, pulse, 2)
             pygame.draw.line(self.surface, outer, tail, center, 5 if is_beam else 3)
             pygame.draw.line(self.surface, core, tail, center, 2)
             pygame.draw.circle(self.surface, outer, center, 7 if is_beam else 8)
@@ -315,7 +439,9 @@ class ArenaRenderer:
         )
         assist_locked = (
             self.env.control_style == "direct"
-            and target_distance <= float(self.env.player_cfg["target_assist_range"])
+            and target_distance
+            <= float(self.env.player_cfg["target_assist_range"])
+            + 20.0 * self.env.upgrade_stacks.get("capacitor", 0)
         )
         color = (
             COLORS["xp"]
@@ -394,20 +520,28 @@ class ArenaRenderer:
                 pygame.Rect(xp_rect.x, xp_rect.y, xp_fill, xp_rect.height),
                 border_radius=4,
             )
-        xp_text = (
-            "MAX"
-            if self.env.player.level >= self.env.maximum_player_level
-            else f"{math.ceil(self.env.xp_to_next_level())} TO NEXT"
-        )
+        xp_text = f"{math.ceil(self.env.xp_to_next_level())} TO NEXT"
         self._text(xp_text, 470, 47, self.font_tiny, COLORS["muted"])
 
+        miniboss_count = sum(enemy.is_miniboss for enemy in self.env.enemies)
         stats = f"RIFTS {len(self.env.spawners)}   HOSTILES {len(self.env.enemies)}"
-        stats_surface = self.font_medium.render(stats, True, COLORS["text"])
+        if miniboss_count:
+            stats += f"   HUNTER {miniboss_count}"
+        stats_surface = self._fit_text(
+            stats,
+            self.font_tiny if miniboss_count else self.font_small,
+            244,
+            COLORS["text"],
+        )
         self.surface.blit(stats_surface, (self.env.width - stats_surface.get_width() - 16, 11))
         destroyed = int(self.env.episode_stats.get("enemies_destroyed", 0))
         rifts = int(self.env.episode_stats.get("spawners_destroyed", 0))
-        mode = f"KILLS {destroyed}  •  RIFTS DESTROYED {rifts}"
-        mode_surface = self.font_small.render(mode, True, COLORS["muted"])
+        mode = f"KILLS {destroyed}  •  RIFTS {rifts}"
+        if self.env.drone_count:
+            mode += f"  •  DRONES {self.env.drone_count}"
+        if self.env.barrier_charges:
+            mode += f"  •  AEGIS {self.env.barrier_charges}"
+        mode_surface = self._fit_text(mode, self.font_tiny, 244, COLORS["muted"])
         self.surface.blit(mode_surface, (self.env.width - mode_surface.get_width() - 16, 49))
 
         if footer_text:
@@ -437,23 +571,45 @@ class ArenaRenderer:
 
     def _draw_phase_banner(self) -> None:
         remaining = self.env.phase_transition_steps / self.env.fps
-        banner = pygame.Surface((390, 92), pygame.SRCALPHA)
-        banner.fill((10, 13, 31, 220))
-        pygame.draw.rect(banner, COLORS["spawner"], banner.get_rect(), 2, border_radius=12)
-        title_text = f"BOSS PHASE {self.env.phase}" if self.env.is_boss_phase else f"PHASE {self.env.phase}"
-        title = self.font_large.render(title_text, True, COLORS["text"])
+        banner = pygame.Surface((486, 126), pygame.SRCALPHA)
+        banner.fill((10, 13, 31, 232))
+        accent = COLORS["boss"] if self.env.is_boss_phase else COLORS["spawner"]
+        pygame.draw.rect(banner, accent, banner.get_rect(), 2, border_radius=14)
+        eyebrow_text = (
+            "BOSS RIFT DETECTED  •  HIGH THREAT"
+            if self.env.is_boss_phase
+            else "RIFT NETWORK RECONFIGURING"
+        )
+        eyebrow = self.font_tiny.render(eyebrow_text, True, accent)
+        title_text = (
+            f"BOSS PHASE {self.env.phase}"
+            if self.env.is_boss_phase
+            else f"PHASE {self.env.phase} INBOUND"
+        )
+        title = self._fit_text(title_text, self.font_large, 452, COLORS["text"])
         cleanup = self.env.last_phase_cleanup_count
         subtitle_text = (
-            f"{cleanup} remaining hostile{'s' if cleanup != 1 else ''} withdrew  •  "
-            f"new rifts in {remaining:0.1f}s"
+            f"{cleanup} hostile{'s' if cleanup != 1 else ''} withdrew  •  deployment in {remaining:0.1f}s"
             if cleanup
-            else f"New rift signatures in {remaining:0.1f}s"
+            else f"Combat deployment in {remaining:0.1f}s"
         )
         subtitle = self._fit_text(
             subtitle_text, self.font_small, banner.get_width() - 28, COLORS["muted"]
         )
-        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 8))
-        banner.blit(subtitle, ((banner.get_width() - subtitle.get_width()) // 2, 61))
+        banner.blit(eyebrow, ((banner.get_width() - eyebrow.get_width()) // 2, 9))
+        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 29))
+        banner.blit(subtitle, ((banner.get_width() - subtitle.get_width()) // 2, 83))
+        duration = max(1.0, float(self.env.phase_cfg["transition_seconds"]))
+        progress = float(np.clip(1.0 - remaining / duration, 0.0, 1.0))
+        track = pygame.Rect(28, 111, banner.get_width() - 56, 5)
+        pygame.draw.rect(banner, COLORS["bar_bg"], track, border_radius=3)
+        if progress > 0:
+            pygame.draw.rect(
+                banner,
+                accent,
+                pygame.Rect(track.x, track.y, round(track.width * progress), track.height),
+                border_radius=3,
+            )
         self.surface.blit(
             banner,
             (
@@ -508,7 +664,7 @@ class ArenaRenderer:
         )
         ratio = self.env.upgrade_banner_steps / duration
         alpha = min(230, round(255 * min(1.0, ratio * 3.0)))
-        banner = pygame.Surface((430, 66), pygame.SRCALPHA)
+        banner = pygame.Surface((470, 76), pygame.SRCALPHA)
         banner.fill((8, 19, 36, alpha))
         pygame.draw.rect(banner, (*COLORS["xp"], alpha), banner.get_rect(), 2, border_radius=14)
         eyebrow = self.font_tiny.render(
@@ -516,10 +672,79 @@ class ArenaRenderer:
             True,
             COLORS["xp"],
         )
-        title = self.font_medium.render(self.env.last_upgrade_name.upper(), True, COLORS["text"])
+        title = self._fit_text(
+            self.env.last_upgrade_name.upper(), self.font_medium, 408, COLORS["text"]
+        )
         banner.blit(eyebrow, ((banner.get_width() - eyebrow.get_width()) // 2, 8))
-        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 29))
-        self.surface.blit(banner, ((self.env.width - banner.get_width()) // 2, 88))
+        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 33))
+        chevron_y = banner.get_height() // 2 + 8
+        pygame.draw.polygon(banner, COLORS["xp"], ((16, chevron_y), (25, chevron_y - 7), (25, chevron_y + 7)))
+        pygame.draw.polygon(
+            banner,
+            COLORS["xp"],
+            ((banner.get_width() - 16, chevron_y), (banner.get_width() - 25, chevron_y - 7), (banner.get_width() - 25, chevron_y + 7)),
+        )
+        self.surface.blit(banner, ((self.env.width - banner.get_width()) // 2, 86))
+
+    def _draw_progression_fx(self) -> None:
+        """Animate phase deployment and ship upgrades in the live arena."""
+
+        layer = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        center = (round(self.env.player.x), round(self.env.player.y))
+        if self.env.phase_transition_steps > 0:
+            total = max(
+                1,
+                int(float(self.env.phase_cfg["transition_seconds"]) * self.env.fps),
+            )
+            progress = float(
+                np.clip(1.0 - self.env.phase_transition_steps / total, 0.0, 1.0)
+            )
+            accent = COLORS["boss"] if self.env.is_boss_phase else COLORS["spawner"]
+            for index in range(4):
+                radius = int(34 + ((progress + index * 0.22) % 1.0) * 245)
+                alpha = max(0, int(150 * (1.0 - radius / 290.0)))
+                pygame.draw.circle(layer, (*accent, alpha), center, radius, 2)
+            for index in range(12 if self.env.is_boss_phase else 8):
+                angle = index * math.tau / (12 if self.env.is_boss_phase else 8) + progress
+                inner = 52 + 75 * progress
+                outer = inner + (72 if self.env.is_boss_phase else 48)
+                pygame.draw.line(
+                    layer,
+                    (*accent, 105),
+                    (center[0] + math.cos(angle) * inner, center[1] + math.sin(angle) * inner),
+                    (center[0] + math.cos(angle) * outer, center[1] + math.sin(angle) * outer),
+                    2,
+                )
+            if self.env.is_boss_phase:
+                edge_alpha = 42 + int(20 * math.sin(self.env.step_count * 0.28))
+                pygame.draw.rect(
+                    layer,
+                    (*COLORS["boss"], edge_alpha),
+                    layer.get_rect(),
+                    width=12,
+                )
+        if self.env.upgrade_banner_steps > 0:
+            duration = max(
+                1,
+                int(float(self.env.progression_cfg["upgrade_banner_seconds"]) * self.env.fps),
+            )
+            elapsed = 1.0 - self.env.upgrade_banner_steps / duration
+            rotation = self.env.step_count * 0.11
+            for index in range(3):
+                radius = int(30 + ((elapsed + index * 0.3) % 1.0) * 95)
+                alpha = max(0, 155 - radius)
+                pygame.draw.circle(layer, (*COLORS["xp"], alpha), center, radius, 2)
+            arc_rect = pygame.Rect(center[0] - 47, center[1] - 47, 94, 94)
+            for index in range(3):
+                pygame.draw.arc(
+                    layer,
+                    (*COLORS["xp"], 185),
+                    arc_rect.inflate(index * 14, index * 14),
+                    rotation + index * 1.7,
+                    rotation + index * 1.7 + 1.0,
+                    3,
+                )
+        self.surface.blit(layer, (0, 0))
 
     def choice_rects(self) -> list[pygame.Rect]:
         count = max(1, len(self.env.pending_choices))
@@ -564,9 +789,22 @@ class ArenaRenderer:
         overlay.fill((3, 6, 18, 224))
         self.surface.blit(overlay, (0, 0))
         phase_reward = self.env.pending_choice_kind == "phase_reward"
-        accent = COLORS["spawner_core"] if phase_reward else COLORS["xp"]
-        eyebrow_text = "PHASE CLEARED  •  CHOOSE ONE SUPPORT DROP" if phase_reward else f"SHIP LEVEL {self.env.player.level}  •  CHOOSE ONE UPGRADE"
-        title_text = "Prepare for the next assault" if phase_reward else "Evolve your build"
+        boss_reward = self.env.pending_choice_kind == "boss_reward"
+        reward_choice = phase_reward or boss_reward
+        accent = (
+            COLORS["boss"]
+            if boss_reward
+            else (COLORS["spawner_core"] if phase_reward else COLORS["xp"])
+        )
+        if boss_reward:
+            eyebrow_text = "BOSS RIFT COLLAPSED  •  CLAIM ONE RELIC"
+            title_text = "A worthy victory deserves lasting power"
+        elif phase_reward:
+            eyebrow_text = "PHASE CLEARED  •  CHOOSE ONE SUPPORT DROP"
+            title_text = "Prepare for the next assault"
+        else:
+            eyebrow_text = f"SHIP LEVEL {self.env.player.level}  •  CHOOSE ONE UPGRADE"
+            title_text = "Evolve your build"
         eyebrow = self.font_small.render(eyebrow_text, True, accent)
         title = self.font_large.render(title_text, True, COLORS["text"])
         hint = self.font_small.render("Click a card or press 1, 2, or 3. The battle timer is paused.", True, COLORS["muted"])
@@ -589,11 +827,16 @@ class ArenaRenderer:
                 self._wrapped_lines(str(choice["description"]), self.font_small, rect.width - 32, 3)
             ):
                 self._text(line, rect.x + 16, rect.y + 100 + line_index * 22, self.font_small, COLORS["muted"])
-            if not phase_reward:
+            if not reward_choice:
                 choice_id = str(choice["id"])
                 stacks = self.env.upgrade_stacks.get(choice_id, 0)
-                maximum = int(choice.get("max_stacks", 1))
-                stack_text = "INSTANT REPAIR" if choice_id == "repair" else f"TIER {stacks + 1} / {maximum}"
+                if choice_id == "repair":
+                    stack_text = "INSTANT REPAIR"
+                elif choice.get("repeatable", False):
+                    stack_text = f"MASTERY TIER {stacks + 1}  •  REPEATABLE"
+                else:
+                    maximum = int(choice.get("max_stacks", 1))
+                    stack_text = f"TIER {stacks + 1} / {maximum}"
                 self._text(stack_text, rect.x + 16, rect.bottom - 30, self.font_tiny, accent)
         self._draw_modal_footer(
             "BATTLE PAUSED  •  SELECT WITH MOUSE OR KEYS 1–3",
@@ -604,7 +847,7 @@ class ArenaRenderer:
         overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
         overlay.fill((3, 6, 18, 205))
         self.surface.blit(overlay, (0, 0))
-        panel = pygame.Rect(100, 92, 600, 408)
+        panel = pygame.Rect(40, 70, 720, 462)
         pygame.draw.rect(self.surface, (17, 27, 52), panel, border_radius=18)
         pygame.draw.rect(self.surface, COLORS["xp"], panel, 2, border_radius=18)
         title = self.font_large.render("SHIP BUILD", True, COLORS["text"])
@@ -623,29 +866,55 @@ class ArenaRenderer:
             f"Beam range   {lifetime:.1f}s flight",
             f"Piercing     +{int(profile['pierces'])} targets",
             f"Blast radius {float(profile['splash_radius']):.0f}px",
+            f"Critical     {float(profile['critical_chance']):.0%} ×2 damage",
         )
         for index, line in enumerate(weapon_lines):
-            self._text(line, panel.x + 30, panel.y + 150 + index * 27, self.font_small, COLORS["text"])
+            self._text(line, panel.x + 30, panel.y + 150 + index * 25, self.font_small, COLORS["text"])
 
-        self._text("SELECTED UPGRADES", panel.x + 330, panel.y + 112, self.font_medium, COLORS["accent"])
+        upgrade_x = panel.x + 285
+        self._text("SELECTED UPGRADES", upgrade_x, panel.y + 112, self.font_medium, COLORS["accent"])
         names = {str(item["id"]): str(item["name"]) for item in self.env.progression_cfg["upgrade_catalog"]}
         selected = [
-            (names[key], value)
+            (names.get(key, "Rift Artifact" if key == "artifact" else key.replace("_", " ").title()), value)
             for key, value in self.env.upgrade_stacks.items()
             if value > 0 and key != "repair"
         ]
         if not selected:
-            self._text("No permanent upgrades yet.", panel.x + 330, panel.y + 151, self.font_small, COLORS["muted"])
-        for index, (name, stacks) in enumerate(selected[:8]):
-            label = self._fit_text(f"{name}  ×{stacks}", self.font_small, 235, COLORS["text"])
-            self.surface.blit(label, (panel.x + 330, panel.y + 151 + index * 25))
+            self._text("No permanent upgrades yet.", upgrade_x, panel.y + 151, self.font_small, COLORS["muted"])
+        for index, (name, stacks) in enumerate(selected[:20]):
+            column = index // 10
+            row = index % 10
+            label = self._fit_text(
+                f"{name}  ×{stacks}", self.font_small, 188, COLORS["text"]
+            )
+            self.surface.blit(
+                label,
+                (upgrade_x + column * 198, panel.y + 151 + row * 22),
+            )
+        if len(selected) > 20:
+            self._text(
+                f"+{len(selected) - 20} additional mastery path(s)",
+                upgrade_x,
+                panel.y + 375,
+                self.font_tiny,
+                COLORS["muted"],
+            )
         support = []
         if self.env.support_drone_active:
-            support.append("DRONE ACTIVE")
+            support.append(
+                f"DRONES {self.env.drone_count}  •  CORE TIER {self.env.drone_level}"
+            )
         if self.env.nova_bomb_armed:
             support.append("NOVA BOMB ARMED")
-        support_text = "  •  ".join(support) if support else "No temporary support"
-        self._text(support_text, panel.x + 330, panel.bottom - 42, self.font_tiny, COLORS["drone"] if support else COLORS["muted"])
+        if self.env.barrier_charges:
+            support.append(f"AEGIS {self.env.barrier_charges}")
+        if self.env.overdrive_active:
+            support.append("OVERDRIVE ACTIVE")
+        support_text = "  •  ".join(support) if support else "No active support systems"
+        support_surface = self._fit_text(
+            support_text, self.font_tiny, panel.width - 60, COLORS["drone"] if support else COLORS["muted"]
+        )
+        self.surface.blit(support_surface, (panel.x + 30, panel.bottom - 42))
         self._draw_modal_footer("BATTLE PAUSED  •  PRESS TAB TO RETURN", COLORS["xp"])
 
     def _draw_modal_footer(

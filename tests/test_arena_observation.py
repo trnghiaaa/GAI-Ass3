@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 
-from arena.entities import Enemy, Spawner
+from arena.entities import DangerZone, Enemy, Spawner
 from arena.environment import (
     ArenaEnv,
     DIRECT_ACTIONS,
@@ -25,17 +25,17 @@ class ArenaObservationTests(unittest.TestCase):
     def test_observation_is_fixed_numeric_vector_not_pixels(self) -> None:
         observation = self.env._get_observation()
 
-        self.assertEqual(observation.shape, (43,))
+        self.assertEqual(observation.shape, (70,))
         self.assertEqual(observation.ndim, 1)
         self.assertEqual(observation.dtype, np.float32)
-        self.assertEqual(len(OBSERVATION_NAMES), 43)
+        self.assertEqual(len(OBSERVATION_NAMES), 70)
         self.assertTrue(self.env.observation_space.contains(observation))
 
         # Removing every variable-length entity list must not alter the shape.
         self.env.enemies = []
         self.env.spawners = []
         self.env.projectiles = []
-        self.assertEqual(self.env._get_observation().shape, (43,))
+        self.assertEqual(self.env._get_observation().shape, (70,))
 
     def test_vectors_remain_in_bounds_during_both_control_styles(self) -> None:
         for style in ("direct", "rotation"):
@@ -131,7 +131,7 @@ class ArenaObservationTests(unittest.TestCase):
         )
         self.assertGreater(observation[ObservationIndex.NEAREST_SPAWNER_DISTANCE], 0.0)
         self.assertAlmostEqual(observation[ObservationIndex.NEAREST_SPAWNER_HEALTH], 0.75)
-        self.assertAlmostEqual(observation[ObservationIndex.PHASE], 0.4)
+        self.assertAlmostEqual(observation[ObservationIndex.PHASE], 0.2)
 
     def test_explicit_aim_alignment_supports_rotation_learning(self) -> None:
         self.env.enemies = [
@@ -208,7 +208,7 @@ class ArenaObservationTests(unittest.TestCase):
 
     def test_combat_level_and_weapon_upgrade_state_are_encoded(self) -> None:
         self.env.player.level = 4
-        self.env.player.xp = 270.0
+        self.env.player.xp = self.env.xp_threshold_for_level(4) + 10.0
         self.env.upgrade_stacks.update(
             {"laser": 1, "fire_rate": 2, "damage": 2, "range": 1,
              "piercing": 1, "splash": 2, "engine": 1, "shield": 1}
@@ -219,7 +219,7 @@ class ArenaObservationTests(unittest.TestCase):
 
         observation = self.env._get_observation()
 
-        self.assertAlmostEqual(observation[ObservationIndex.PLAYER_LEVEL], 3 / 8)
+        self.assertAlmostEqual(observation[ObservationIndex.PLAYER_LEVEL], 3 / 24)
         self.assertGreater(observation[ObservationIndex.XP_PROGRESS], 0.0)
         self.assertGreater(observation[ObservationIndex.WEAPON_FIRE_RATE], 0.0)
         self.assertEqual(observation[ObservationIndex.WEAPON_IS_LASER], 1.0)
@@ -231,6 +231,56 @@ class ArenaObservationTests(unittest.TestCase):
         self.assertGreater(observation[ObservationIndex.ENGINE_POWER], 0.0)
         self.assertEqual(observation[ObservationIndex.SUPPORT_DRONE_ACTIVE], 1.0)
         self.assertEqual(observation[ObservationIndex.NOVA_BOMB_ARMED], 1.0)
+
+    def test_multi_lane_boss_hazards_expose_combined_and_secondary_escape(self) -> None:
+        self.env.danger_zones = [
+            DangerZone(
+                kind="line",
+                x=self.env.player.x,
+                y=self.env.player.y,
+                angle=0.0,
+                half_width=30,
+                half_length=500,
+                telegraph_steps=30,
+                maximum_telegraph_steps=60,
+                active_steps=15,
+                attack_id=5,
+            ),
+            DangerZone(
+                kind="line",
+                x=self.env.player.x,
+                y=self.env.player.y,
+                angle=math.pi / 2,
+                half_width=30,
+                half_length=500,
+                telegraph_steps=30,
+                maximum_telegraph_steps=60,
+                active_steps=15,
+                attack_id=5,
+            ),
+        ]
+
+        observation = self.env._get_observation()
+
+        self.assertAlmostEqual(observation[ObservationIndex.HAZARD_COUNT], 0.5)
+        self.assertNotEqual(
+            (
+                observation[ObservationIndex.HAZARD_COMBINED_ESCAPE_X],
+                observation[ObservationIndex.HAZARD_COMBINED_ESCAPE_Y],
+            ),
+            (0.0, 0.0),
+        )
+        self.assertGreater(
+            observation[ObservationIndex.SECONDARY_HAZARD_DISTANCE_TO_SAFETY],
+            0.0,
+        )
+
+    def test_new_upgrade_state_is_explicitly_encoded(self) -> None:
+        self.env.upgrade_stacks.update({"critical": 3, "leech": 2, "riftbreaker": 4})
+        observation = self.env._get_observation()
+        self.assertAlmostEqual(observation[ObservationIndex.CRITICAL_CHANCE], 0.6)
+        self.assertAlmostEqual(observation[ObservationIndex.LEECH_STRENGTH], 0.5)
+        self.assertAlmostEqual(observation[ObservationIndex.RIFTBREAKER_POWER], 4 / 6)
 
 
 if __name__ == "__main__":

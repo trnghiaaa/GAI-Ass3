@@ -18,7 +18,12 @@ import numpy as np
 import pygame
 
 from arena.benchmark import evaluate_model, write_benchmark
-from arena.environment import ArenaEnv, DIRECT_ACTIONS
+from arena.environment import (
+    ArenaEnv,
+    DIRECT_ACTIONS,
+    ENVIRONMENT_SCHEMA_VERSION,
+    OBSERVATION_NAMES,
+)
 from arena.renderer import ArenaRenderer
 from arena.settings import (
     ARENA_LOG_DIR,
@@ -27,6 +32,18 @@ from arena.settings import (
     ensure_artifact_directories,
     metadata_path,
     model_path,
+)
+
+
+TENSORBOARD_RUN_STEMS = (
+    "dqn_direct",
+    "dqn_rotation",
+    "tune_direct_fast_exploration",
+    "tune_direct_balanced",
+    "tune_direct_long_exploration",
+    "tune_rotation_fast_exploration",
+    "tune_rotation_balanced",
+    "tune_rotation_long_exploration",
 )
 
 
@@ -56,11 +73,34 @@ def required_artifacts() -> list[Path]:
     return paths
 
 
+def _latest_tensorboard_events() -> list[Path]:
+    """Return one reproducible final TensorBoard run for each trained variant."""
+
+    events: list[Path] = []
+    for stem in TENSORBOARD_RUN_STEMS:
+        candidates: list[tuple[int, Path]] = []
+        for directory in TENSORBOARD_DIR.glob(f"{stem}_*"):
+            try:
+                run_number = int(directory.name.rsplit("_", 1)[1])
+            except (IndexError, ValueError):
+                continue
+            candidates.append((run_number, directory))
+        if not candidates:
+            continue
+        latest = max(candidates, key=lambda item: item[0])[1]
+        events.extend(sorted(latest.glob("events.out.tfevents.*")))
+    return events
+
+
 def _load_final_metadata() -> list[dict[str, Any]]:
     rows = []
     for style in ("direct", "rotation"):
         with metadata_path(style).open("r", encoding="utf-8") as source:
             metadata = json.load(source)
+        if metadata.get("schema_version") != ENVIRONMENT_SCHEMA_VERSION:
+            raise ValueError(f"{style} model metadata uses a stale arena schema")
+        if metadata.get("observation_names") != list(OBSERVATION_NAMES):
+            raise ValueError(f"{style} model metadata has a stale observation contract")
         benchmark = metadata["benchmark"]
         rows.append(
             {
@@ -77,10 +117,23 @@ def _load_final_metadata() -> list[dict[str, Any]]:
                 "mean_enemies_destroyed": benchmark["mean_enemies_destroyed"],
                 "mean_spawners_destroyed": benchmark["mean_spawners_destroyed"],
                 "mean_accuracy": benchmark["mean_accuracy"],
+                "mean_hits_per_projectile": benchmark.get(
+                    "mean_hits_per_projectile", benchmark["mean_accuracy"]
+                ),
                 "mean_player_level": benchmark.get("mean_player_level", 1.0),
                 "max_player_level": benchmark.get("max_player_level", 1),
                 "mean_xp_earned": benchmark.get("mean_xp_earned", 0.0),
                 "mean_bosses_destroyed": benchmark.get("mean_bosses_destroyed", 0.0),
+                "mean_minibosses_destroyed": benchmark.get(
+                    "mean_minibosses_destroyed", 0.0
+                ),
+                "mean_boss_skills_dodged": benchmark.get(
+                    "mean_boss_skills_dodged", 0.0
+                ),
+                "mean_boss_skill_hits": benchmark.get(
+                    "mean_boss_skill_hits", 0.0
+                ),
+                "mean_drone_level": benchmark.get("mean_drone_level", 0.0),
                 "mean_upgrades_chosen": benchmark.get("mean_upgrades_chosen", 0.0),
             }
         )
@@ -119,6 +172,34 @@ def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
     figure.suptitle("Final Part II deterministic policy comparison")
     figure.tight_layout()
     figure.savefig(ARENA_LOG_DIR / "control_style_comparison.png", dpi=180)
+    plt.close(figure)
+
+    figure, axis = plt.subplots(figsize=(8.6, 4.8))
+    positions = np.arange(len(labels))
+    width = 0.34
+    dodges = [float(row["mean_boss_skills_dodged"]) for row in rows]
+    hits = [float(row["mean_boss_skill_hits"]) for row in rows]
+    axis.bar(
+        positions - width / 2,
+        dodges,
+        width,
+        label="Barrages dodged",
+        color="#35d6c4",
+    )
+    axis.bar(
+        positions + width / 2,
+        hits,
+        width,
+        label="Barrage hits",
+        color="#ff4f78",
+    )
+    axis.set_xticks(positions, labels)
+    axis.set_ylabel("Mean events per held-out episode")
+    axis.set_title("Learned boss-hazard interaction")
+    axis.legend()
+    axis.grid(axis="y", alpha=0.2)
+    figure.tight_layout()
+    figure.savefig(ARENA_LOG_DIR / "boss_avoidance_comparison.png", dpi=180)
     plt.close(figure)
 
 
@@ -190,9 +271,18 @@ def _capture_environment_preview() -> None:
     env = ArenaEnv(control_style="direct")
     env.reset(seed=8)
     env.player.level = 5
-    env.player.xp = 380.0
+    env.player.xp = env.xp_threshold_for_level(5) + 20.0
     env.upgrade_stacks.update(
-        {"multishot": 2, "laser": 1, "damage": 2, "range": 1, "shield": 1}
+        {
+            "multishot": 2,
+            "laser": 1,
+            "damage": 2,
+            "range": 1,
+            "shield": 1,
+            "drone": 4,
+            "homing": 1,
+            "regen": 1,
+        }
     )
     env.last_upgrade_name = str(env.weapon_profile()["name"])
     env.spawners[0].spawn_cooldown_steps = 1
@@ -207,6 +297,21 @@ def _capture_environment_preview() -> None:
                 break
             action = DIRECT_ACTIONS["SHOOT"] if frame % 14 == 0 else DIRECT_ACTIONS["NOOP"]
             env.step(action)
+        # The seeded showcase can clear phase one quickly. Re-stage a live phase
+        # so the report image demonstrates combat rather than an empty hand-off.
+        env.phase_transition_steps = 0
+        if not env.spawners:
+            env._spawn_phase_spawners()
+        if not env.enemies:
+            for spawner in env.spawners[:2]:
+                env._spawn_enemy(spawner)
+        env.player.angle = math.atan2(
+            env.spawners[0].y - env.player.y,
+            env.spawners[0].x - env.player.x,
+        )
+        for frame in range(12):
+            action = DIRECT_ACTIONS["SHOOT"] if frame in (0, 7) else DIRECT_ACTIONS["NOOP"]
+            env.step(action)
         renderer.render(
             footer_text="PART II ENVIRONMENT  •  continuous motion  •  live collision and health systems"
         )
@@ -219,6 +324,22 @@ def _capture_environment_preview() -> None:
             footer_text="COMBAT XP  •  composed build upgrades  •  required action sets unchanged"
         )
         pygame.image.save(renderer.surface, ARENA_LOG_DIR / "upgrade_showcase.png")
+        env.upgrade_banner_steps = 0
+        env.phase = 3
+        env.spawners = []
+        env.enemies = []
+        env.projectiles = []
+        env.danger_zones = []
+        env.phase_transition_steps = max(
+            1, int(float(env.phase_cfg["transition_seconds"]) * env.fps * 0.62)
+        )
+        renderer.render(
+            footer_text="BOSS TRANSITION  •  animated threat warning before deployment"
+        )
+        pygame.image.save(
+            renderer.surface, ARENA_LOG_DIR / "boss_transition_showcase.png"
+        )
+        env.phase_transition_steps = 0
         env.manual_choices = True
         env._queue_choice("level_up")
         env._prepare_next_choice()
@@ -233,12 +354,35 @@ def _capture_environment_preview() -> None:
         env.spawners = []
         env.enemies = []
         env.projectiles = []
+        env.phase_transition_steps = 0
         env._spawn_phase_spawners()
         env._spawn_enemy(env.spawners[0])
+        env.boss_skill_index = 2
+        env._cast_boss_skill({"boss_skills_cast": 0})
         renderer.render(
-            footer_text="BOSS PHASE  •  fortified rift  •  elite minions  •  gradual scaling"
+            footer_text="BOSS PHASE  •  readable diagonal warning  •  move before impact"
         )
         pygame.image.save(renderer.surface, ARENA_LOG_DIR / "boss_showcase.png")
+
+        env.phase = 4
+        env.spawners = []
+        env.enemies = []
+        env.projectiles = []
+        env.danger_zones = []
+        env._spawn_phase_spawners()
+        env._spawn_miniboss(env.spawners[0])
+        renderer.render(
+            footer_text="RIFT HUNTER  •  optional miniboss  •  XP + repair + Aegis cache"
+        )
+        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "miniboss_showcase.png")
+
+        boss_catalog = [dict(item) for item in env.progression_cfg["boss_reward_catalog"]]
+        env.pending_choice_kind = "boss_reward"
+        env.pending_choices = boss_catalog[:3]
+        renderer.render(
+            footer_text="BOSS RELIC DRAFT  •  lasting rewards match the encounter risk"
+        )
+        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "boss_reward_showcase.png")
     finally:
         renderer.close()
         env.close()
@@ -250,7 +394,7 @@ def build() -> None:
     if missing:
         formatted = "\n".join(f"  - {path}" for path in missing)
         raise FileNotFoundError(f"Required Part II artifacts are missing:\n{formatted}")
-    tensorboard_events = list(TENSORBOARD_DIR.rglob("events.out.tfevents.*"))
+    tensorboard_events = _latest_tensorboard_events()
     if not tensorboard_events:
         raise FileNotFoundError(f"No TensorBoard event files found below {TENSORBOARD_DIR}")
 
@@ -267,10 +411,14 @@ def build() -> None:
             "control_style_comparison.csv",
             "control_style_comparison.json",
             "control_style_comparison.png",
+            "boss_avoidance_comparison.png",
             "environment_showcase.png",
             "upgrade_showcase.png",
+            "boss_transition_showcase.png",
             "choice_showcase.png",
             "boss_showcase.png",
+            "miniboss_showcase.png",
+            "boss_reward_showcase.png",
             "random_baseline_direct.csv",
             "random_baseline_direct.json",
             "random_baseline_rotation.csv",

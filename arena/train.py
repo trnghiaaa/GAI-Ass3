@@ -56,6 +56,9 @@ MONITOR_INFO_KEYS = (
     "episode_damage_taken",
     "episode_xp_earned",
     "episode_max_level",
+    "active_minibosses",
+    "active_boss_hazards",
+    "drone_level",
 )
 
 
@@ -82,7 +85,14 @@ class ArenaTelemetryCallback(BaseCallback):
             "arena/xp_progress",
             float(np.mean([float(info.get("xp_progress", 0)) for info in infos])),
         )
-        for name in ("enemies_destroyed", "spawners_destroyed", "damage_taken"):
+        for name in (
+            "enemies_destroyed",
+            "spawners_destroyed",
+            "minibosses_destroyed",
+            "boss_skills_dodged",
+            "boss_skill_hits",
+            "damage_taken",
+        ):
             self.logger.record(
                 f"arena/event_{name}",
                 float(np.mean([float(info.get(name, 0)) for info in infos])),
@@ -265,6 +275,9 @@ def train_control_style(
             float(candidate_benchmark["mean_reward"])
             + 40.0 * float(candidate_benchmark["phase_progression_rate"])
             + 8.0 * float(candidate_benchmark["survival_rate"])
+            + 6.0 * float(candidate_benchmark["mean_boss_skills_dodged"])
+            - 8.0 * float(candidate_benchmark["mean_boss_skill_hits"])
+            + 10.0 * float(candidate_benchmark["mean_bosses_destroyed"])
         )
         candidate_results.append(
             {"candidate": candidate_name, "selection_score": score, **candidate_benchmark}

@@ -2,15 +2,15 @@
   "comparisons": [
     {
       "control_style": "direct",
-      "random_mean_reward": 22.971644,
-      "trained_mean_reward": 872.51663,
-      "random_phase_progression_rate": 0.25,
-      "trained_phase_progression_rate": 1.0
+      "random_mean_reward": -0.594046,
+      "trained_mean_reward": 517.774193,
+      "random_phase_progression_rate": 0.15,
+      "trained_phase_progression_rate": 0.9
     },
     {
       "control_style": "rotation",
-      "random_mean_reward": -35.927377,
-      "trained_mean_reward": 241.716765,
+      "random_mean_reward": -38.525714,
+      "trained_mean_reward": 127.135207,
       "random_phase_progression_rate": 0.0,
       "trained_phase_progression_rate": 1.0
     }

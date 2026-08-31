@@ -1,7 +1,7 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
-1,17400,-23.406086,1,0,547,137,player_destroyed,False,0,1,100.0,112.0,24,4,0.166667,1,35.0,Pulse Cannon,0,0,0,
-2,17401,-34.86326,1,0,538,135,player_destroyed,False,1,0,175.0,112.0,31,7,0.225806,1,10.0,Pulse Cannon,0,0,0,
-3,17402,173.858273,4,3,2172,543,player_destroyed,False,15,6,2343.05,106.4,195,74,0.379487,5,435.0,Multi-Beam Array,4,3,1,damage:1;fire_rate:1;multishot:2
-4,17403,-22.3959,1,0,877,220,player_destroyed,False,1,1,150.0,112.0,49,6,0.122449,2,45.0,Pulse Cannon,1,0,0,piercing:1
-5,17404,-23.775321,1,0,454,114,player_destroyed,False,0,1,100.0,112.0,12,4,0.333333,1,35.0,Pulse Cannon,0,0,0,
-6,17405,16.692644,2,1,936,234,player_destroyed,False,0,2,200.0,157.92,19,8,0.421053,2,95.0,Prism Laser,1,1,0,laser:1
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,hits_per_projectile,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,minibosses_destroyed,boss_skills_dodged,boss_skill_hits,boss_rewards_chosen,drone_level,barrier_charges,build_summary
+1,15200,132.754125,2,1,3989,998,phase_timeout,True,58,3,3647.5711,0.0,249,89,0.35743,0.35743,4,594.0,Prism Laser,3,1,0,0,0,0,0,2,0,damage:1;laser:1;drone:2
+2,15201,-21.161507,1,0,463,116,player_destroyed,False,1,1,200.0,112.0,19,8,0.421053,0.421053,1,43.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
+3,15202,157.296299,3,2,4011,1003,player_destroyed,False,28,5,2439.592,108.864,331,64,0.193353,0.193353,4,449.0,Rapid Pulse,3,2,0,0,1,0,0,1,0,fire_rate:1;drone:1;riftbreaker:1
+4,15203,-23.407706,1,0,641,161,player_destroyed,False,0,1,100.0,112.0,22,4,0.181818,0.181818,1,35.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
+5,15204,58.583719,2,1,1631,408,player_destroyed,False,14,3,1184.5,104.832,104,36,0.346154,0.346154,3,242.0,Rapid Pulse,2,1,0,0,0,0,0,1,0,fire_rate:1;shield:1;drone:1
+6,15205,-21.364921,1,0,395,99,player_destroyed,False,1,1,200.0,112.0,17,8,0.470588,0.470588,1,43.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,

@@ -16,3 +16,42 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/launch.json
 .idea/
+
+# Regenerable Part II training intermediates (keep final models/evidence/logs)
+logs/arena/runs/*/best/
+logs/arena/runs/*/checkpoints/
+logs/arena/runs/*/last_model.zip
+logs/arena/runs/tune_*/evaluations/
+logs/arena/runs/tune_*/benchmark_eval_callback_best.csv
+logs/arena/runs/tune_*/benchmark_eval_callback_best.json
+logs/arena/direct_evaluation.csv
+logs/arena/direct_evaluation.json
+logs/arena/rotation_evaluation.csv
+logs/arena/rotation_evaluation.json
+models/arena/tune_*.zip
+models/arena/tune_*.metadata.json
+
+# Superseded tuning reruns; the final sweep and original recorded run stay visible.
+logs/arena/tensorboard/tune_direct_fast_exploration_7/
+logs/arena/tensorboard/tune_direct_fast_exploration_8/
+logs/arena/tensorboard/tune_direct_balanced_7/
+logs/arena/tensorboard/tune_direct_balanced_8/
+logs/arena/tensorboard/tune_direct_long_exploration_7/
+logs/arena/tensorboard/tune_direct_long_exploration_8/
+logs/arena/tensorboard/tune_rotation_fast_exploration_7/
+logs/arena/tensorboard/tune_rotation_fast_exploration_8/
+logs/arena/tensorboard/tune_rotation_balanced_6/
+logs/arena/tensorboard/tune_rotation_balanced_7/
+logs/arena/tensorboard/tune_rotation_long_exploration_6/
+logs/arena/tensorboard/tune_rotation_long_exploration_7/
+
+# Superseded schema-v4/final-preflight reruns; keep only the manifest-selected
+# schema-v5 run for each final model/profile.
+logs/arena/tensorboard/dqn_direct_5/
+logs/arena/tensorboard/dqn_rotation_5/
+logs/arena/tensorboard/tune_direct_fast_exploration_9/
+logs/arena/tensorboard/tune_direct_balanced_9/
+logs/arena/tensorboard/tune_direct_long_exploration_9/
+logs/arena/tensorboard/tune_rotation_fast_exploration_9/
+logs/arena/tensorboard/tune_rotation_balanced_8/
+logs/arena/tensorboard/tune_rotation_long_exploration_8/

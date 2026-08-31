@@ -12,6 +12,7 @@ from arena.play import play_manual
 
 
 WIDTH, HEIGHT = 800, 600
+DEMO_SEEDS = {"direct": 22003, "rotation": 23004}
 BACKGROUND = (7, 10, 25)
 PANEL = (19, 29, 55)
 PANEL_HOVER = (28, 43, 75)
@@ -109,7 +110,7 @@ def _draw_menu(
         arrow = fonts["title"].render("›", True, card.accent)
         screen.blit(arrow, (card.rect.right - 28, card.rect.bottom - 36))
 
-    tags = "BUILD DRAFTS   •   BOSS RIFTS   •   SUPPORT DROPS   •   DEEP-RL AGENTS"
+    tags = "21 BUILD PATHS   •   RIFT HUNTERS   •   BOSS BARRAGES   •   DEEP-RL AGENTS"
     tag_surface = fonts["tiny"].render(tags, True, MUTED)
     screen.blit(tag_surface, tag_surface.get_rect(center=(WIDTH // 2, 535)))
     footer = notice or "Click a card to launch  •  Esc exits"
@@ -133,10 +134,10 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
         "tiny": pygame.font.SysFont("bahnschrift", 13, bold=True),
     }
     cards = [
-        LaunchCard(pygame.Rect(55, 170, 330, 145), "Manual: Direct", "WASD moves; SPACE uses close target assist.", "manual", "direct", CYAN),
-        LaunchCard(pygame.Rect(415, 170, 330, 145), "Manual: Rotation", "Rotate, thrust, and aim every projectile.", "manual", "rotation", PURPLE),
-        LaunchCard(pygame.Rect(55, 340, 330, 145), "Watch Direct DQN", "Watch the learned policy level up its arsenal.", "ai", "direct", CYAN),
-        LaunchCard(pygame.Rect(415, 340, 330, 145), "Watch Rotation DQN", "See learned aiming, thrust, and weapon upgrades.", "ai", "rotation", PURPLE),
+        LaunchCard(pygame.Rect(55, 170, 330, 145), "Manual: Direct", "Move and fire together; nearby targets receive assist.", "manual", "direct", CYAN),
+        LaunchCard(pygame.Rect(415, 170, 330, 145), "Manual: Rotation", "Rotate or thrust while firing along your heading.", "manual", "rotation", PURPLE),
+        LaunchCard(pygame.Rect(55, 340, 330, 145), "Watch Direct DQN", "Watch a learned policy evolve an uncapped build.", "ai", "direct", CYAN),
+        LaunchCard(pygame.Rect(415, 340, 330, 145), "Watch Rotation DQN", "Inspect learned aiming and boss-hazard avoidance.", "ai", "rotation", PURPLE),
     ]
     readiness = {
         style: policy_readiness(style) for style in ("direct", "rotation")
@@ -183,6 +184,7 @@ def main() -> None:
             model,
             control_style,
             episodes=1,
+            seed=DEMO_SEEDS[control_style],
             action_repeat=int(metadata.get("action_repeat", 4)),
         )
 

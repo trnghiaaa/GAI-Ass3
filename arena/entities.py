@@ -36,6 +36,7 @@ class Enemy(Body):
     vy: float = 0.0
     attack_cooldown_steps: int = 0
     is_elite: bool = False
+    is_miniboss: bool = False
 
 
 @dataclass
@@ -58,7 +59,29 @@ class Projectile(Body):
     owner: str = "player"
     pierces_remaining: int = 0
     splash_radius: float = 0.0
+    is_critical: bool = False
     hit_entity_ids: set[int] = field(default_factory=set)
+
+
+@dataclass
+class DangerZone:
+    """Telegraphed boss attack resolved in continuous arena coordinates."""
+
+    kind: str
+    x: float
+    y: float
+    angle: float = 0.0
+    radius: float = 0.0
+    half_width: float = 0.0
+    half_length: float = 0.0
+    telegraph_steps: int = 1
+    active_steps: int = 1
+    maximum_telegraph_steps: int = 1
+    damage: float = 0.0
+    attack_id: int = 0
+    attack_name: str = "BOSS ATTACK"
+    triggered: bool = False
+    hit_player: bool = False
 
 
 def circles_overlap(first: Body, second: Body) -> bool:
@@ -68,3 +91,14 @@ def circles_overlap(first: Body, second: Body) -> bool:
     dy = first.y - second.y
     radii = first.radius + second.radius
     return dx * dx + dy * dy <= radii * radii
+
+
+__all__ = [
+    "Body",
+    "Player",
+    "Enemy",
+    "Spawner",
+    "Projectile",
+    "DangerZone",
+    "circles_overlap",
+]

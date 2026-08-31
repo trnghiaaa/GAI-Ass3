@@ -17,10 +17,12 @@ typed manually into the report.
 
 Creative renderer-only presentation features include parallax background,
 targeting reticle, projectile trails, hit particles, low-health vignette,
-animated spawners, phase banners, fitted text, telemetry, and a visual launcher.
+animated spawners, phase/boss/level-up transition VFX, fitted text, telemetry,
+and a visual launcher.
 The additional combat-progression system grants non-RL XP for objectives and
-offers seeded three-card build drafts. Eleven permanent upgrades, phase support
-drops, and every-third-phase boss rifts deepen play without altering either
+offers seeded three-card build drafts. Uncapped ship levels, 21 upgrade/mastery
+paths, permanent drone squadrons, random minibosses, phase support drops,
+post-boss relics, and grouped multi-lane boss barrages deepen play without altering either
 required action dictionary or the phase progression rule.
 
 ## H — API and observation
@@ -29,10 +31,12 @@ required action dictionary or the phase progression rule.
   `step() -> (obs, reward, terminated, truncated, info)`.
 - `LegacyArenaEnv` exposes the assignment's four-value contract exactly:
   `reset() -> obs` and `step() -> (obs, reward, done, info)`.
-- The fixed `float32` observation contains 43 normalized features. It includes
+- The fixed `float32` observation contains 70 normalized features. It includes
   player position, velocity, orientation, health, nearest enemy/spawner relative
   direction and distance, phase, targeting diagnostics, XP progress, ship level,
-  the active weapon, full composed build, temporary support, and boss state.
+  the active weapon, full composed build, support systems, miniboss state, and
+  primary, combined, and secondary boss-hazard escape/time signals plus the
+  critical/leech/Riftbreaker build state.
 - `ObservationIndex`, `OBSERVATION_NAMES`, and `observation_as_dict()` make every
   position explicit for tests and report tables.
 
@@ -45,18 +49,21 @@ required action dictionary or the phase progression rule.
 
 Metadata beside each model records its control style, observation schema,
 network, seed, action repeat, hyperparameters, versions, checkpoint selection,
-and held-out benchmark. The submitted 20-episode benchmarks report 100% phase
-progression for both models and mean rewards of 872.52 (direct) and 241.72
-(rotation/thrust). Mean ship levels were 8.3 and 5.95; mean boss-rift kills were
-2.75 and 0.8. The seeded random direct baseline averaged phase 1.25 with 25%
-progression, while random rotation never cleared phase 1, supporting that the
-much stronger submitted progression and build activation are learned behavior.
+and held-out benchmark. The submitted 20-episode benchmarks report 90% direct
+and 100% rotation phase progression, with mean rewards of 517.77 and 127.14.
+Mean phases were 6.10 and 3.05; mean ship levels were 6.70 and 3.30; mean
+boss-rift kills were 1.35 and 0.15. Direct averaged 1.95 boss-barrage dodges
+versus 1.15 hits. Matching random baselines scored -0.59 reward/15% progression
+for direct and -38.53/0% for rotation, supporting that progression and build
+activation are learned behavior rather than random control.
 
 ## J — Reward and deep-RL quality
 
 `ArenaEnv._calculate_reward()` returns a total and exact named breakdown.
 Required event rewards are configured in `arena/config.json`: enemy/spawner
-destruction, phase advancement, damage taken, and death. Small damage, approach,
+destruction, phase advancement, damage taken, and death. Miniboss destruction,
+boss clearance, complete barrage dodges, and same-barrage escape improvement
+are additional named terms. Small damage, approach,
 aim-improvement, and shot-quality terms improve temporal credit assignment and
 are fully logged; they do not change environment mechanics. Combat XP is a
 separate gameplay currency and is intentionally absent from the RL reward total.
@@ -73,9 +80,13 @@ writes CSV/JSON/PNG evidence under `logs/arena/tuning`.
 - `logs/arena/runs/dqn_*/benchmark.json`
 - `logs/arena/tuning/hyperparameter_comparison.png`
 - `logs/arena/control_style_comparison.png`
+- `logs/arena/boss_avoidance_comparison.png`
 - `logs/arena/learning_vs_random.png`
 - `logs/arena/environment_showcase.png`
 - `logs/arena/upgrade_showcase.png`
+- `logs/arena/boss_transition_showcase.png`
 - `logs/arena/choice_showcase.png`
 - `logs/arena/boss_showcase.png`
+- `logs/arena/miniboss_showcase.png`
+- `logs/arena/boss_reward_showcase.png`
 - `logs/arena/evidence_manifest.json`

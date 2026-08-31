@@ -19,8 +19,19 @@ SUM_EVENT_KEYS = (
     "damage_taken",
     "spawner_progress",
     "aim_improvement",
+    "hazard_escape_improvement",
+    "sustain_healed",
     "xp_gained",
     "levels_gained",
+    "minibosses_spawned",
+    "minibosses_destroyed",
+    "miniboss_caches",
+    "boss_skills_cast",
+    "boss_skills_dodged",
+    "boss_skill_hits",
+    "barrier_blocks",
+    "drone_shots",
+    "drone_hits",
 )
 
 
@@ -51,6 +62,7 @@ class ActionRepeatWrapper(gym.Wrapper):
         frames = 0
         any_shot = False
         any_phase = False
+        any_boss_clear = False
 
         for _ in range(self.repeat):
             observation, reward, terminated, truncated, info = self.env.step(action)
@@ -59,6 +71,7 @@ class ActionRepeatWrapper(gym.Wrapper):
             last_info = dict(info)
             any_shot = any_shot or bool(info.get("shot_fired"))
             any_phase = any_phase or bool(info.get("phase_advanced"))
+            any_boss_clear = any_boss_clear or bool(info.get("boss_phase_cleared"))
             for key in SUM_EVENT_KEYS:
                 totals[key] += float(info.get(key, 0.0))
             for key, value in info.get("reward_breakdown", {}).items():
@@ -75,12 +88,22 @@ class ActionRepeatWrapper(gym.Wrapper):
                 "enemies_destroyed",
                 "spawners_destroyed",
                 "levels_gained",
+                "minibosses_spawned",
+                "minibosses_destroyed",
+                "miniboss_caches",
+                "boss_skills_cast",
+                "boss_skills_dodged",
+                "boss_skill_hits",
+                "barrier_blocks",
+                "drone_shots",
+                "drone_hits",
             ):
                 last_info[key] = int(value)
             else:
                 last_info[key] = value
         last_info["shot_fired"] = any_shot
         last_info["phase_advanced"] = any_phase
+        last_info["boss_phase_cleared"] = any_boss_clear
         last_info["reward_breakdown"] = reward_breakdown
         last_info["action_repeat_frames"] = frames
         return observation, total_reward, terminated, truncated, last_info

@@ -17,8 +17,6 @@ from arena.renderer import ArenaRenderer
 
 
 def _direct_action(keys: pygame.key.ScancodeWrapper) -> int:
-    if keys[pygame.K_SPACE]:
-        return DIRECT_ACTIONS["SHOOT"]
     if keys[pygame.K_w] or keys[pygame.K_UP]:
         return DIRECT_ACTIONS["UP"]
     if keys[pygame.K_s] or keys[pygame.K_DOWN]:
@@ -27,18 +25,20 @@ def _direct_action(keys: pygame.key.ScancodeWrapper) -> int:
         return DIRECT_ACTIONS["LEFT"]
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         return DIRECT_ACTIONS["RIGHT"]
+    if keys[pygame.K_SPACE]:
+        return DIRECT_ACTIONS["SHOOT"]
     return DIRECT_ACTIONS["NOOP"]
 
 
 def _rotation_action(keys: pygame.key.ScancodeWrapper) -> int:
-    if keys[pygame.K_SPACE]:
-        return ROTATION_ACTIONS["SHOOT"]
     if keys[pygame.K_w] or keys[pygame.K_UP]:
         return ROTATION_ACTIONS["THRUST"]
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
         return ROTATION_ACTIONS["ROTATE_LEFT"]
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         return ROTATION_ACTIONS["ROTATE_RIGHT"]
+    if keys[pygame.K_SPACE]:
+        return ROTATION_ACTIONS["SHOOT"]
     return ROTATION_ACTIONS["NOOP"]
 
 
@@ -50,10 +50,10 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
     renderer = ArenaRenderer(env, mode="human")
 
     if control_style == "direct":
-        footer = "WASD / ARROWS move   •   SPACE fire (close target assist)   •   R restart   •   ESC quit"
+        footer = "WASD / ARROWS move   •   hold SPACE to fire + move (target assist)   •   R restart   •   ESC quit"
         choose_action = _direct_action
     else:
-        footer = "W / UP thrust   •   A/D rotate   •   SPACE fire   •   R restart   •   ESC quit"
+        footer = "W / UP thrust   •   A/D rotate   •   hold SPACE to fire + steer   •   R restart   •   ESC quit"
         choose_action = _rotation_action
 
     running = True
@@ -91,7 +91,15 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
             and env.pending_choice_kind is None
             and not renderer.show_build_panel
         ):
-            action = choose_action(pygame.key.get_pressed())
+            keys = pygame.key.get_pressed()
+            action = choose_action(keys)
+            shoot_action = (
+                DIRECT_ACTIONS["SHOOT"]
+                if control_style == "direct"
+                else ROTATION_ACTIONS["SHOOT"]
+            )
+            if keys[pygame.K_SPACE] and action != shoot_action:
+                env.request_manual_fire()
             env.step(action)
 
         active_footer = (

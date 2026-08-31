@@ -18,8 +18,10 @@ ROW_FIELDS = (
     "episode", "seed", "reward", "phase", "phases_advanced",
     "simulation_steps", "decisions", "end_reason", "survived_time_limit",
     "enemies_destroyed", "spawners_destroyed", "damage_dealt", "damage_taken",
-    "shots_fired", "projectile_hits", "accuracy", "player_level", "xp_earned",
+    "shots_fired", "projectile_hits", "accuracy", "hits_per_projectile", "player_level", "xp_earned",
     "weapon_name", "upgrades_chosen", "phase_rewards_chosen", "bosses_destroyed",
+    "minibosses_destroyed", "boss_skills_dodged", "boss_skill_hits",
+    "boss_rewards_chosen", "drone_level", "barrier_charges",
     "build_summary",
 )
 
@@ -82,13 +84,20 @@ def evaluate_model(
                 "damage_taken": round(float(stats.get("damage_taken", 0.0)), 4),
                 "shots_fired": shots,
                 "projectile_hits": hits,
-                "accuracy": round(hits / shots, 6) if shots else 0.0,
+                "accuracy": round(min(1.0, hits / shots), 6) if shots else 0.0,
+                "hits_per_projectile": round(hits / shots, 6) if shots else 0.0,
                 "player_level": int(final_info.get("player_level", 1)),
                 "xp_earned": round(float(stats.get("xp_earned", 0.0)), 4),
                 "weapon_name": str(final_info.get("weapon_name", "Pulse Cannon")),
                 "upgrades_chosen": int(stats.get("upgrades_chosen", 0)),
                 "phase_rewards_chosen": int(stats.get("phase_rewards_chosen", 0)),
                 "bosses_destroyed": int(stats.get("bosses_destroyed", 0)),
+                "minibosses_destroyed": int(stats.get("minibosses_destroyed", 0)),
+                "boss_skills_dodged": int(stats.get("boss_skills_dodged", 0)),
+                "boss_skill_hits": int(stats.get("boss_skill_hits", 0)),
+                "boss_rewards_chosen": int(stats.get("boss_rewards_chosen", 0)),
+                "drone_level": int(final_info.get("drone_level", 0)),
+                "barrier_charges": int(final_info.get("barrier_charges", 0)),
                 "build_summary": ";".join(
                     f"{key}:{value}"
                     for key, value in final_info.get("upgrade_stacks", {}).items()
@@ -126,6 +135,9 @@ def evaluate_model(
             fmean(float(row["damage_taken"]) for row in rows), 4
         ),
         "mean_accuracy": round(fmean(float(row["accuracy"]) for row in rows), 6),
+        "mean_hits_per_projectile": round(
+            fmean(float(row["hits_per_projectile"]) for row in rows), 6
+        ),
         "mean_player_level": round(fmean(levels), 4),
         "max_player_level": max(levels),
         "mean_xp_earned": round(
@@ -133,6 +145,18 @@ def evaluate_model(
         ),
         "mean_bosses_destroyed": round(
             fmean(int(row["bosses_destroyed"]) for row in rows), 4
+        ),
+        "mean_minibosses_destroyed": round(
+            fmean(int(row["minibosses_destroyed"]) for row in rows), 4
+        ),
+        "mean_boss_skills_dodged": round(
+            fmean(int(row["boss_skills_dodged"]) for row in rows), 4
+        ),
+        "mean_boss_skill_hits": round(
+            fmean(int(row["boss_skill_hits"]) for row in rows), 4
+        ),
+        "mean_drone_level": round(
+            fmean(int(row["drone_level"]) for row in rows), 4
         ),
         "mean_upgrades_chosen": round(
             fmean(int(row["upgrades_chosen"]) for row in rows), 4

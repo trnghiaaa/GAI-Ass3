@@ -136,7 +136,8 @@ def watch_policy(
                 if renderer.show_build_panel
                 else (
                     f"TRAINED DQN  •  deterministic  •  episode {episode}/{episodes}  •  "
-                    f"{speed_options[speed_index]:g}x  •  P pause  . step  "
+                    f"seed {seed + episode - 1}  •  {speed_options[speed_index]:g}x  •  "
+                    "P pause  . step  "
                     "+/- speed  TAB build  R replay  Esc exit"
                 )
             )

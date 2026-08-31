@@ -1,7 +1,7 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,build_summary
-1,17302,260.856652,4,3,3233,809,player_destroyed,False,48,9,4588.4,137.984,183,120,0.655738,8,870.0,Prism Laser,7,3,1,hull:1;damage:1;fire_rate:1;laser:1;splash:2;shield:1
-2,17303,2084.969816,17,16,12281,3071,player_destroyed,False,434,55,65723.25,221.76,1830,1840,1.005464,9,6665.0,Prism Laser,8,16,5,damage:2;fire_rate:2;multishot:1;laser:1;piercing:1;splash:1
-3,17304,2167.08581,19,18,11962,2991,player_destroyed,False,336,62,57866.8,156.912,2813,1815,0.645219,9,5980.0,Prism Laser,8,18,6,damage:1;fire_rate:1;multishot:3;laser:1;piercing:2
-4,17305,2368.390586,16,15,16608,4152,phase_timeout,True,653,54,93160.25,0.0,3746,2307,0.615857,9,8795.0,Nova Payload,8,15,5,damage:4;multishot:3;splash:1
-5,17306,1280.080558,10,9,12320,3080,phase_timeout,True,356,31,39572.7,16.7552,1566,914,0.583653,9,4870.0,Prism Laser,8,9,3,damage:4;fire_rate:1;multishot:1;laser:1;shield:1
-6,17307,947.356586,10,9,5797,1450,player_destroyed,False,137,31,18417.3,235.2,976,580,0.594262,9,2680.0,Nova Payload,8,9,3,damage:1;fire_rate:3;multishot:2;splash:2
+episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,hits_per_projectile,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,minibosses_destroyed,boss_skills_dodged,boss_skill_hits,boss_rewards_chosen,drone_level,barrier_charges,build_summary
+1,15102,126.099589,3,2,2048,512,player_destroyed,False,21,5,2385.575,115.488,91,63,0.692308,0.692308,4,393.0,Multi-Beam Array,3,2,0,0,1,3,0,1,0,damage:1;multishot:1;drone:1;capacitor:1
+2,15103,135.50697,3,2,2098,525,player_destroyed,False,21,5,2714.1929,123.744,157,86,0.547771,0.547771,4,393.0,Multi-Beam Array,3,2,0,0,0,4,0,2,0,multishot:1;drone:2;capacitor:1
+3,15104,61.410216,2,1,1595,399,player_destroyed,False,15,3,1237.5,100.24,79,39,0.493671,0.493671,3,250.0,Pulse Cannon,2,1,0,0,0,0,0,1,0,damage:1;drone:1
+4,15105,132.642572,3,2,2046,512,player_destroyed,False,18,5,2028.8,117.12,152,76,0.5,0.5,4,459.0,Multi-Beam Array,3,2,0,1,0,1,0,0,0,damage:1;multishot:1;leech:1
+5,15106,109.922687,3,2,961,241,player_destroyed,False,5,5,1092.1,117.12,43,39,0.906977,0.906977,3,265.0,Pulse Cannon,2,2,0,0,0,1,0,0,0,damage:1;homing:1
+6,15107,141.475737,3,2,1683,421,player_destroyed,False,22,5,2346.7312,105.28,98,76,0.77551,0.77551,4,491.0,Multi-Beam Array,3,2,0,1,1,0,0,2,0,damage:1;multishot:1;drone:2

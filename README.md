@@ -49,7 +49,7 @@ schemes. Direct manual play is also available from the command line:
 python -m arena.play --control-style direct
 ```
 
-Use `WASD` or the arrow keys to move, then `Space` to fire. Direct mode snaps
+Use `WASD` or the arrow keys to move and hold `Space` to fire at the same time. Direct mode snaps
 shots to the nearest hostile when its reticle turns green inside assist range;
 outside that range it fires along the current heading. To try rotation and
 thrust controls instead:
@@ -58,8 +58,8 @@ thrust controls instead:
 python -m arena.play --control-style rotation
 ```
 
-For rotation controls, use `W` to thrust, `A`/`D` to rotate, and `Space` to
-fire in the ship's current direction. In both modes, `R` restarts an episode
+For rotation controls, use `W` to thrust, `A`/`D` to rotate, and hold `Space` to
+fire while thrusting or turning. In both modes, `R` restarts an episode
 and `Esc` quits. `Tab` opens a readable ship-build panel and pauses the manual
 battle while you inspect every selected upgrade and live weapon statistic.
 
@@ -72,13 +72,17 @@ The arena provides:
 - Increasing phases after all active spawners are destroyed
 - Clean phase hand-offs that withdraw surviving hostiles and clear old shots
   without awarding fake kills, XP, or RL reward
-- A gradual phase director plus a special boss rift every third phase
+- A gradual phase director, random Rift Hunter minibosses, and a boss rift every third phase
+- Grouped horizontal, vertical, diagonal, cross, trident, and circular boss
+  barrages with readable names/countdowns and one-hit-per-cast fairness
 - A fresh 60-second combat deadline for every phase, plus a long episode safety cap
 - Headless, human-window, and RGB-array rendering modes
 - Targeting reticles, impact particles, projectile trails, damage feedback,
-  readable HUD telemetry, phase banners, and report-ready RGB screenshots
-- Per-episode combat XP and three-card level-up drafts with eleven upgrade types
-- Between-phase support drafts: repair cache, nova bomb, or temporary wingman
+  readable HUD telemetry, animated level-up/phase/boss transitions, and
+  report-ready RGB screenshots
+- Uncapped combat levels and three-card drafts spanning 21 upgrade/mastery paths
+- Permanent, upgradable wingman squadrons plus five between-phase support choices
+- Strong post-boss relic drafts and automatic repair/Aegis miniboss caches
 
 ### Arena API
 
@@ -111,7 +115,7 @@ env.close()
 
 ### Arena Observation Vector
 
-The agent receives a one-dimensional `float32` vector with exactly 43
+The agent receives a one-dimensional `float32` vector with exactly 70
 normalized features. It never receives the rendered pixels.
 
 | Indices | Features | Range | Meaning |
@@ -134,6 +138,12 @@ normalized features. It never receives the rendered pixels.
 | 30–33 | Volley size, fire rate, damage and laser flag | `[0, 1]` | Active weapon characteristics needed to keep progression Markov |
 | 34–39 | Hull, shield, range, piercing, splash and engine | `[0, 1]` | Normalized permanent build-upgrade state |
 | 40–42 | Wingman, nova bomb and boss phase | `[0, 1]` | Temporary support and encounter state |
+| 43–44 | Miniboss presence and health | `[0, 1]` | Makes optional Rift Hunter encounters observable |
+| 45–50 | Hazard escape X/Y, safety distance, impact time, active/circle flags | mixed normalized | Provides the information needed to dodge telegraphed boss attacks |
+| 51–57 | Drone level/count, Aegis, overdrive, regeneration, homing and mastery | `[0, 1]` | Exposes the expanded procedural build without hidden state |
+| 58–60 | Hazard count and combined escape X/Y | mixed normalized | Summarizes simultaneous boss lanes instead of treating a barrage as one line |
+| 61–66 | Secondary hazard escape X/Y, safety distance, impact time, active/circle flags | mixed normalized | Exposes a second lane so the policy can choose a genuinely safe position |
+| 67–69 | Critical chance, leech strength and Riftbreaker power | `[0, 1]` | Keeps the three additional weapon/sustain upgrades observable |
 
 If a target type is absent, its four target features are `(0, 0, 1, 0)`:
 no direction, maximum normalized distance, and zero health. Stable feature
@@ -154,16 +164,23 @@ enough for DQN to learn while the renderer remains smooth.
 ### Combat XP, Build Drafts, and Boss Phases
 
 Combat XP is a creative gameplay system separate from the RL reward. Destroyed
-enemies, rifts, and completed phases grant XP within the current episode. A
+enemies, minibosses, rifts, and completed phases grant XP within the current episode. A
 manual player pauses at each level and chooses one of three seeded cards:
 maximum hull, repair, damage, fire rate, multi-beam, range, prism laser,
-piercing, splash, shield, or engines. Clearing a phase offers repair, an armed
-arena bomb, or a one-phase combat drone. Every third phase replaces ordinary
-rifts with one larger boss rift and elite minions. Difficulty grows gradually
-through health, speed, contact damage, capacity, and spawn rate.
+piercing, splash, shield, engines, homing, regeneration, capacitors, permanent
+drones, critical beams, kill-based hull siphon, or specialist Riftbreaker
+damage. Once the regular paths mature, repeatable weapon, hull, and drone
+masteries keep the ship growing with no combat-level cap. Clearing a phase offers
+repair, an armed arena bomb, a permanent wingman tier, overdrive, or Aegis.
+Random Rift Hunters drop XP plus a repair/Aegis cache. Every third phase replaces
+ordinary rifts with a boss that telegraphs named multi-lane sweeps, crosses,
+diagonal lattices, trident walls, and a circular nova cage;
+victory opens a stronger permanent-relic draft. Speed, damage, spawn rate, and
+active-enemy counts use fairness caps while health and player mastery keep scaling.
 
 During headless training and learned-policy playback, a deterministic heuristic
-chooses from the same seeded three-card offers. This keeps both rubric-required
+chooses from the same seeded three-card offers using health, upcoming boss risk,
+control style, owned-weapon synergies, and diminishing-stack value. This keeps both rubric-required
 action dictionaries exactly unchanged: the existing `Shoot` action uses the
 composed build. XP and drafts never add an unreported RL reward term or replace
 the required phase rule.
@@ -175,7 +192,9 @@ enemy destruction, larger spawner destruction, phase advancement, damage
 penalty, and a strong death penalty. Small shaping terms give credit for actual
 damage, progress toward a stable spawner target, aim improvement, and
 well-aligned shots. Shaping never changes health, collisions, entity movement,
-or terminal rules. Combat XP is deliberately excluded from this total. Every
+or terminal rules. A potential-difference term rewards movement out of an
+unchanged boss barrage, while a full dodge remains a separate event reward.
+Combat XP is deliberately excluded from this total. Every
 `step()` exposes `info["reward_breakdown"]`, making the exact contribution of
 every RL reward term auditable.
 
@@ -187,25 +206,27 @@ model metadata:
 
 ```bash
 # Reproduce the two tuned final models
-python -m arena.train --control-style direct --timesteps 200000 --profile long_exploration --benchmark-episodes 20 --seed 5200
-python -m arena.train --control-style rotation --timesteps 300000 --profile fast_exploration --benchmark-episodes 20 --seed 6200
+python -m arena.train --control-style direct --timesteps 450000 --profile long_exploration --benchmark-episodes 20 --seed 15100
+python -m arena.train --control-style rotation --timesteps 650000 --profile long_exploration --benchmark-episodes 20 --seed 16100
 
 # Generic training is also supported (300,000 decisions by default)
 python -m arena.train --control-style both
 
 # Reproduce the three-profile hyperparameter comparison
-python -m arena.tune --control-style both --timesteps 25000 --benchmark-episodes 6 --seed 7300
+python -m arena.tune --control-style both --timesteps 35000 --benchmark-episodes 6 --seed 5100
 ```
 
 Final models are saved separately as `models/arena/dqn_direct.zip` and
 `models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
 checkpoints, deterministic seeded benchmarks, plots, and summaries are written
 under `logs/arena`. In the submitted held-out 20-episode benchmarks, direct
-control achieved mean reward 872.52, 100% phase progression, mean phase 9.9,
-and mean ship level 8.3; rotation/thrust achieved 241.72, 100%, phase 4.25, and
-level 5.95 respectively. The policies averaged 2.75 and 0.8 destroyed boss
-rifts per episode. A seeded random direct baseline averaged phase 1.25 and only
-25% progression, while random rotation never cleared phase 1.
+control achieved mean reward 517.77, 90% phase progression, mean phase 6.10,
+and mean ship level 6.70; rotation/thrust achieved 127.14, 100%, phase 3.05, and
+level 3.30 respectively. The policies averaged 1.35 and 0.15 destroyed boss
+rifts per episode. Direct averaged 1.95 boss-barrage dodges versus 1.15 hits;
+rotation averaged 0.80 dodges versus 0.90 hits while reaching bosses less often.
+The matching seeded random baselines scored -0.59 reward/15% progression for
+direct and -38.53/0% for rotation.
 
 ### Visual Evaluation
 
