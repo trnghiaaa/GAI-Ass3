@@ -50,13 +50,14 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
     renderer = ArenaRenderer(env, mode="human")
 
     if control_style == "direct":
-        footer = "WASD / ARROWS move   •   hold SPACE to fire + move (target assist)   •   R restart   •   ESC quit"
+        footer = "WASD / ARROWS move  •  SPACE fire  •  P pause  •  R restart  •  ESC quit"
         choose_action = _direct_action
     else:
-        footer = "W / UP thrust   •   A/D rotate   •   hold SPACE to fire + steer   •   R restart   •   ESC quit"
+        footer = "W thrust  •  A/D rotate  •  SPACE fire  •  P pause  •  R restart  •  ESC quit"
         choose_action = _rotation_action
 
     running = True
+    paused = False
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -66,6 +67,9 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                     running = False
                 elif event.key == pygame.K_r:
                     env.reset(seed=seed)
+                    paused = False
+                elif event.key == pygame.K_p and env.pending_choice_kind is None:
+                    paused = not paused
                 elif event.key == pygame.K_TAB and env.pending_choice_kind is None:
                     renderer.show_build_panel = not renderer.show_build_panel
                 elif env.pending_choice_kind is not None and event.key in (
@@ -76,18 +80,21 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                     index = event.key - pygame.K_1
                     if index < len(env.pending_choices):
                         env.choose_pending_choice(index)
-            elif (
-                event.type == pygame.MOUSEBUTTONDOWN
-                and event.button == 1
-                and env.pending_choice_kind is not None
-            ):
-                index = renderer.choice_at_position(event.pos)
-                if index is not None:
-                    env.choose_pending_choice(index)
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if (
+                    env.pending_choice_kind is None
+                    and renderer.pause_at_position(event.pos)
+                ):
+                    paused = not paused
+                elif env.pending_choice_kind is not None:
+                    index = renderer.choice_at_position(event.pos)
+                    if index is not None:
+                        env.choose_pending_choice(index)
 
         if (
             running
             and not env.done
+            and not paused
             and env.pending_choice_kind is None
             and not renderer.show_build_panel
         ):
@@ -103,15 +110,23 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
             env.step(action)
 
         active_footer = (
-            "Choose one card with the mouse or keys 1–3   •   The battle timer is paused"
-            if env.pending_choice_kind is not None
+            "GAME PAUSED  •  P or RESUME continues"
+            if paused
             else (
-                "SHIP BUILD  •  TAB closes this panel  •  The battle timer is paused"
-                if renderer.show_build_panel
-                else footer + "   •   TAB build"
+                "Choose one card with the mouse or keys 1–3   •   The battle timer is paused"
+                if env.pending_choice_kind is not None
+                else (
+                    "SHIP BUILD  •  TAB closes this panel  •  The battle timer is paused"
+                    if renderer.show_build_panel
+                    else footer + "   •   TAB build"
+                )
             )
         )
-        renderer.render(process_events=False, footer_text=active_footer)
+        renderer.render(
+            process_events=False,
+            footer_text=active_footer,
+            paused=paused,
+        )
         renderer.clock.tick(env.fps)
 
     renderer.close()

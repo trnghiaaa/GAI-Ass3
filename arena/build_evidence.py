@@ -330,6 +330,11 @@ def _capture_environment_preview() -> None:
             footer_text="PART II ENVIRONMENT  •  continuous motion  •  live collision and health systems"
         )
         pygame.image.save(renderer.surface, ARENA_LOG_DIR / "environment_showcase.png")
+        renderer.render(
+            footer_text="GAME PAUSED  •  P or RESUME continues",
+            paused=True,
+        )
+        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "pause_showcase.png")
         env.upgrade_banner_steps = max(
             1,
             int(float(env.progression_cfg["upgrade_banner_seconds"]) * env.fps),
@@ -419,7 +424,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "The preserved three-profile sweep is historical schema-5 evidence; schema-6 transfer comparisons are in threat_experiment/.",
+        "note": "The preserved three-profile sweep is historical schema-5 evidence; schema-7 safety-aware comparisons are in safety_experiment/.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events
@@ -430,6 +435,7 @@ def build() -> None:
             "control_style_comparison.png",
             "boss_avoidance_comparison.png",
             "environment_showcase.png",
+            "pause_showcase.png",
             "upgrade_showcase.png",
             "boss_transition_showcase.png",
             "choice_showcase.png",

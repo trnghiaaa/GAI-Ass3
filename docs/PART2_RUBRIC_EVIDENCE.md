@@ -4,9 +4,9 @@ This page maps each marking item to code, automated checks, and generated
 artifacts. Numeric claims should be copied from the final JSON files rather than
 typed manually into the report.
 
-Schema-6 update: the historical benchmark numbers and tuning artifacts below
-are schema-5 evidence, not results for the harder boss/shield arena. Current
-experiment status and matched results are in `PART2_THREAT_EXPERIMENT.md`.
+Schema-7 final status and common-seed results are in
+`PART2_SAFETY_EXPERIMENT.md`. Older schema-5/6 artifacts remain as honest
+hyperparameter and rejected-candidate evidence.
 
 ## G — Real-time Pygame arena
 
@@ -22,7 +22,7 @@ experiment status and matched results are in `PART2_THREAT_EXPERIMENT.md`.
 Creative renderer-only presentation features include parallax background,
 targeting reticle, projectile trails, hit particles, low-health vignette,
 animated spawners, phase/boss/level-up transition VFX, fitted text, telemetry,
-and a visual launcher.
+a visible keyboard/mouse pause overlay, and a visual launcher.
 The additional combat-progression system grants non-RL XP for objectives and
 offers seeded three-card build drafts. Uncapped ship levels, 21 upgrade/mastery
 paths, permanent drone squadrons, random minibosses, phase support drops,
@@ -56,12 +56,11 @@ required action dictionary or the phase progression rule.
 
 Metadata beside each model records its control style, observation schema,
 network, seed, action repeat, hyperparameters, versions, checkpoint selection,
-and held-out benchmark. The submitted 20-episode benchmarks report 90% direct
-and 100% rotation phase progression, with mean rewards of 517.77 and 127.14.
-Mean phases were 6.10 and 3.05; mean ship levels were 6.70 and 3.30; mean
-boss-rift kills were 1.35 and 0.15. Direct averaged 1.95 boss-barrage dodges
-versus 1.15 hits. Matching random baselines scored -0.59 reward/15% progression
-for direct and -38.53/0% for rotation, supporting that progression and build
+and held-out benchmark. The submitted 30-episode schema-7 benchmarks report
+100% progression for both controls, with mean rewards of 510.30 and 89.48.
+Mean phases were 5.70 and 2.70. Direct averaged 1.10 boss kills and 4.77 dodges
+versus 1.37 hits; rotation averaged 1.27 dodges versus 0.60 hits. Matching random
+baselines scored -14.80 reward/3.33% progression for direct and -37.83/0% for rotation, supporting that progression and build
 activation are learned behavior rather than random control.
 
 ## J — Reward and deep-RL quality
@@ -70,7 +69,7 @@ activation are learned behavior rather than random control.
 Required event rewards are configured in `arena/config.json`: enemy/spawner
 destruction, phase advancement, damage taken, and death. Miniboss destruction,
 boss clearance, complete barrage dodges, and same-barrage escape improvement
-are additional named terms. Small damage, approach,
+are additional named terms. Small damage, safe-range/crowd-separation,
 aim-improvement, and shot-quality terms improve temporal credit assignment and
 are fully logged; they do not change environment mechanics. Combat XP is a
 separate gameplay currency and is intentionally absent from the RL reward total.
@@ -90,6 +89,7 @@ writes CSV/JSON/PNG evidence under `logs/arena/tuning`.
 - `logs/arena/boss_avoidance_comparison.png`
 - `logs/arena/learning_vs_random.png`
 - `logs/arena/environment_showcase.png`
+- `logs/arena/pause_showcase.png`
 - `logs/arena/upgrade_showcase.png`
 - `logs/arena/boss_transition_showcase.png`
 - `logs/arena/choice_showcase.png`

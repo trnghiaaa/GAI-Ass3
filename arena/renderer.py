@@ -74,6 +74,7 @@ class ArenaRenderer:
         self.particles: list[dict[str, object]] = []
         self.last_effect_step = -1
         self.show_build_panel = False
+        self.pause_button_rect = pygame.Rect(env.width - 108, env.height - 29, 92, 24)
 
         star_rng = random.Random(8071)
         self.stars = [
@@ -91,6 +92,7 @@ class ArenaRenderer:
         *,
         process_events: bool = True,
         footer_text: str | None = None,
+        paused: bool = False,
     ) -> np.ndarray | None:
         if process_events and self.mode == "human":
             for event in pygame.event.get():
@@ -110,6 +112,7 @@ class ArenaRenderer:
         self._draw_progression_fx()
         self._draw_vignette()
         self._draw_hud(footer_text)
+        self._draw_pause_button(paused)
 
         if (
             self.env.phase_transition_steps > 0
@@ -127,6 +130,8 @@ class ArenaRenderer:
             self._draw_build_panel()
         if self.env.pending_choice_kind is not None and not self.env.done:
             self._draw_choice_overlay()
+        elif paused and not self.env.done and not self.show_build_panel:
+            self._draw_pause_overlay()
         if self.env.done:
             self._draw_episode_end()
 
@@ -136,6 +141,54 @@ class ArenaRenderer:
 
         frame = pygame.surfarray.array3d(self.surface)
         return np.transpose(frame, (1, 0, 2)).copy()
+
+    def pause_at_position(self, position: tuple[int, int]) -> bool:
+        """Return whether a click targets the always-visible pause control."""
+
+        return self.pause_button_rect.collidepoint(position)
+
+    def _draw_pause_button(self, paused: bool) -> None:
+        """Draw a compact mouse-accessible PAUSE / RESUME control."""
+
+        rect = self.pause_button_rect
+        accent = COLORS["xp"] if paused else COLORS["accent"]
+        shadow = rect.move(0, 3)
+        pygame.draw.rect(self.surface, (4, 7, 18), shadow, border_radius=7)
+        pygame.draw.rect(self.surface, COLORS["hud"], rect, border_radius=7)
+        pygame.draw.rect(self.surface, accent, rect, width=1, border_radius=7)
+        icon_x = rect.x + 14
+        if paused:
+            pygame.draw.polygon(
+                self.surface,
+                accent,
+                ((icon_x - 2, rect.centery - 5), (icon_x + 6, rect.centery), (icon_x - 2, rect.centery + 5)),
+            )
+        else:
+            pygame.draw.rect(self.surface, accent, (icon_x - 3, rect.centery - 5, 3, 10))
+            pygame.draw.rect(self.surface, accent, (icon_x + 3, rect.centery - 5, 3, 10))
+        label = self.font_tiny.render("RESUME" if paused else "PAUSE", True, COLORS["text"])
+        self.surface.blit(label, (rect.x + 29, rect.centery - label.get_height() // 2))
+
+    def _draw_pause_overlay(self) -> None:
+        veil = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        veil.fill((3, 7, 20, 182))
+        self.surface.blit(veil, (0, 0))
+        panel = pygame.Rect(210, 205, 380, 170)
+        pygame.draw.rect(self.surface, (14, 22, 47), panel, border_radius=18)
+        pygame.draw.rect(self.surface, COLORS["xp"], panel, width=2, border_radius=18)
+        title = self.font_large.render("PAUSED", True, COLORS["text"])
+        self.surface.blit(title, title.get_rect(center=(panel.centerx, panel.y + 55)))
+        subtitle = self.font_small.render(
+            "Press P or click RESUME when you are ready.", True, COLORS["muted"]
+        )
+        self.surface.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.y + 108)))
+        hint = self.font_tiny.render(
+            "The phase timer and every enemy are frozen.", True, COLORS["xp"]
+        )
+        self.surface.blit(hint, hint.get_rect(center=(panel.centerx, panel.y + 137)))
+        # The veil covers the ordinary HUD, so redraw the active exit control
+        # on top and keep the mouse path back to play visually obvious.
+        self._draw_pause_button(True)
 
     def _draw_background(self) -> None:
         self.surface.fill(COLORS["space"])
@@ -563,11 +616,14 @@ class ArenaRenderer:
             footer.fill((*COLORS["hud"], 205))
             self.surface.blit(footer, (0, self.env.height - footer_height))
             text_surface = self._fit_text(
-                footer_text, self.font_small, self.env.width - 32, COLORS["muted"]
+                footer_text,
+                self.font_small,
+                self.env.width - self.pause_button_rect.width - 48,
+                COLORS["muted"],
             )
             self.surface.blit(
                 text_surface,
-                ((self.env.width - text_surface.get_width()) // 2, self.env.height - 26),
+                (16, self.env.height - 26),
             )
 
     def _draw_health_bar(

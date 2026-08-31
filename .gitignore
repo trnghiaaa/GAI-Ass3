@@ -31,6 +31,17 @@ logs/arena/rotation_evaluation.json
 models/arena/tune_*.zip
 models/arena/tune_*.metadata.json
 
+# Final submission uses dqn_direct.zip and dqn_rotation.zip. Keep experimental
+# safety candidate weights local; their CSV/JSON/plots remain as tuning evidence.
+models/arena/safety_*.zip
+models/arena/safety_*.metadata.json
+logs/arena/tensorboard/safety_rotation_600k_s23100_*/
+logs/arena/tensorboard/safety_rotation_fresh_800k_s24100_*/
+logs/arena/tensorboard/safety_rotation_consolidate_300k_s25100_*/
+logs/arena/runs/safety_rotation_600k_s23100/
+logs/arena/runs/safety_rotation_fresh_800k_s24100/
+logs/arena/runs/safety_rotation_consolidate_300k_s25100/
+
 # Superseded tuning reruns; the final sweep and original recorded run stay visible.
 logs/arena/tensorboard/tune_direct_fast_exploration_7/
 logs/arena/tensorboard/tune_direct_fast_exploration_8/

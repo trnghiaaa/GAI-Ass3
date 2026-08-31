@@ -271,19 +271,19 @@ class ArenaEnvironmentTests(unittest.TestCase):
 
     def test_combat_xp_levels_up_without_changing_environment_reward(self) -> None:
         events = {
-            "enemies_destroyed": 7,
+            "enemies_destroyed": 10,
             "spawners_destroyed": 0,
             "phase_advanced": False,
         }
         self.env._apply_combat_progression(events)
         self.env._prepare_next_choice(events)
 
-        self.assertEqual(events["xp_gained"], 56.0)
+        self.assertEqual(events["xp_gained"], 60.0)
         self.assertEqual(events["levels_gained"], 1)
         self.assertIsNotNone(events["upgrade_unlocked"])
         self.assertIsNotNone(events["choice_selected"])
         self.assertEqual(self.env.player.level, 2)
-        self.assertEqual(self.env.player.xp, 56.0)
+        self.assertEqual(self.env.player.xp, 60.0)
 
         reward_events = {
             "damage_dealt_enemy": 0.0,

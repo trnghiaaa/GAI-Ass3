@@ -30,12 +30,9 @@ python -m gridworld.play --level 0
 
 ## 3. Part II Action Arena
 
-> Schema-6 difficulty/threat-awareness work is complete. Original schema-5
-> models are preserved in `models/arena/baseline_schema5/`; the selected
-> rotation policy and schema-6-compatible direct policy are the default models.
-> Historical schema-5 scores below do not describe the harder schema-6 arena.
-> See `docs/PART2_THREAT_EXPERIMENT.md` for the matched validation and holdout
-> results, including the candidate that was deliberately rejected.
+> Schema-7 difficulty, boss, pause-UI, and safety-aware learning work is
+> complete. See `docs/PART2_SAFETY_EXPERIMENT.md` for the final common-seed
+> holdout, including the rotation candidates that were deliberately rejected.
 
 The Part II environment is a continuous-coordinate Pygame combat arena named
 **Neon Rift Arena**. The easiest entry point is the unified visual launcher:
@@ -66,9 +63,9 @@ python -m arena.play --control-style rotation
 ```
 
 For rotation controls, use `W` to thrust, `A`/`D` to rotate, and hold `Space` to
-fire while thrusting or turning. In both modes, `R` restarts an episode
-and `Esc` quits. `Tab` opens a readable ship-build panel and pauses the manual
-battle while you inspect every selected upgrade and live weapon statistic.
+fire while thrusting or turning. In both modes, `R` restarts an episode and
+`Esc` quits. `P` or the visible PAUSE/RESUME button freezes the simulation and
+phase timer. `Tab` opens a readable ship-build panel and pauses the manual battle.
 
 The arena provides:
 
@@ -80,6 +77,8 @@ The arena provides:
 - Clean phase hand-offs that withdraw surviving hostiles and clear old shots
   without awarding fake kills, XP, or RL reward
 - A gradual phase director, random Rift Hunter minibosses, and a boss rift every third phase
+- Bosses with phase-scaled health, a visible 30–45% shield, and a finite
+  three-Hunter summon budget with cooldown and active-enemy safety caps
 - Grouped horizontal, vertical, diagonal, cross, trident, and circular boss
   barrages with readable names/countdowns and one-hit-per-cast fairness
 - A fresh 60-second combat deadline for every phase, plus a long episode safety cap
@@ -185,10 +184,12 @@ damage. Once the regular paths mature, repeatable weapon, hull, and drone
 masteries keep the ship growing with no combat-level cap. Clearing a phase offers
 repair, an armed arena bomb, a permanent wingman tier, overdrive, or Aegis.
 Random Rift Hunters drop XP plus a repair/Aegis cache. Every third phase replaces
-ordinary rifts with a boss that telegraphs named multi-lane sweeps, crosses,
+ordinary rifts with a shielded boss that telegraphs named multi-lane sweeps, crosses,
 diagonal lattices, trident walls, and a circular nova cage;
 victory opens a stronger permanent-relic draft. Speed, damage, spawn rate, and
 active-enemy counts use fairness caps while health and player mastery keep scaling.
+Ordinary kills grant 6 XP and cumulative thresholds follow
+`60 * (level - 1)^1.95`, slowing late upgrades without imposing a level cap.
 
 During headless training and learned-policy playback, a deterministic heuristic
 chooses from the same seeded three-card offers using health, upcoming boss risk,
@@ -202,7 +203,8 @@ the required phase rule.
 The configurable reward function contains the required progression terms:
 enemy destruction, larger spawner destruction, phase advancement, damage
 penalty, and a strong death penalty. Small shaping terms give credit for actual
-damage, progress toward a stable spawner target, aim improvement, and
+damage, progress toward a safe range around a stable spawner target, crowd
+separation, aim improvement, and
 well-aligned shots. Shaping never changes health, collisions, entity movement,
 or terminal rules. A potential-difference term rewards movement out of an
 unchanged boss barrage, while a full dodge remains a separate event reward.
@@ -213,11 +215,10 @@ every RL reward term auditable.
 ### Stable-Baselines3 Training
 
 Use a unique `--run-name` for new runs; training refuses to overwrite existing
-models or run directories. Schema-6 transfer experiments use `--profile
-threat_aware` and `--init-model` with an exact observation-prefix-compatible
-checkpoint. The first 70 inputs retain their meanings; the 19 appended inputs
-start with zero weights so initial Q values are preserved. A changed game still
-requires training and fresh evaluation. See the experiment document for commands.
+models or run directories. Schema-7 experiments include transfer
+(`safety_aware`), from-scratch (`safety_exploration`), and low-rate refinement
+(`safety_consolidation`) profiles. A changed game still requires training and
+fresh evaluation. See the safety experiment document for promotion evidence.
 
 Both policies use SB3 DQN with a configurable MLP, replay buffer, target
 network, epsilon schedule, checkpoints, held-out evaluation, TensorBoard, and
@@ -238,14 +239,12 @@ python -m arena.tune --control-style both --timesteps 35000 --benchmark-episodes
 Default models are saved separately as `models/arena/dqn_direct.zip` and
 `models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
 checkpoints, deterministic seeded benchmarks, plots, and summaries are written
-under `logs/arena`. In the historical schema-5 20-episode benchmarks, direct
-control achieved mean reward 517.77, 90% phase progression, mean phase 6.10,
-and mean ship level 6.70; rotation/thrust achieved 127.14, 100%, phase 3.05, and
-level 3.30 respectively. The policies averaged 1.35 and 0.15 destroyed boss
-rifts per episode. Direct averaged 1.95 boss-barrage dodges versus 1.15 hits;
-rotation averaged 0.80 dodges versus 0.90 hits while reaching bosses less often.
-The matching seeded random baselines scored -0.59 reward/15% progression for
-direct and -38.53/0% for rotation.
+under `logs/arena`. On the final schema-7 30-seed holdout, direct achieved
+510.30 reward, 100% progression, mean/max Phase 5.70/12, and 1.10 boss kills;
+rotation achieved 89.48 reward, 100% progression, and Phase 2.70/3. Direct
+recorded 4.77 boss dodges versus 1.37 hits; rotation recorded 1.27 versus 0.60.
+Matching random baselines scored -14.80 reward/3.33% progression and
+-37.83/0% respectively.
 
 ### Visual Evaluation
 

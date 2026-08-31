@@ -141,7 +141,7 @@ class ObservationIndex(IntEnum):
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
-ENVIRONMENT_SCHEMA_VERSION = 6
+ENVIRONMENT_SCHEMA_VERSION = 7
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -1359,7 +1359,7 @@ class ArenaEnv(gym.Env):
             self._cast_boss_skill(events)
 
     def _update_boss_summons(self, events: dict[str, Any]) -> None:
-        """At most two reinforcements per boss, unlocked at 70/35% health.
+        """Release a finite reinforcement budget at evenly spaced health gates.
 
         There is no shield regeneration or unlimited summon/XP farming. Summons
         wait while the player is near the boss or a barrage is telegraphing.
@@ -1369,7 +1369,9 @@ class ArenaEnv(gym.Env):
             if not boss.is_boss:
                 continue
             boss.summon_cooldown_steps = max(0, boss.summon_cooldown_steps - 1)
-            threshold = 0.70 - 0.35 * boss.summons_used
+            # Three summons use 75/50/25% health gates; changing the configured
+            # finite budget keeps the gates evenly distributed automatically.
+            threshold = 1.0 - (boss.summons_used + 1) / (limit + 1)
             if (
                 boss.summons_used >= limit or boss.summon_cooldown_steps > 0
                 or boss.health / boss.max_health > threshold
@@ -1670,6 +1672,13 @@ class ArenaEnv(gym.Env):
             max_health = float(self.spawner_cfg["max_health"]) * health_scale
             if boss_phase:
                 max_health *= float(self.phase_cfg["boss_health_multiplier"])
+            boss_number = max(0, self.phase // int(self.phase_cfg["boss_interval"]) - 1)
+            shield_fraction = min(
+                float(self.phase_cfg["boss_shield_max_fraction"]),
+                float(self.phase_cfg["boss_shield_fraction"])
+                + boss_number
+                * float(self.phase_cfg["boss_shield_growth_per_encounter"]),
+            )
             initial_delay = int(
                 self.np_random.uniform(0.35, 1.0)
                 * self._spawn_interval_steps(None, is_boss=boss_phase)
@@ -1684,8 +1693,8 @@ class ArenaEnv(gym.Env):
                     health=max_health,
                     spawn_cooldown_steps=max(1, initial_delay),
                     is_boss=boss_phase,
-                    max_shield=(max_health * float(self.phase_cfg["boss_shield_fraction"]) if boss_phase else 0.0),
-                    shield=(max_health * float(self.phase_cfg["boss_shield_fraction"]) if boss_phase else 0.0),
+                    max_shield=(max_health * shield_fraction if boss_phase else 0.0),
+                    shield=(max_health * shield_fraction if boss_phase else 0.0),
                 )
             )
         if boss_phase:
@@ -2063,8 +2072,18 @@ class ArenaEnv(gym.Env):
             "spawner_distance": (
                 0.0
                 if spawner is None
-                else max(0.0, math.hypot(spawner.x - self.player.x, spawner.y - self.player.y)
-                         - float(self.reward_cfg["spawner_standoff"]))
+                else abs(
+                    max(
+                        0.0,
+                        math.hypot(
+                            spawner.x - self.player.x,
+                            spawner.y - self.player.y,
+                        )
+                        - spawner.radius
+                        - self.player.radius,
+                    )
+                    - float(self.reward_cfg["spawner_standoff"])
+                )
                 / diagonal
             ),
             "target_id": None if target is None else target.entity_id,
@@ -2077,7 +2096,26 @@ class ArenaEnv(gym.Env):
                 sorted({zone.attack_id for zone in self.danger_zones})
             ),
             "hazard_risk": self._danger_zone_risk(),
-            "enemy_ids": tuple(sorted(enemy.entity_id for enemy in self.enemies)),
+            "enemy_pressure": {
+                enemy.entity_id: (
+                    max(
+                        0.0,
+                        1.0
+                        - max(
+                            0.0,
+                            math.hypot(
+                                enemy.x - self.player.x,
+                                enemy.y - self.player.y,
+                            )
+                            - enemy.radius
+                            - self.player.radius,
+                        )
+                        / 200.0,
+                    )
+                    ** 2
+                )
+                for enemy in self.enemies
+            },
             "crowd_pressure": self._crowd_metrics()[1],
         }
 
@@ -2095,8 +2133,17 @@ class ArenaEnv(gym.Env):
         after = self._shaping_snapshot()
         events["crowd_pressure"] = float(after["crowd_pressure"])
         events["crowd_escape"] = 0.0
-        if before["enemy_ids"] and before["enemy_ids"] == after["enemy_ids"]:
-            events["crowd_escape"] = float(before["crowd_pressure"]) - float(after["crowd_pressure"])
+        # Compare only threats present on both sides of the transition. This
+        # continues teaching separation when another enemy spawns, but never
+        # pays the agent merely because an enemy was destroyed.
+        common_enemy_ids = set(before["enemy_pressure"]).intersection(
+            after["enemy_pressure"]
+        )
+        if common_enemy_ids:
+            events["crowd_escape"] = (
+                sum(float(before["enemy_pressure"][key]) for key in common_enemy_ids)
+                - sum(float(after["enemy_pressure"][key]) for key in common_enemy_ids)
+            ) / 3.0
         if before["spawner_id"] is not None and before["spawner_id"] == after["spawner_id"]:
             events["spawner_progress"] = float(before["spawner_distance"]) - float(
                 after["spawner_distance"]

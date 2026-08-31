@@ -1,5 +1,8 @@
 # Schema 6: harder progression and threat-aware DQN
 
+Historical experiment: superseded by `PART2_SAFETY_EXPERIMENT.md`. Do not use
+the metrics below as final schema-7 results.
+
 Status: complete. Implementation, independent candidate training, matched
 validation, one untouched holdout confirmation, model promotion, and regression
 testing are complete. The selected rotation checkpoint is the default model;

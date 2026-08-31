@@ -32,6 +32,7 @@ def _write_metadata(
     source: Path,
     holdout: Path,
     mode: str,
+    run_name: str | None = None,
 ) -> None:
     metrics = _load_json(holdout)["aggregate"]
     result = copy.deepcopy(metadata)
@@ -47,20 +48,36 @@ def _write_metadata(
             "promotion_mode": mode,
         }
     )
+    if run_name is not None:
+        result["run_name"] = run_name
     destination.with_suffix(".metadata.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
     )
 
 
-def promote_checkpoint(source: Path, style: str, metadata: Path, holdout: Path) -> None:
+def promote_checkpoint(
+    source: Path,
+    style: str,
+    metadata: Path,
+    holdout: Path,
+    run_name: str | None = None,
+) -> None:
     source_metadata = _load_json(metadata)
     if source_metadata["control_style"] != style:
         raise ValueError("checkpoint control style does not match destination")
     if source_metadata["observation_names"] != list(OBSERVATION_NAMES):
         raise ValueError("checkpoint does not match the live observation schema")
     destination = model_path(style)
-    shutil.copy2(source, destination)
-    _write_metadata(source_metadata, destination, source, holdout, "validated_checkpoint")
+    if source.resolve() != destination.resolve():
+        shutil.copy2(source, destination)
+    _write_metadata(
+        source_metadata,
+        destination,
+        source,
+        holdout,
+        "validated_checkpoint",
+        run_name,
+    )
 
 
 def promote_prefix(source: Path, style: str, metadata: Path, holdout: Path) -> None:
@@ -100,11 +117,22 @@ def main() -> None:
     parser.add_argument("--source-metadata", type=Path, required=True)
     parser.add_argument("--control-style", choices=("rotation", "direct"), required=True)
     parser.add_argument("--holdout", type=Path, required=True)
+    parser.add_argument(
+        "--run-name",
+        default=None,
+        help="Training run containing the promoted model's reproducibility artifacts",
+    )
     args = parser.parse_args()
     if not args.holdout.is_file():
         raise FileNotFoundError(args.holdout)
     if args.mode == "checkpoint":
-        promote_checkpoint(args.source, args.control_style, args.source_metadata, args.holdout)
+        promote_checkpoint(
+            args.source,
+            args.control_style,
+            args.source_metadata,
+            args.holdout,
+            args.run_name,
+        )
     else:
         promote_prefix(args.source, args.control_style, args.source_metadata, args.holdout)
     print(f"Promoted {args.control_style} model to {model_path(args.control_style)}")

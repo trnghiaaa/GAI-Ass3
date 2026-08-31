@@ -118,6 +118,12 @@ def watch_policy(
                         paused = False
                     elif event.key == pygame.K_TAB:
                         renderer.show_build_panel = not renderer.show_build_panel
+                elif (
+                    event.type == pygame.MOUSEBUTTONDOWN
+                    and event.button == 1
+                    and renderer.pause_at_position(event.pos)
+                ):
+                    paused = not paused
 
             if (
                 running
@@ -142,7 +148,15 @@ def watch_policy(
                     "+/- speed  TAB build  R replay  Esc exit"
                 )
             )
-            renderer.render(process_events=False, footer_text=footer)
+            renderer.render(
+                process_events=False,
+                footer_text=(
+                    "AI PLAYBACK PAUSED  •  P or RESUME continues  •  . advances one frame"
+                    if paused
+                    else footer
+                ),
+                paused=paused,
+            )
 
             if env.done:
                 pygame.display.flip()

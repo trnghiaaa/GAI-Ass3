@@ -33,8 +33,9 @@ class ThreatTests(unittest.TestCase):
         return self.env.spawners[0]
 
     def test_later_xp_thresholds_are_harder_but_first_upgrade_unchanged(self):
-        self.assertEqual(self.env.xp_threshold_for_level(2), 55)
-        self.assertGreater(self.env.xp_threshold_for_level(5), 55 * 4**1.72)
+        self.assertEqual(self.env.xp_threshold_for_level(2), 60)
+        self.assertGreater(self.env.xp_threshold_for_level(5), 60 * 4**1.85)
+        self.assertEqual(self.env.progression_cfg["enemy_xp"], 6)
 
     def test_shield_absorbs_then_overflows_without_regeneration(self):
         boss = self.boss()
@@ -50,7 +51,7 @@ class ThreatTests(unittest.TestCase):
         boss = self.boss()
         self.env.player.x = self.env.width - boss.x
         self.env.player.y = self.env.height - boss.y + self.env.playfield_top
-        boss.health = boss.max_health * 0.3
+        boss.health = boss.max_health * 0.2
         events = defaultdict(int)
         self.env._update_boss_summons(events)
         self.assertEqual(boss.summons_used, 1)
@@ -59,10 +60,16 @@ class ThreatTests(unittest.TestCase):
         boss.summon_cooldown_steps = 0
         self.env._update_boss_summons(events)
         self.assertEqual(boss.summons_used, 2)
+        # Only two summoned hunters may be active simultaneously. Defeating
+        # one frees a slot for the final member of the finite three-summon budget.
+        self.env.enemies.pop()
+        boss.summon_cooldown_steps = 0
+        self.env._update_boss_summons(events)
+        self.assertEqual(boss.summons_used, 3)
         self.env.enemies.clear()
         boss.summon_cooldown_steps = 0
         self.env._update_boss_summons(events)
-        self.assertEqual(boss.summons_used, 2)
+        self.assertEqual(boss.summons_used, 3)
 
     def test_summons_do_not_appear_on_a_close_player(self):
         boss = self.boss()
@@ -82,10 +89,16 @@ class ThreatTests(unittest.TestCase):
         self.assertGreater(obs[I.SECOND_ENEMY_DISTANCE], 0)
         self.assertTrue(self.env.observation_space.contains(obs))
 
-    def test_standoff_removes_incentive_to_touch_spawner(self):
+    def test_standoff_rewards_a_safe_range_instead_of_touching_spawner(self):
         s = self.env.spawners[0]
         self.env.player.x, self.env.player.y = s.x+100, s.y
-        self.assertEqual(self.env._shaping_snapshot()['spawner_distance'], 0)
+        too_close = self.env._shaping_snapshot()['spawner_distance']
+        self.env.player.x = s.x + s.radius + self.env.player.radius + float(
+            self.env.reward_cfg["spawner_standoff"]
+        )
+        preferred = self.env._shaping_snapshot()['spawner_distance']
+        self.assertGreater(too_close, preferred)
+        self.assertAlmostEqual(preferred, 0.0)
 
     def test_crowd_reward_does_not_credit_enemy_removal(self):
         p = self.env.player
@@ -101,6 +114,17 @@ class ThreatTests(unittest.TestCase):
         self.env.enemies = [Enemy(p.x+60, p.y, 15, 91, 50, 50, 72)]
         before = self.env._shaping_snapshot()
         p.x -= 20
+        events = {}
+        self.env._apply_shaping_delta(events, before)
+        self.assertGreater(events['crowd_escape'], 0)
+
+    def test_crowd_reward_survives_an_unrelated_new_spawn(self):
+        p = self.env.player
+        original = Enemy(p.x+60, p.y, 15, 91, 50, 50, 72)
+        self.env.enemies = [original]
+        before = self.env._shaping_snapshot()
+        p.x -= 20
+        self.env.enemies.append(Enemy(p.x-300, p.y, 15, 92, 50, 50, 72))
         events = {}
         self.env._apply_shaping_delta(events, before)
         self.assertGreater(events['crowd_escape'], 0)

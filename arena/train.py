@@ -334,6 +334,11 @@ def train_control_style(
             + 6.0 * float(candidate_benchmark["mean_boss_skills_dodged"])
             - 8.0 * float(candidate_benchmark["mean_boss_skill_hits"])
             + 10.0 * float(candidate_benchmark["mean_bosses_destroyed"])
+            + 0.02 * float(candidate_benchmark["mean_simulation_steps"])
+            - 0.35 * float(candidate_benchmark["damage_per_1000_frames"])
+            - 3.0 * float(candidate_benchmark["contacts_per_1000_frames"])
+            - 20.0 * float(candidate_benchmark["mean_crowd_fraction"])
+            + 0.08 * float(candidate_benchmark["mean_enemy_clearance"])
         )
         candidate_results.append(
             {"candidate": candidate_name, "selection_score": score, **candidate_benchmark}
@@ -428,7 +433,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--profile",
-        choices=("balanced", "fast_exploration", "long_exploration", "threat_aware"),
+        choices=(
+            "balanced",
+            "fast_exploration",
+            "long_exploration",
+            "safety_aware",
+            "safety_consolidation",
+            "safety_exploration",
+            "threat_aware",
+        ),
         default="balanced",
     )
     parser.add_argument(

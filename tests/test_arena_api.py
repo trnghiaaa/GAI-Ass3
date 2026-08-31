@@ -7,6 +7,7 @@ import numpy as np
 
 from arena.environment import ArenaEnv, DIRECT_ACTIONS
 from arena.legacy_api import LegacyArenaEnv
+from arena.renderer import ArenaRenderer
 
 
 class ArenaApiTests(unittest.TestCase):
@@ -81,6 +82,29 @@ class ArenaApiTests(unittest.TestCase):
             for index, rect in enumerate(renderer.choice_rects()):
                 self.assertEqual(renderer.choice_at_position(rect.center), index)
         finally:
+            env.close()
+
+    def test_visible_pause_control_has_a_click_target_and_overlay(self) -> None:
+        env = ArenaEnv(render_mode=None)
+        env.reset(seed=44)
+        renderer = ArenaRenderer(env, mode="rgb_array")
+        try:
+            self.assertTrue(renderer.pause_at_position(renderer.pause_button_rect.center))
+            self.assertFalse(renderer.pause_at_position((0, 0)))
+            running = renderer.render(
+                process_events=False,
+                footer_text="P pause",
+                paused=False,
+            )
+            paused = renderer.render(
+                process_events=False,
+                footer_text="Paused",
+                paused=True,
+            )
+            self.assertEqual(running.shape, paused.shape)
+            self.assertFalse(np.array_equal(running, paused))
+        finally:
+            renderer.close()
             env.close()
 
 
