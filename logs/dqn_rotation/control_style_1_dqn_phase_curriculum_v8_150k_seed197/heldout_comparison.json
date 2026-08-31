@@ -1,0 +1,33 @@
+{
+  "episodes": 40,
+  "seed": 52525,
+  "evaluation_starts_at_phase": 1,
+  "selected_model": "models/dqn_rotation/control_style_1_dqn_phase_curriculum_v8_150k_seed197/best_model.zip",
+  "baseline_model": "models/dqn_rotation/control_style_1_dqn_combat_v3_500k_seed91/best_model.zip",
+  "selected": {
+    "mean_reward": 33.62639031597449,
+    "mean_episode_steps": 1005.925,
+    "mean_max_phase": 2.575,
+    "phase_3_or_higher_rate": 0.575,
+    "maximum_phase_reached": 3,
+    "mean_enemies_destroyed": 3.45,
+    "mean_spawners_destroyed": 4.575,
+    "shot_hit_rate": 0.7632607481853713,
+    "mean_damage_per_1000_steps": 111.68824713572086,
+    "mean_danger_step_fraction": 0.6859030053682784,
+    "mean_crowd_pressure": 0.20364390582128075
+  },
+  "baseline": {
+    "mean_reward": 31.5463724825813,
+    "mean_episode_steps": 993.35,
+    "mean_max_phase": 2.575,
+    "phase_3_or_higher_rate": 0.575,
+    "maximum_phase_reached": 3,
+    "mean_enemies_destroyed": 3.225,
+    "mean_spawners_destroyed": 4.525,
+    "shot_hit_rate": 0.72170071783545,
+    "mean_damage_per_1000_steps": 112.749786077415,
+    "mean_danger_step_fraction": 0.711478578878725,
+    "mean_crowd_pressure": 0.206411658607465
+  }
+}

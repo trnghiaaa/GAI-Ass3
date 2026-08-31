@@ -216,7 +216,15 @@ class ArenaRenderer:
     def _draw_projectiles(self) -> None:
         for projectile in self.env.projectiles:
             center = (round(projectile.x), round(projectile.y))
-            pygame.draw.circle(self.surface, (255, 184, 54), center, 8)
+            speed = math.hypot(projectile.vx, projectile.vy)
+            if speed > 1e-8:
+                tail = (
+                    round(projectile.x - projectile.vx / speed * 18),
+                    round(projectile.y - projectile.vy / speed * 18),
+                )
+                pygame.draw.line(self.surface, (255, 154, 54), tail, center, 7)
+                pygame.draw.line(self.surface, COLORS["projectile"], tail, center, 3)
+            pygame.draw.circle(self.surface, (255, 184, 54), center, 7)
             pygame.draw.circle(self.surface, COLORS["projectile"], center, 4)
 
     def _draw_hud(self, footer_text: str | None) -> None:

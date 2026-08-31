@@ -1,0 +1,25 @@
+{
+  "episodes": 40,
+  "seed": 96969,
+  "selected_model_retained": "models/dqn_rotation/control_style_1_dqn_current/final_model.zip",
+  "adapted_candidate_rejected": "models/dqn_rotation/control_style_1_dqn_mobile_combat_v10_100k_seed251/best_model.zip",
+  "reason": "The candidate reduced boundary exposure but regressed hit rate, crowd pressure, and phase-3 frequency.",
+  "selected_model": {
+    "mean_reward": 15.2654520012981,
+    "mean_max_phase": 2.5,
+    "phase_3_or_higher_rate": 0.525,
+    "shot_hit_rate": 0.761220825852783,
+    "mean_wall_step_fraction": 0.294205444675074,
+    "mean_outward_thrust_step_fraction": 0.040840132867166,
+    "mean_crowd_pressure": 0.202525897090765
+  },
+  "adapted_candidate": {
+    "mean_reward": 16.0355122553553,
+    "mean_max_phase": 2.5,
+    "phase_3_or_higher_rate": 0.5,
+    "shot_hit_rate": 0.695274307441608,
+    "mean_wall_step_fraction": 0.277963562373015,
+    "mean_outward_thrust_step_fraction": 0.0298053382928681,
+    "mean_crowd_pressure": 0.216222963027928
+  }
+}

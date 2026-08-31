@@ -1,0 +1,44 @@
+{
+  "algorithm": "DQN",
+  "control_style": "rotation",
+  "training_timesteps": 300000,
+  "training_seed": 73,
+  "playback_speed": 0.75,
+  "render_fps": 45,
+  "evaluation_episodes": 20,
+  "evaluation_seed": 27182,
+  "random_policy": {
+    "mean_reward": -22.807650000000027,
+    "std_reward": 3.556343111610546,
+    "mean_episode_steps": 627.35,
+    "mean_max_phase": 1.0,
+    "maximum_phase_reached": 1,
+    "phase_2_episodes": 0,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 0.1,
+    "mean_spawners_destroyed": 0.25
+  },
+  "best_checkpoint": {
+    "mean_reward": -17.550400000000103,
+    "std_reward": 9.699454089792747,
+    "mean_episode_steps": 649.6,
+    "mean_max_phase": 1.1,
+    "maximum_phase_reached": 2,
+    "phase_2_episodes": 2,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 0.95,
+    "mean_spawners_destroyed": 0.5
+  },
+  "final_model": {
+    "mean_reward": -12.801500000000178,
+    "std_reward": 12.137275763118982,
+    "mean_episode_steps": 748.5,
+    "mean_max_phase": 1.15,
+    "maximum_phase_reached": 2,
+    "phase_2_episodes": 3,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 1.7,
+    "mean_spawners_destroyed": 0.8
+  },
+  "recommended_model": "models/dqn_rotation/control_style_1_dqn_slow_playback_300k_seed73/final_model.zip"
+}

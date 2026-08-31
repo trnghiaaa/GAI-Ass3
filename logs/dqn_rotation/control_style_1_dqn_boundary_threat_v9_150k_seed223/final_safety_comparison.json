@@ -1,0 +1,27 @@
+{
+  "episodes": 40,
+  "seed": 63636,
+  "model": "models/dqn_rotation/control_style_1_dqn_current/final_model.zip",
+  "baseline": {
+    "mean_reward": 12.596915217820225,
+    "mean_max_phase": 2.55,
+    "phase_3_or_higher_rate": 0.55,
+    "mean_wall_step_fraction": 0.38346105630329125,
+    "mean_outward_thrust_step_fraction": 0.04581401555845125,
+    "mean_emergency_shots": 21.35,
+    "mean_dangerous_spawner_damage": 153.91831639837335,
+    "mean_enemies_destroyed": 3.3,
+    "shot_hit_rate": 0.7446927374301676
+  },
+  "targeted_safety_shield": {
+    "mean_reward": 13.906856915782233,
+    "mean_max_phase": 2.425,
+    "phase_3_or_higher_rate": 0.425,
+    "mean_wall_step_fraction": 0.3479180603612884,
+    "mean_outward_thrust_step_fraction": 0.029707059681999458,
+    "mean_emergency_shots": 19.3,
+    "mean_dangerous_spawner_damage": 142.4227807947941,
+    "mean_enemies_destroyed": 3.375,
+    "shot_hit_rate": 0.750445632798574
+  }
+}

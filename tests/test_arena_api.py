@@ -67,6 +67,16 @@ class ArenaApiTests(unittest.TestCase):
         finally:
             env.close()
 
+    def test_playback_rate_is_slower_than_simulation_rate(self) -> None:
+        env = ArenaEnv()
+        try:
+            self.assertEqual(env.fps, 60)
+            self.assertEqual(env.playback_speed, 0.75)
+            self.assertEqual(env.render_fps, 45)
+            self.assertEqual(env.metadata["render_fps"], 45)
+        finally:
+            env.close()
+
 
 if __name__ == "__main__":
     unittest.main()

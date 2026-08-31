@@ -1,0 +1,39 @@
+{
+  "algorithm": "DQN",
+  "control_style": "rotation",
+  "training_timesteps": 300000,
+  "evaluation_episodes": 20,
+  "evaluation_seed": 31415,
+  "random_policy": {
+    "mean_reward": -24.21260000000003,
+    "std_reward": 2.4351414620099145,
+    "mean_episode_steps": 622.4,
+    "mean_max_phase": 1.0,
+    "maximum_phase_reached": 1,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 0.0,
+    "mean_spawners_destroyed": 0.1
+  },
+  "best_checkpoint": {
+    "mean_reward": -13.329800000000162,
+    "std_reward": 9.848294185288944,
+    "mean_episode_steps": 755.2,
+    "mean_max_phase": 1.05,
+    "maximum_phase_reached": 2,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 2.0,
+    "mean_spawners_destroyed": 0.85
+  },
+  "final_model": {
+    "mean_reward": -9.479100000000216,
+    "std_reward": 13.273669963125972,
+    "mean_episode_steps": 770.9,
+    "mean_max_phase": 1.15,
+    "maximum_phase_reached": 2,
+    "phase_2_episodes": 3,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 3.35,
+    "mean_spawners_destroyed": 0.8
+  },
+  "recommended_model": "models/dqn_rotation/control_style_1_dqn_300k_seed42/final_model.zip"
+}

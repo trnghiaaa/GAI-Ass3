@@ -51,7 +51,16 @@ def main() -> None:
         help="Ship control scheme",
     )
     parser.add_argument("--seed", type=int, default=42, help="Environment seed")
+    parser.add_argument(
+        "--playback-speed",
+        type=float,
+        default=None,
+        help="Visual speed multiplier (default: value from arena/config.json).",
+    )
     args = parser.parse_args()
+
+    if args.playback_speed is not None and args.playback_speed <= 0.0:
+        parser.error("--playback-speed must be positive")
 
     env = ArenaEnv(control_style=args.control_style)
     env.reset(seed=args.seed)
@@ -80,7 +89,8 @@ def main() -> None:
             env.step(action)
 
         renderer.render(process_events=False, footer_text=footer)
-        renderer.clock.tick(env.fps)
+        playback_speed = env.playback_speed if args.playback_speed is None else args.playback_speed
+        renderer.clock.tick(max(1, round(env.fps * playback_speed)))
 
     renderer.close()
     env.close()

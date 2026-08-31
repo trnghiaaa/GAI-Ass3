@@ -14,3 +14,6 @@ ENV/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local Matplotlib cache (training artifacts remain available for submission)
+logs/.matplotlib/

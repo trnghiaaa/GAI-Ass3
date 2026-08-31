@@ -21,6 +21,7 @@ class Player(Body):
     health: float
     vx: float = 0.0
     vy: float = 0.0
+    angular_velocity: float = 0.0
     fire_cooldown_steps: int = 0
 
 

@@ -1,0 +1,65 @@
+{
+  "evaluation_seed": 42424,
+  "episodes_per_policy": 30,
+  "selected_policy": "best_model.zip",
+  "selected_checkpoint_timesteps": 450000,
+  "selection_reason": "Highest held-out reward, phase progression, shooting accuracy, spawner destruction, and survival time.",
+  "best_model": {
+    "mean_reward": 49.01747666326606,
+    "std_reward": 27.607002785518166,
+    "mean_episode_steps": 1046.6333333333334,
+    "mean_max_phase": 2.466666666666667,
+    "maximum_phase_reached": 3,
+    "phase_2_or_higher_rate": 0.9666666666666667,
+    "phase_counts": {
+      "1": 1,
+      "2": 14,
+      "3": 15
+    },
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 3.4,
+    "mean_spawners_destroyed": 4.233333333333333,
+    "mean_projectile_hits": 31.733333333333334,
+    "mean_shots_fired": 43.6,
+    "mean_invalid_shots": 194.8,
+    "shot_hit_rate": 0.72782874617737,
+    "mean_damage_taken": 112.0
+  },
+  "final_model": {
+    "mean_reward": 40.44108115842875,
+    "std_reward": 27.909817432239237,
+    "mean_episode_steps": 987.9,
+    "mean_max_phase": 2.3,
+    "maximum_phase_reached": 3,
+    "phase_2_or_higher_rate": 0.9333333333333333,
+    "phase_counts": {
+      "1": 2,
+      "2": 17,
+      "3": 11
+    },
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 2.8333333333333335,
+    "mean_spawners_destroyed": 3.8666666666666667,
+    "mean_projectile_hits": 28.766666666666666,
+    "mean_shots_fired": 43.7,
+    "mean_invalid_shots": 208.56666666666666,
+    "shot_hit_rate": 0.658276125095347,
+    "mean_damage_taken": 112.0
+  },
+  "random_policy": {
+    "mean_reward": -29.81918433233539,
+    "std_reward": 4.7447127004885505,
+    "mean_episode_steps": 659.2,
+    "mean_max_phase": 1.0,
+    "maximum_phase_reached": 1,
+    "phase_2_or_higher_rate": 0.0,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 0.06666666666666667,
+    "mean_spawners_destroyed": 0.2,
+    "mean_projectile_hits": 1.2333333333333334,
+    "mean_shots_fired": 38.93333333333333,
+    "mean_invalid_shots": 90.9,
+    "shot_hit_rate": 0.031678082191780824,
+    "mean_damage_taken": 112.93333333333334
+  }
+}

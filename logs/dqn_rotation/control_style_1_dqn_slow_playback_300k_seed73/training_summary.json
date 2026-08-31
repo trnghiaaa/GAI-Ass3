@@ -1,0 +1,206 @@
+{
+  "algorithm": "DQN",
+  "policy": "MlpPolicy",
+  "control_style": "rotation",
+  "evaluation_playback_speed": 0.75,
+  "actions": [
+    "NOOP",
+    "THRUST",
+    "ROTATE_LEFT",
+    "ROTATE_RIGHT",
+    "SHOOT"
+  ],
+  "seed": 73,
+  "requested_timesteps": 300000,
+  "trained_timesteps": 300000,
+  "hyperparameters": {
+    "learning_rate": 0.0003,
+    "buffer_size": 100000,
+    "learning_starts": 5000,
+    "batch_size": 128,
+    "tau": 1.0,
+    "gamma": 0.99,
+    "train_freq": 4,
+    "gradient_steps": 1,
+    "target_update_interval": 2000,
+    "exploration_fraction": 0.4,
+    "exploration_initial_eps": 1.0,
+    "exploration_final_eps": 0.05,
+    "network_architecture": [
+      128,
+      128
+    ]
+  },
+  "random_baseline": {
+    "episodes": 5,
+    "control_style": "rotation",
+    "playback_speed": 0.75,
+    "mean_reward": -22.976400000000083,
+    "std_reward": 3.2676372258864985,
+    "mean_episode_steps": 623.6,
+    "mean_max_phase": 1.0,
+    "maximum_phase_reached": 1,
+    "death_rate": 1.0,
+    "mean_enemies_destroyed": 0.2,
+    "mean_spawners_destroyed": 0.2,
+    "action_counts": {
+      "NOOP": 599,
+      "THRUST": 647,
+      "ROTATE_LEFT": 614,
+      "ROTATE_RIGHT": 632,
+      "SHOOT": 626
+    },
+    "episode_results": [
+      {
+        "episode": 1,
+        "reward": -24.986000000000008,
+        "steps": 614,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 0,
+        "spawners_destroyed": 0,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 2,
+        "reward": -25.119000000000003,
+        "steps": 481,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 0,
+        "spawners_destroyed": 0,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 3,
+        "reward": -16.674000000000323,
+        "steps": 926,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 0,
+        "spawners_destroyed": 1,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 4,
+        "reward": -25.21900000000002,
+        "steps": 381,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 0,
+        "spawners_destroyed": 0,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 5,
+        "reward": -22.88400000000006,
+        "steps": 716,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 1,
+        "spawners_destroyed": 0,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      }
+    ]
+  },
+  "trained_policy": {
+    "episodes": 5,
+    "control_style": "rotation",
+    "playback_speed": 0.75,
+    "mean_reward": -0.8143999999997845,
+    "std_reward": 22.061379472734945,
+    "mean_episode_steps": 1065.6,
+    "mean_max_phase": 1.2,
+    "maximum_phase_reached": 2,
+    "death_rate": 0.8,
+    "mean_enemies_destroyed": 4.6,
+    "mean_spawners_destroyed": 0.8,
+    "action_counts": {
+      "NOOP": 788,
+      "THRUST": 1419,
+      "ROTATE_LEFT": 1096,
+      "ROTATE_RIGHT": 1016,
+      "SHOOT": 1009
+    },
+    "episode_results": [
+      {
+        "episode": 1,
+        "reward": -22.971000000000053,
+        "steps": 629,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 1,
+        "spawners_destroyed": 0,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 2,
+        "reward": -12.7269999999998,
+        "steps": 873,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 2,
+        "spawners_destroyed": 1,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 3,
+        "reward": 33.800000000001205,
+        "steps": 1800,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 100.0,
+        "enemies_destroyed": 12,
+        "spawners_destroyed": 1,
+        "damage_taken": 0.0,
+        "end_reason": "time_limit"
+      },
+      {
+        "episode": 4,
+        "reward": 16.26799999999947,
+        "steps": 868,
+        "maximum_phase": 2,
+        "final_phase": 2,
+        "final_health": 0.0,
+        "enemies_destroyed": 5,
+        "spawners_destroyed": 2,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      },
+      {
+        "episode": 5,
+        "reward": -18.441999999999748,
+        "steps": 1158,
+        "maximum_phase": 1,
+        "final_phase": 1,
+        "final_health": 0.0,
+        "enemies_destroyed": 3,
+        "spawners_destroyed": 0,
+        "damage_taken": 112.0,
+        "end_reason": "player_destroyed"
+      }
+    ]
+  },
+  "maximum_phase_seen_during_training": 2,
+  "artifacts": {
+    "final_model": "D:\\GAI-Ass3\\models\\dqn_rotation\\control_style_1_dqn_slow_playback_300k_seed73\\final_model.zip",
+    "best_model": "D:\\GAI-Ass3\\models\\dqn_rotation\\control_style_1_dqn_slow_playback_300k_seed73\\best_model.zip",
+    "tensorboard": "D:\\GAI-Ass3\\logs\\dqn_rotation\\control_style_1_dqn_slow_playback_300k_seed73\\tensorboard",
+    "monitor": "D:\\GAI-Ass3\\logs\\dqn_rotation\\control_style_1_dqn_slow_playback_300k_seed73\\monitor\\train.monitor.csv",
+    "training_curve": "D:\\GAI-Ass3\\logs\\dqn_rotation\\control_style_1_dqn_slow_playback_300k_seed73\\training_curve.png"
+  }
+}
