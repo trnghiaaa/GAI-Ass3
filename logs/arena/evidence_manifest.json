@@ -1,4 +1,7 @@
 {
+  "environment_schema": 6,
+  "historical_hyperparameter_sweep_schema": 5,
+  "note": "The preserved three-profile sweep is historical schema-5 evidence; schema-6 transfer comparisons are in threat_experiment/.",
   "verified_files": [
     "models\\arena\\dqn_direct.zip",
     "models\\arena\\dqn_direct.metadata.json",

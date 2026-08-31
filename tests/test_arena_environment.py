@@ -24,7 +24,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
         observation, info = self.env.reset(seed=7)
 
         self.assertTrue(self.env.observation_space.contains(observation))
-        self.assertEqual(observation.shape, (70,))
+        self.assertEqual(observation.shape, (89,))
         self.assertEqual(self.env.player.health, self.env.player.max_health)
         self.assertEqual(info["phase"], 1)
         self.assertEqual(len(self.env.spawners), 2)
@@ -603,7 +603,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
             "drone_hits": 0,
             "impacts": [],
         }
-        health_before = boss.health
+        health_before = boss.health + boss.shield
         self.env._damage_target(
             boss,
             100.0,
@@ -614,7 +614,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
             count_hit=True,
         )
         expected = 100.0 * float(self.env.phase_cfg["boss_channel_damage_multiplier"])
-        self.assertAlmostEqual(health_before - boss.health, expected)
+        self.assertAlmostEqual(health_before - boss.health - boss.shield, expected)
 
     def test_nova_bomb_damages_a_new_phase_without_changing_phase_rule(self) -> None:
         events = {

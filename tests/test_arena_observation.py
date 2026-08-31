@@ -25,17 +25,17 @@ class ArenaObservationTests(unittest.TestCase):
     def test_observation_is_fixed_numeric_vector_not_pixels(self) -> None:
         observation = self.env._get_observation()
 
-        self.assertEqual(observation.shape, (70,))
+        self.assertEqual(observation.shape, (89,))
         self.assertEqual(observation.ndim, 1)
         self.assertEqual(observation.dtype, np.float32)
-        self.assertEqual(len(OBSERVATION_NAMES), 70)
+        self.assertEqual(len(OBSERVATION_NAMES), 89)
         self.assertTrue(self.env.observation_space.contains(observation))
 
         # Removing every variable-length entity list must not alter the shape.
         self.env.enemies = []
         self.env.spawners = []
         self.env.projectiles = []
-        self.assertEqual(self.env._get_observation().shape, (70,))
+        self.assertEqual(self.env._get_observation().shape, (89,))
 
     def test_vectors_remain_in_bounds_during_both_control_styles(self) -> None:
         for style in ("direct", "rotation"):

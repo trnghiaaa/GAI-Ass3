@@ -30,6 +30,13 @@ python -m gridworld.play --level 0
 
 ## 3. Part II Action Arena
 
+> Schema-6 difficulty/threat-awareness work is complete. Original schema-5
+> models are preserved in `models/arena/baseline_schema5/`; the selected
+> rotation policy and schema-6-compatible direct policy are the default models.
+> Historical schema-5 scores below do not describe the harder schema-6 arena.
+> See `docs/PART2_THREAT_EXPERIMENT.md` for the matched validation and holdout
+> results, including the candidate that was deliberately rejected.
+
 The Part II environment is a continuous-coordinate Pygame combat arena named
 **Neon Rift Arena**. The easiest entry point is the unified visual launcher:
 
@@ -115,7 +122,7 @@ env.close()
 
 ### Arena Observation Vector
 
-The agent receives a one-dimensional `float32` vector with exactly 70
+The agent receives a one-dimensional `float32` vector with exactly 89
 normalized features. It never receives the rendered pixels.
 
 | Indices | Features | Range | Meaning |
@@ -144,6 +151,11 @@ normalized features. It never receives the rendered pixels.
 | 58–60 | Hazard count and combined escape X/Y | mixed normalized | Summarizes simultaneous boss lanes instead of treating a barrage as one line |
 | 61–66 | Secondary hazard escape X/Y, safety distance, impact time, active/circle flags | mixed normalized | Exposes a second lane so the policy can choose a genuinely safe position |
 | 67–69 | Critical chance, leech strength and Riftbreaker power | `[0, 1]` | Keeps the three additional weapon/sustain upgrades observable |
+| 70–74 | Second-nearest enemy direction/distance/closing speed; nearest closing speed | mixed normalized | Reveals approaching threats beyond a single target |
+| 75–78 | Local enemy count, crowd pressure, escape X/Y | mixed normalized | Summarizes enemies within 200px of surface clearance |
+| 79–83 | Four wall clearances and nearest-spawner surface clearance | `[0, 1]` | Provides explicit room to maneuver and target spacing |
+| 84–85 | Boss shield fraction and remaining summon budget | `[0, 1]` | Exposes finite boss defenses and reinforcements |
+| 86–88 | Body-relative hazard escape alignment/turn and boss summon cooldown | mixed normalized | Relates hazard direction to ship steering and summon readiness |
 
 If a target type is absent, its four target features are `(0, 0, 1, 0)`:
 no direction, maximum normalized distance, and zero health. Stable feature
@@ -200,14 +212,21 @@ every RL reward term auditable.
 
 ### Stable-Baselines3 Training
 
+Use a unique `--run-name` for new runs; training refuses to overwrite existing
+models or run directories. Schema-6 transfer experiments use `--profile
+threat_aware` and `--init-model` with an exact observation-prefix-compatible
+checkpoint. The first 70 inputs retain their meanings; the 19 appended inputs
+start with zero weights so initial Q values are preserved. A changed game still
+requires training and fresh evaluation. See the experiment document for commands.
+
 Both policies use SB3 DQN with a configurable MLP, replay buffer, target
 network, epsilon schedule, checkpoints, held-out evaluation, TensorBoard, and
 model metadata:
 
 ```bash
-# Reproduce the two tuned final models
-python -m arena.train --control-style direct --timesteps 450000 --profile long_exploration --benchmark-episodes 20 --seed 15100
-python -m arena.train --control-style rotation --timesteps 650000 --profile long_exploration --benchmark-episodes 20 --seed 16100
+# New from-scratch runs (not reproductions of the historical schema-5 scores)
+python -m arena.train --control-style direct --timesteps 450000 --profile long_exploration --benchmark-episodes 20 --seed 15100 --run-name new_direct
+python -m arena.train --control-style rotation --timesteps 600000 --profile long_exploration --benchmark-episodes 20 --seed 16100 --run-name new_rotation
 
 # Generic training is also supported (300,000 decisions by default)
 python -m arena.train --control-style both
@@ -216,10 +235,10 @@ python -m arena.train --control-style both
 python -m arena.tune --control-style both --timesteps 35000 --benchmark-episodes 6 --seed 5100
 ```
 
-Final models are saved separately as `models/arena/dqn_direct.zip` and
+Default models are saved separately as `models/arena/dqn_direct.zip` and
 `models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
 checkpoints, deterministic seeded benchmarks, plots, and summaries are written
-under `logs/arena`. In the submitted held-out 20-episode benchmarks, direct
+under `logs/arena`. In the historical schema-5 20-episode benchmarks, direct
 control achieved mean reward 517.77, 90% phase progression, mean phase 6.10,
 and mean ship level 6.70; rotation/thrust achieved 127.14, 100%, phase 3.05, and
 level 3.30 respectively. The policies averaged 1.35 and 0.15 destroyed boss

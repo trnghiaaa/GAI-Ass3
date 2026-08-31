@@ -4,6 +4,10 @@ This page maps each marking item to code, automated checks, and generated
 artifacts. Numeric claims should be copied from the final JSON files rather than
 typed manually into the report.
 
+Schema-6 update: the historical benchmark numbers and tuning artifacts below
+are schema-5 evidence, not results for the harder boss/shield arena. Current
+experiment status and matched results are in `PART2_THREAT_EXPERIMENT.md`.
+
 ## G — Real-time Pygame arena
 
 | Criterion | Implementation | Verification/evidence |
@@ -31,12 +35,15 @@ required action dictionary or the phase progression rule.
   `step() -> (obs, reward, terminated, truncated, info)`.
 - `LegacyArenaEnv` exposes the assignment's four-value contract exactly:
   `reset() -> obs` and `step() -> (obs, reward, done, info)`.
-- The fixed `float32` observation contains 70 normalized features. It includes
+- The fixed `float32` observation contains 89 normalized features. It includes
   player position, velocity, orientation, health, nearest enemy/spawner relative
   direction and distance, phase, targeting diagnostics, XP progress, ship level,
   the active weapon, full composed build, support systems, miniboss state, and
   primary, combined, and secondary boss-hazard escape/time signals plus the
   critical/leech/Riftbreaker build state.
+- Nineteen appended features expose second-enemy/closing-speed/crowd information,
+  wall and spawner clearance, finite boss shields/summons, and body-relative
+  hazard escape. This is a compact scene summary, not a fully observed state.
 - `ObservationIndex`, `OBSERVATION_NAMES`, and `observation_as_dict()` make every
   position explicit for tests and report tables.
 

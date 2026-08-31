@@ -47,10 +47,18 @@ TENSORBOARD_RUN_STEMS = (
 )
 
 
+def _selected_run_stem(style: str) -> str:
+    path = metadata_path(style)
+    if path.exists():
+        metadata = json.loads(path.read_text(encoding='utf-8'))
+        return str(metadata.get('run_name', f'dqn_{style}'))
+    return f'dqn_{style}'
+
+
 def required_artifacts() -> list[Path]:
     paths: list[Path] = []
     for style in ("direct", "rotation"):
-        run_dir = ARENA_LOG_DIR / "runs" / f"dqn_{style}"
+        run_dir = ARENA_LOG_DIR / "runs" / _selected_run_stem(style)
         paths.extend(
             [
                 model_path(style),
@@ -77,7 +85,9 @@ def _latest_tensorboard_events() -> list[Path]:
     """Return one reproducible final TensorBoard run for each trained variant."""
 
     events: list[Path] = []
-    for stem in TENSORBOARD_RUN_STEMS:
+    stems = [_selected_run_stem(style) for style in ('direct', 'rotation')]
+    stems.extend(stem for stem in TENSORBOARD_RUN_STEMS if stem.startswith('tune_'))
+    for stem in stems:
         candidates: list[tuple[int, Path]] = []
         for directory in TENSORBOARD_DIR.glob(f"{stem}_*"):
             try:
@@ -105,6 +115,9 @@ def _load_final_metadata() -> list[dict[str, Any]]:
         rows.append(
             {
                 "control_style": style,
+                "episodes": benchmark['episodes'],
+                "seed_start": benchmark['seed_start'],
+                "action_repeat": benchmark['action_repeat'],
                 "algorithm": metadata["algorithm"],
                 "timesteps": metadata["total_timesteps"],
                 "network": "x".join(str(value) for value in metadata["network"]),
@@ -217,12 +230,13 @@ def _write_learning_baseline(final_rows: list[dict[str, Any]]) -> None:
     comparisons: list[dict[str, Any]] = []
     for index, style in enumerate(("direct", "rotation")):
         action_count = 6 if style == "direct" else 5
+        trained = next(row for row in final_rows if row["control_style"] == style)
         random_rows, random_aggregate = evaluate_model(
-            _SeededRandomPolicy(action_count, 9400 + index),
+            _SeededRandomPolicy(action_count, trained['seed_start'] + index),
             style,
-            episodes=20,
-            action_repeat=4,
-            seed=9400,
+            episodes=trained['episodes'],
+            action_repeat=trained['action_repeat'],
+            seed=trained['seed_start'],
             deterministic=False,
         )
         write_benchmark(
@@ -403,6 +417,9 @@ def build() -> None:
     _write_learning_baseline(rows)
     _capture_environment_preview()
     manifest = {
+        "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
+        "historical_hyperparameter_sweep_schema": 5,
+        "note": "The preserved three-profile sweep is historical schema-5 evidence; schema-6 transfer comparisons are in threat_experiment/.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events

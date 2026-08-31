@@ -45,6 +45,7 @@ from arena.settings import (
     training_settings,
 )
 from arena.wrappers import ActionRepeatWrapper
+from arena.cooldown import CooldownAwareDQN, load_dqn
 
 
 MONITOR_INFO_KEYS = (
@@ -159,6 +160,40 @@ def _plot_monitor(monitor_file: Path, output_path: Path, title: str) -> None:
     plt.close(figure)
 
 
+def transfer_prefix_policy(source: DQN, destination: DQN) -> None:
+    """Preserve every old Q value, initially ignoring appended observations.
+
+    Replay/optimizer state is intentionally fresh for the new environment.
+    This is transfer learning, not a claim of additional training from scratch.
+    """
+    old_state = source.policy.state_dict()
+    new_state = destination.policy.state_dict()
+    old_size = int(source.observation_space.shape[0])
+    new_size = int(destination.observation_space.shape[0])
+    for name, value in new_state.items():
+        old = old_state[name]
+        if old.shape == value.shape:
+            value.copy_(old)
+        elif name in ('q_net.q_net.0.weight', 'q_net_target.q_net.0.weight') and new_size > old_size:
+            value.zero_()
+            value[:, :old_size].copy_(old)
+        else:
+            raise ValueError(f'Cannot transfer incompatible architecture: {name}')
+    destination.policy.load_state_dict(new_state)
+
+
+def restrict_to_appended_inputs(model: DQN, original_size: int) -> None:
+    """Train only the new feature connections to preserve the original network."""
+    if original_size >= model.observation_space.shape[0]:
+        raise ValueError('Appended-input adaptation requires genuinely new features')
+    for name, parameter in model.q_net.named_parameters():
+        parameter.requires_grad_(name == 'q_net.0.weight')
+        if name == 'q_net.0.weight':
+            mask = torch.zeros_like(parameter)
+            mask[:, original_size:] = 1.0
+            parameter.register_hook(lambda gradient, mask=mask: gradient * mask)
+
+
 def train_control_style(
     control_style: str,
     *,
@@ -168,10 +203,15 @@ def train_control_style(
     run_name: str | None = None,
     benchmark_episodes: int = 12,
     verbose: int = 1,
+    init_model: Path | None = None,
+    cooldown_mask: bool = False,
+    new_inputs_only: bool = False,
 ) -> dict[str, Any]:
     """Train, save, and independently benchmark one control-style policy."""
 
     ensure_artifact_directories()
+    if cooldown_mask and control_style != 'rotation':
+        raise ValueError('Cooldown masking currently requires rotation controls')
     settings = training_settings(control_style, profile)
     total_timesteps = int(timesteps or settings["total_timesteps"])
     if total_timesteps < 1:
@@ -182,6 +222,8 @@ def train_control_style(
     action_repeat = int(settings["action_repeat"])
     stem = run_name or f"dqn_{control_style}"
     run_dir = ARENA_LOG_DIR / "runs" / stem
+    if model_path(control_style, run_name).exists() or run_dir.exists():
+        raise FileExistsError(f'Preserve existing artifacts: choose a new --run-name ({stem})')
     checkpoint_dir = run_dir / "checkpoints"
     best_dir = run_dir / "best"
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -194,7 +236,8 @@ def train_control_style(
     learning_starts = min(
         int(settings["learning_starts"]), max(0, total_timesteps // 5)
     )
-    model = DQN(
+    model_class = CooldownAwareDQN if cooldown_mask else DQN
+    model = model_class(
         "MlpPolicy",
         train_env,
         learning_rate=float(settings["learning_rate"]),
@@ -214,6 +257,19 @@ def train_control_style(
         device="auto",
         verbose=verbose,
     )
+    model.cooldown_mask_enabled = cooldown_mask
+    if init_model is not None:
+        source = DQN.load(str(init_model), device='cpu')
+        with init_model.with_suffix('.metadata.json').open(encoding='utf-8') as handle:
+            source_meta = json.load(handle)
+        source_names = source_meta['observation_names']
+        if source_meta['control_style'] != control_style or source_names != list(OBSERVATION_NAMES[:len(source_names)]):
+            raise ValueError('Transfer requires the same control style and an exact observation prefix')
+        transfer_prefix_policy(source, model)
+        if new_inputs_only:
+            restrict_to_appended_inputs(model, int(source.observation_space.shape[0]))
+    elif new_inputs_only:
+        raise ValueError('--new-inputs-only requires --init-model')
 
     callbacks = CallbackList(
         [
@@ -252,7 +308,7 @@ def train_control_style(
     candidates: list[tuple[str, DQN]] = [("last", model)]
     callback_best_path = best_dir / "best_model.zip"
     if callback_best_path.exists():
-        candidates.append(("eval_callback_best", DQN.load(str(callback_best_path))))
+        candidates.append(("eval_callback_best", load_dqn(str(callback_best_path))))
 
     candidate_results: list[dict[str, Any]] = []
     selected_name = ""
@@ -308,6 +364,10 @@ def train_control_style(
         "schema_version": ENVIRONMENT_SCHEMA_VERSION,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "algorithm": "DQN",
+        "initialization_model": str(init_model) if init_model else None,
+        "cooldown_mask": cooldown_mask,
+        "new_inputs_only": new_inputs_only,
+        "run_name": stem,
         "control_style": control_style,
         "profile": profile,
         "total_timesteps": total_timesteps,
@@ -368,7 +428,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument(
         "--profile",
-        choices=("balanced", "fast_exploration", "long_exploration"),
+        choices=("balanced", "fast_exploration", "long_exploration", "threat_aware"),
         default="balanced",
     )
     parser.add_argument(
@@ -378,11 +438,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--benchmark-episodes", type=int, default=12)
     parser.add_argument("--quiet", action="store_true")
+    parser.add_argument('--init-model', type=Path, default=None)
+    parser.add_argument('--cooldown-mask', action='store_true')
+    parser.add_argument('--new-inputs-only', action='store_true')
     return parser
 
 
 def main() -> None:
     args = build_parser().parse_args()
+    torch.set_num_threads(1)
+    if args.init_model and args.control_style == 'both':
+        raise SystemExit('--init-model requires a single control style')
     if args.run_name and args.control_style == "both":
         raise SystemExit("--run-name requires one --control-style")
     styles = (
@@ -400,6 +466,9 @@ def main() -> None:
             run_name=args.run_name,
             benchmark_episodes=args.benchmark_episodes,
             verbose=0 if args.quiet else 1,
+            init_model=args.init_model,
+            cooldown_mask=args.cooldown_mask,
+            new_inputs_only=args.new_inputs_only,
         )
 
 

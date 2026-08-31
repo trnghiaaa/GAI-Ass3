@@ -119,10 +119,29 @@ class ObservationIndex(IntEnum):
     CRITICAL_CHANCE = 67
     LEECH_STRENGTH = 68
     RIFTBREAKER_POWER = 69
+    SECOND_ENEMY_X = 70
+    SECOND_ENEMY_Y = 71
+    SECOND_ENEMY_DISTANCE = 72
+    SECOND_ENEMY_CLOSING = 73
+    NEAREST_ENEMY_CLOSING = 74
+    LOCAL_ENEMY_COUNT = 75
+    CROWD_PRESSURE = 76
+    CROWD_ESCAPE_X = 77
+    CROWD_ESCAPE_Y = 78
+    WALL_LEFT = 79
+    WALL_RIGHT = 80
+    WALL_TOP = 81
+    WALL_BOTTOM = 82
+    SPAWNER_CLEARANCE = 83
+    BOSS_SHIELD = 84
+    BOSS_SUMMONS_REMAINING = 85
+    HAZARD_ESCAPE_ALIGNMENT = 86
+    HAZARD_ESCAPE_TURN = 87
+    BOSS_SUMMON_COOLDOWN = 88
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
-ENVIRONMENT_SCHEMA_VERSION = 5
+ENVIRONMENT_SCHEMA_VERSION = 6
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -230,6 +249,14 @@ class ArenaEnv(gym.Env):
             ObservationIndex.HAZARD_COMBINED_ESCAPE_Y,
             ObservationIndex.SECONDARY_HAZARD_ESCAPE_X,
             ObservationIndex.SECONDARY_HAZARD_ESCAPE_Y,
+            ObservationIndex.SECOND_ENEMY_X,
+            ObservationIndex.SECOND_ENEMY_Y,
+            ObservationIndex.SECOND_ENEMY_CLOSING,
+            ObservationIndex.NEAREST_ENEMY_CLOSING,
+            ObservationIndex.CROWD_ESCAPE_X,
+            ObservationIndex.CROWD_ESCAPE_Y,
+            ObservationIndex.HAZARD_ESCAPE_ALIGNMENT,
+            ObservationIndex.HAZARD_ESCAPE_TURN,
         )
         low[[int(index) for index in signed_features]] = -1.0
         high = np.ones(len(self.observation_names), dtype=np.float32)
@@ -1117,9 +1144,14 @@ class ArenaEnv(gym.Env):
             and any(zone.telegraph_steps > 0 for zone in self.danger_zones)
         ):
             effective_amount *= float(self.phase_cfg["boss_channel_damage_multiplier"])
+        absorbed = 0.0
+        if is_spawner and target.shield > 0.0:
+            absorbed = min(effective_amount, target.shield)
+            target.shield -= absorbed
+            effective_amount -= absorbed
         damage = min(effective_amount, target.health)
         target.health -= effective_amount
-        events["damage_dealt_spawner" if is_spawner else "damage_dealt_enemy"] += damage
+        events["damage_dealt_spawner" if is_spawner else "damage_dealt_enemy"] += damage + absorbed
         if count_hit:
             events["projectile_hits" if source == "player" else "drone_hits"] += 1
         destroyed = target.health <= 0.0
@@ -1238,6 +1270,7 @@ class ArenaEnv(gym.Env):
                 enemy.y += enemy.vy * self.dt
 
             if circles_overlap(enemy, self.player) and enemy.attack_cooldown_steps == 0:
+                events['contact_events'] = int(events.get('contact_events', 0)) + 1
                 contact_damage = base_contact_damage
                 if enemy.is_elite:
                     contact_damage *= 1.2
@@ -1264,9 +1297,11 @@ class ArenaEnv(gym.Env):
         if self.phase_transition_steps > 0:
             return
 
-        max_enemies = int(self.enemy_cfg["maximum_active"]) + (
-            self.phase - 1
-        ) * int(self.phase_cfg["maximum_enemy_growth_per_phase"])
+        max_enemies = min(
+            int(self.phase_cfg["maximum_enemy_absolute"]),
+            int(self.enemy_cfg["maximum_active"])
+            + (self.phase - 1) * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
+        )
         for spawner in self.spawners:
             spawner.spawn_cooldown_steps -= 1
             if spawner.spawn_cooldown_steps <= 0:
@@ -1278,6 +1313,7 @@ class ArenaEnv(gym.Env):
     def _update_boss_skills(self, events: dict[str, Any]) -> None:
         """Advance grouped telegraphs and resolve each barrage at most once."""
 
+        self._update_boss_summons(events)
         newly_triggered: set[int] = set()
         expired_attacks: set[int] = set()
         for zone in self.danger_zones:
@@ -1321,6 +1357,40 @@ class ArenaEnv(gym.Env):
             zone.telegraph_steps > 0 for zone in self.danger_zones
         ):
             self._cast_boss_skill(events)
+
+    def _update_boss_summons(self, events: dict[str, Any]) -> None:
+        """At most two reinforcements per boss, unlocked at 70/35% health.
+
+        There is no shield regeneration or unlimited summon/XP farming. Summons
+        wait while the player is near the boss or a barrage is telegraphing.
+        """
+        limit = int(self.phase_cfg["boss_summon_limit"])
+        for boss in self.spawners:
+            if not boss.is_boss:
+                continue
+            boss.summon_cooldown_steps = max(0, boss.summon_cooldown_steps - 1)
+            threshold = 0.70 - 0.35 * boss.summons_used
+            if (
+                boss.summons_used >= limit or boss.summon_cooldown_steps > 0
+                or boss.health / boss.max_health > threshold
+                or sum(enemy.is_miniboss for enemy in self.enemies)
+                >= int(self.phase_cfg["boss_summon_active_limit"])
+                or len(self.enemies) >= min(
+                    int(self.phase_cfg["maximum_enemy_absolute"]),
+                    int(self.enemy_cfg["maximum_active"])
+                    + (self.phase - 1) * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
+                )
+                or math.hypot(boss.x - self.player.x, boss.y - self.player.y) < 180.0
+                or any(zone.telegraph_steps > 0 for zone in self.danger_zones)
+            ):
+                continue
+            self._spawn_miniboss(boss)
+            boss.summons_used += 1
+            boss.summon_cooldown_steps = int(
+                self.fps * float(self.phase_cfg["boss_summon_interval_seconds"])
+            )
+            events["minibosses_spawned"] += 1
+            events["enemies_spawned"] += 1
 
     def _cast_boss_skill(self, events: dict[str, Any]) -> None:
         patterns = (
@@ -1614,6 +1684,8 @@ class ArenaEnv(gym.Env):
                     health=max_health,
                     spawn_cooldown_steps=max(1, initial_delay),
                     is_boss=boss_phase,
+                    max_shield=(max_health * float(self.phase_cfg["boss_shield_fraction"]) if boss_phase else 0.0),
+                    shield=(max_health * float(self.phase_cfg["boss_shield_fraction"]) if boss_phase else 0.0),
                 )
             )
         if boss_phase:
@@ -1933,7 +2005,49 @@ class ArenaEnv(gym.Env):
             self._aim_turn_direction([target]),
         )
 
-    def _shaping_snapshot(self) -> dict[str, float | int | None]:
+    def _crowd_metrics(self) -> tuple[float, float, float, float]:
+        """Smooth local pressure and an escape vector, not an action override."""
+        pressure = escape_x = escape_y = 0.0
+        count = 0
+        for enemy in self.enemies:
+            dx, dy = enemy.x - self.player.x, enemy.y - self.player.y
+            distance = max(1e-6, math.hypot(dx, dy))
+            clearance = max(0.0, distance - enemy.radius - self.player.radius)
+            if clearance < 200.0:
+                count += 1
+                weight = (1.0 - clearance / 200.0) ** 2
+                pressure += weight
+                escape_x -= dx / distance * weight
+                escape_y -= dy / distance * weight
+        length = max(1e-6, math.hypot(escape_x, escape_y))
+        return min(1.0, count / 8.0), min(1.0, pressure / 3.0), escape_x / length, escape_y / length
+
+    def _threat_observation(self) -> list[float]:
+        enemies = sorted(self.enemies, key=lambda e: (e.x-self.player.x)**2 + (e.y-self.player.y)**2)
+        def closing(enemy: Enemy) -> float:
+            dx, dy = enemy.x-self.player.x, enemy.y-self.player.y
+            distance = max(1e-6, math.hypot(dx, dy))
+            return float(np.clip(((self.player.vx-enemy.vx)*dx + (self.player.vy-enemy.vy)*dy) / distance / 560.0, -1, 1))
+        second = enemies[1] if len(enemies) > 1 else None
+        second_features = self._target_features([second] if second else [])[:3]
+        radius = self.player.radius
+        walls = [self.player.x-radius, self.width-radius-self.player.x,
+                 self.player.y-self.playfield_top-radius, self.height-radius-self.player.y]
+        spawner_clearance = min((math.hypot(s.x-self.player.x, s.y-self.player.y)-s.radius-radius for s in self.spawners), default=300.0)
+        boss = next((s for s in self.spawners if s.is_boss), None)
+        hazard = self._multi_danger_zone_features()
+        hx, hy = hazard[1], hazard[2]
+        cos, sin = math.cos(self.player.angle), math.sin(self.player.angle)
+        return [*second_features, closing(second) if second else 0.0,
+                closing(enemies[0]) if enemies else 0.0, *self._crowd_metrics(),
+                *[float(np.clip(w / 160.0, 0, 1)) for w in walls],
+                float(np.clip(spawner_clearance / 300.0, 0, 1)),
+                boss.shield / max(1.0, boss.max_shield) if boss else 0.0,
+                (1.0-boss.summons_used/max(1,int(self.phase_cfg['boss_summon_limit']))) if boss else 0.0,
+                hx*cos+hy*sin, hy*cos-hx*sin,
+                boss.summon_cooldown_steps / max(1.0,self.fps*float(self.phase_cfg['boss_summon_interval_seconds'])) if boss else 0.0]
+
+    def _shaping_snapshot(self) -> dict[str, Any]:
         """Capture potential features used for small, explainable shaping terms."""
 
         spawner = min(
@@ -1949,7 +2063,8 @@ class ArenaEnv(gym.Env):
             "spawner_distance": (
                 0.0
                 if spawner is None
-                else math.hypot(spawner.x - self.player.x, spawner.y - self.player.y)
+                else max(0.0, math.hypot(spawner.x - self.player.x, spawner.y - self.player.y)
+                         - float(self.reward_cfg["spawner_standoff"]))
                 / diagonal
             ),
             "target_id": None if target is None else target.entity_id,
@@ -1962,12 +2077,14 @@ class ArenaEnv(gym.Env):
                 sorted({zone.attack_id for zone in self.danger_zones})
             ),
             "hazard_risk": self._danger_zone_risk(),
+            "enemy_ids": tuple(sorted(enemy.entity_id for enemy in self.enemies)),
+            "crowd_pressure": self._crowd_metrics()[1],
         }
 
     def _apply_shaping_delta(
         self,
         events: dict[str, Any],
-        before: dict[str, float | int | None],
+        before: dict[str, Any],
     ) -> None:
         """Measure progress only while the same target remains active.
 
@@ -1976,6 +2093,10 @@ class ArenaEnv(gym.Env):
         """
 
         after = self._shaping_snapshot()
+        events["crowd_pressure"] = float(after["crowd_pressure"])
+        events["crowd_escape"] = 0.0
+        if before["enemy_ids"] and before["enemy_ids"] == after["enemy_ids"]:
+            events["crowd_escape"] = float(before["crowd_pressure"]) - float(after["crowd_pressure"])
         if before["spawner_id"] is not None and before["spawner_id"] == after["spawner_id"]:
             events["spawner_progress"] = float(before["spawner_distance"]) - float(
                 after["spawner_distance"]
@@ -2079,6 +2200,7 @@ class ArenaEnv(gym.Env):
                 float(profile["critical_chance"]) / 0.40,
                 self.upgrade_stacks.get("leech", 0) / 4.0,
                 self.upgrade_stacks.get("riftbreaker", 0) / 6.0,
+                *self._threat_observation(),
             ],
             dtype=np.float32,
         )
@@ -2134,6 +2256,9 @@ class ArenaEnv(gym.Env):
             * float(self.reward_cfg["boss_skill_dodged"]),
             "hazard_escape": float(events.get("hazard_escape_improvement", 0.0))
             * float(self.reward_cfg["hazard_escape"]),
+            "crowd_escape": float(events.get("crowd_escape", 0.0)) * float(self.reward_cfg["crowd_escape"]),
+            "crowd_contact_risk": max(0.0, float(events.get("crowd_pressure", 0.0)) - 0.5)
+            * float(self.reward_cfg["crowd_contact_risk"]),
             "phase_timeout": (
                 float(self.reward_cfg["phase_timeout"])
                 if events.get("phase_timeout", False)

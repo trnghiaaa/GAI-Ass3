@@ -391,9 +391,22 @@ class ArenaRenderer:
                 )
                 self.surface.blit(label, label.get_rect(center=(center[0], center[1] + spawner.radius + 18)))
             bar_width = 100 if spawner.is_boss else 56
+            if spawner.is_boss and spawner.max_shield > 0.0:
+                shield_rect = pygame.Rect(round(spawner.x - 50), max(self.env.playfield_top + 5, round(spawner.y - spawner.radius - 25)), 100, 5)
+                pygame.draw.rect(self.surface, (25, 45, 65), shield_rect)
+                fill = shield_rect.copy()
+                fill.width = round(100 * max(0.0, spawner.shield / spawner.max_shield))
+                pygame.draw.rect(self.surface, (80, 200, 255), fill)
+                shield_label = self.font_tiny.render(
+                    f"SHIELD {max(0, round(spawner.shield))}  SUMMONS {spawner.summons_used}/{self.env.phase_cfg['boss_summon_limit']}",
+                    True, (120, 215, 255),
+                )
+                label_rect = shield_label.get_rect(center=(center[0], center[1] + spawner.radius + 32))
+                label_rect.clamp_ip(self.surface.get_rect().inflate(-12, -12))
+                self.surface.blit(shield_label, label_rect)
             self._draw_health_bar(
                 spawner.x - bar_width / 2,
-                spawner.y - spawner.radius - 15,
+                max(self.env.playfield_top + 15, spawner.y - spawner.radius - 15),
                 bar_width,
                 spawner.health / spawner.max_health,
                 height=6,

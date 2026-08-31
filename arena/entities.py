@@ -46,6 +46,10 @@ class Spawner(Body):
     health: float
     spawn_cooldown_steps: int
     is_boss: bool = False
+    max_shield: float = 0.0
+    shield: float = 0.0
+    summons_used: int = 0
+    summon_cooldown_steps: int = 0
 
 
 @dataclass

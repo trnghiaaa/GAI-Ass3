@@ -11,6 +11,7 @@ from collections.abc import Sequence
 import numpy as np
 import pygame
 from stable_baselines3 import DQN
+from arena.cooldown import load_dqn
 
 from arena.benchmark import evaluate_model, write_benchmark
 from arena.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
@@ -70,7 +71,7 @@ def load_policy(
             raise ValueError("Model was trained for an older arena version; retraining is required")
         if metadata.get("observation_names") != list(OBSERVATION_NAMES):
             raise ValueError("Model observation schema does not match the current arena")
-    return DQN.load(str(path), device="auto"), metadata
+    return load_dqn(str(path), device="auto"), metadata
 
 
 def watch_policy(

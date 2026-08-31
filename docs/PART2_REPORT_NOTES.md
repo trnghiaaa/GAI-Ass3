@@ -3,6 +3,10 @@
 Use this as a compact source for the final ten-page report. Numeric claims below
 come from the generated JSON artifacts and should be refreshed after retraining.
 
+The benchmark and tuning figures below describe the original schema-5 models.
+Do not present them as schema-6 results. See `PART2_THREAT_EXPERIMENT.md` for
+the harder environment, preserved baselines, transfer protocol, and new evidence.
+
 ## Environment
 
 Neon Rift Arena is a continuous 800×600 Pygame combat environment. A damageable
@@ -18,7 +22,7 @@ evaluation renders the identical state and mechanics.
 
 ## Observation
 
-The 70-value normalized feature vector avoids expensive pixel learning. It
+The 89-value normalized feature vector avoids expensive pixel learning. It
 contains player kinematics/orientation/health, weapon readiness, nearest enemy
 and rift relative features, entity counts, phase/time, aim alignment, and a
 signed turn signal for the active target. Six progression features expose ship
@@ -29,7 +33,10 @@ hull, shielding, range, piercing, splash, engines, wingmen, bomb, boss/miniboss
 state, primary/combined/secondary boss-hazard escape and impact-time signals,
 Aegis, overdrive, regeneration, homing, late-game mastery, critical chance,
 hull siphon, and Riftbreaker power. Simultaneous lanes and procedural builds
-therefore remain Markov rather than hidden from the agent.
+are represented explicitly. Schema 6 also exposes second-enemy and crowd
+features, closing speeds, wall/spawner clearance, boss shield/summon state,
+and body-relative hazard escape. The feature summary is still partially
+observable; it does not encode every projectile or enemy trajectory.
 
 ## Reward justification
 

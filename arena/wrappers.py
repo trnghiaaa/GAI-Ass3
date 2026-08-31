@@ -20,6 +20,8 @@ SUM_EVENT_KEYS = (
     "spawner_progress",
     "aim_improvement",
     "hazard_escape_improvement",
+    "crowd_escape",
+    "contact_events",
     "sustain_healed",
     "xp_gained",
     "levels_gained",
