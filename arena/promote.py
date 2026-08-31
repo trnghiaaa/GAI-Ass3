@@ -14,7 +14,7 @@ from stable_baselines3 import DQN
 
 from arena.cooldown import load_dqn
 from arena.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
-from arena.settings import metadata_path, model_path
+from arena.settings import CONFIG_PATH, metadata_path, model_path
 from arena.train import transfer_prefix_policy
 
 
@@ -35,6 +35,14 @@ def _write_metadata(
     run_name: str | None = None,
 ) -> None:
     metrics = _load_json(holdout)["aggregate"]
+    metrics.update(
+        {
+            "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
+            "model": str(destination),
+            "model_sha256": _sha256(source),
+            "config_sha256": _sha256(CONFIG_PATH),
+        }
+    )
     result = copy.deepcopy(metadata)
     result.update(
         {

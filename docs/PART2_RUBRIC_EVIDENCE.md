@@ -5,7 +5,8 @@ artifacts. Numeric claims should be copied from the final JSON files rather than
 typed manually into the report.
 
 Schema-7 final status and common-seed results are in
-`PART2_SAFETY_EXPERIMENT.md`. Older schema-5/6 artifacts remain as honest
+`PART2_BALANCE_EXPERIMENT.md`. `PART2_SAFETY_EXPERIMENT.md` remains the
+pre-balance baseline; older schema-5/6 artifacts remain as honest
 hyperparameter and rejected-candidate evidence.
 
 ## G — Real-time Pygame arena
@@ -17,14 +18,15 @@ hyperparameter and rejected-candidate evidence.
 | Spawners and steering enemies | `_update_spawners()`, `_spawn_enemy()`, `_update_enemies()` | Spawn and navigation tests |
 | Health and collisions | Circular projectile/entity collisions; player/enemy/spawner health | Damage, destruction, and death tests |
 | Phase progression | Destroying all active spawners increments phase, cleanly withdraws old hostiles/projectiles, resets the phase clock, and starts a visible transition | Phase-cleanup/timer tests and final policy benchmarks |
-| Terminal rules | Player health reaches zero, a 60-second phase deadline expires, or the long safety budget is exhausted | Termination/truncation tests |
+| Terminal rules | Player health reaches zero, a per-phase deadline expires (60s ordinary, 90s Boss 1, 70s later bosses), or the long safety budget is exhausted | Termination/truncation and boss-budget tests |
 
 Creative renderer-only presentation features include parallax background,
 targeting reticle, projectile trails, hit particles, low-health vignette,
 animated spawners, phase/boss/level-up transition VFX, fitted text, telemetry,
 a visible keyboard/mouse pause overlay, and a visual launcher.
 The additional combat-progression system grants non-RL XP for objectives and
-offers seeded three-card build drafts. Uncapped ship levels, 21 upgrade/mastery
+offers seeded three-card build drafts with fitted names, NEW/tier labels, and
+current-versus-next numerical previews. Uncapped ship levels, 21 upgrade/mastery
 paths, permanent drone squadrons, random minibosses, phase support drops,
 post-boss relics, and grouped multi-lane boss barrages deepen play without altering either
 required action dictionary or the phase progression rule.
@@ -56,11 +58,12 @@ required action dictionary or the phase progression rule.
 
 Metadata beside each model records its control style, observation schema,
 network, seed, action repeat, hyperparameters, versions, checkpoint selection,
-and held-out benchmark. The submitted 30-episode schema-7 benchmarks report
-100% progression for both controls, with mean rewards of 510.30 and 89.48.
-Mean phases were 5.70 and 2.70. Direct averaged 1.10 boss kills and 4.77 dodges
-versus 1.37 hits; rotation averaged 1.27 dodges versus 0.60 hits. Matching random
-baselines scored -14.80 reward/3.33% progression for direct and -37.83/0% for rotation, supporting that progression and build
+and held-out benchmark. The submitted 30-episode schema-7 benchmarks (seed
+53000) report 100% progression for both controls, with mean rewards of 521.93
+and 106.24. Mean phases were 6.10 and 2.83. Direct averaged 1.30 boss kills and
+3.23 dodges versus 0.97 hits; rotation averaged 0.07 boss kills and 1.60 dodges
+versus 1.67 hits. Matching random
+baselines scored -16.60 reward/0% progression for direct and -38.81/0% for rotation, supporting that progression and build
 activation are learned behavior rather than random control.
 
 ## J — Reward and deep-RL quality
@@ -79,6 +82,9 @@ buffer, target network, linear epsilon exploration, checkpoints, held-out model
 selection, Monitor CSV, TensorBoard event logging, and final seeded benchmark.
 `arena.tune` compares fast, balanced, and long-exploration configurations and
 writes CSV/JSON/PNG evidence under `logs/arena/tuning`.
+The final balance audit also records a rejected 600,000-decision rotation
+candidate; it was not promoted because its common-seed boss-clear rate did not
+beat the retained policy.
 
 ## Report-ready files
 

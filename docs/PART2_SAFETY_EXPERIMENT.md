@@ -1,5 +1,8 @@
 # Schema 7: scalable bosses, safer navigation, and final model selection
 
+> Historical pre-balance baseline. The final upgrade/boss balance and accepted
+> common-seed results are in `PART2_BALANCE_EXPERIMENT.md`.
+
 Status: complete. All final metrics below use the submitted schema-7 mechanics,
 the same 30 deterministic seeds (`43000`–`43029`), and action repeat four.
 

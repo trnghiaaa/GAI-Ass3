@@ -451,7 +451,7 @@ class ArenaRenderer:
                 fill.width = round(100 * max(0.0, spawner.shield / spawner.max_shield))
                 pygame.draw.rect(self.surface, (80, 200, 255), fill)
                 shield_label = self.font_tiny.render(
-                    f"SHIELD {max(0, round(spawner.shield))}  SUMMONS {spawner.summons_used}/{self.env.phase_cfg['boss_summon_limit']}",
+                    f"SHIELD {max(0, round(spawner.shield))}  SUMMONS {spawner.summons_used}/{self.env.boss_summon_limit_for_phase()}",
                     True, (120, 215, 255),
                 )
                 label_rect = shield_label.get_rect(center=(center[0], center[1] + spawner.radius + 32))
@@ -733,7 +733,7 @@ class ArenaRenderer:
         )
         ratio = self.env.upgrade_banner_steps / duration
         alpha = min(230, round(255 * min(1.0, ratio * 3.0)))
-        banner = pygame.Surface((470, 76), pygame.SRCALPHA)
+        banner = pygame.Surface((500, 96), pygame.SRCALPHA)
         banner.fill((8, 19, 36, alpha))
         pygame.draw.rect(banner, (*COLORS["xp"], alpha), banner.get_rect(), 2, border_radius=14)
         eyebrow = self.font_tiny.render(
@@ -742,11 +742,18 @@ class ArenaRenderer:
             COLORS["xp"],
         )
         title = self._fit_text(
-            self.env.last_upgrade_name.upper(), self.font_medium, 408, COLORS["text"]
+            self.env.last_upgrade_name.upper(), self.font_medium, 438, COLORS["text"]
+        )
+        detail = self._fit_text(
+            self.env.last_upgrade_detail,
+            self.font_small,
+            446,
+            COLORS["muted"],
         )
         banner.blit(eyebrow, ((banner.get_width() - eyebrow.get_width()) // 2, 8))
-        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 33))
-        chevron_y = banner.get_height() // 2 + 8
+        banner.blit(title, ((banner.get_width() - title.get_width()) // 2, 31))
+        banner.blit(detail, ((banner.get_width() - detail.get_width()) // 2, 65))
+        chevron_y = banner.get_height() // 2 + 1
         pygame.draw.polygon(banner, COLORS["xp"], ((16, chevron_y), (25, chevron_y - 7), (25, chevron_y + 7)))
         pygame.draw.polygon(
             banner,
@@ -820,7 +827,7 @@ class ArenaRenderer:
         width, gap = 224, 18
         total = count * width + (count - 1) * gap
         start_x = (self.env.width - total) // 2
-        return [pygame.Rect(start_x + index * (width + gap), 252, width, 206) for index in range(count)]
+        return [pygame.Rect(start_x + index * (width + gap), 238, width, 250) for index in range(count)]
 
     def choice_at_position(self, position: tuple[int, int]) -> int | None:
         for index, rect in enumerate(self.choice_rects()):
@@ -859,7 +866,6 @@ class ArenaRenderer:
         self.surface.blit(overlay, (0, 0))
         phase_reward = self.env.pending_choice_kind == "phase_reward"
         boss_reward = self.env.pending_choice_kind == "boss_reward"
-        reward_choice = phase_reward or boss_reward
         accent = (
             COLORS["boss"]
             if boss_reward
@@ -883,6 +889,7 @@ class ArenaRenderer:
 
         mouse = pygame.mouse.get_pos() if self.mode == "human" else (-1, -1)
         for index, (rect, choice) in enumerate(zip(self.choice_rects(), self.env.pending_choices)):
+            details = self.env.choice_card_details(choice)
             hover = rect.collidepoint(mouse)
             pygame.draw.rect(self.surface, (27, 40, 72) if hover else (17, 27, 52), rect, border_radius=16)
             pygame.draw.rect(self.surface, accent if hover else (66, 84, 122), rect, 2, border_radius=16)
@@ -890,23 +897,57 @@ class ArenaRenderer:
             pygame.draw.rect(self.surface, accent, badge, border_radius=9)
             number = self.font_medium.render(str(index + 1), True, COLORS["space"])
             self.surface.blit(number, number.get_rect(center=badge.center))
-            name = self._fit_text(str(choice["name"]), self.font_medium, rect.width - 32, COLORS["text"])
-            self.surface.blit(name, (rect.x + 16, rect.y + 62))
-            for line_index, line in enumerate(
-                self._wrapped_lines(str(choice["description"]), self.font_small, rect.width - 32, 3)
-            ):
-                self._text(line, rect.x + 16, rect.y + 100 + line_index * 22, self.font_small, COLORS["muted"])
-            if not reward_choice:
-                choice_id = str(choice["id"])
-                stacks = self.env.upgrade_stacks.get(choice_id, 0)
-                if choice_id == "repair":
-                    stack_text = "INSTANT REPAIR"
-                elif choice.get("repeatable", False):
-                    stack_text = f"MASTERY TIER {stacks + 1}  •  REPEATABLE"
-                else:
-                    maximum = int(choice.get("max_stacks", 1))
-                    stack_text = f"TIER {stacks + 1} / {maximum}"
-                self._text(stack_text, rect.x + 16, rect.bottom - 30, self.font_tiny, accent)
+            name_lines = self._wrapped_lines(
+                details["name"], self.font_medium, rect.width - 76, 2
+            )
+            for line_index, line in enumerate(name_lines):
+                self._text(
+                    line,
+                    rect.x + 60,
+                    rect.y + 14 + line_index * 23,
+                    self.font_medium,
+                    COLORS["text"],
+                )
+
+            status_y = rect.y + (62 if len(name_lines) > 1 else 55)
+            status = self._fit_text(
+                details["status"], self.font_tiny, rect.width - 30, accent
+            )
+            self.surface.blit(status, (rect.x + 15, status_y))
+            divider_y = status_y + 23
+            pygame.draw.line(
+                self.surface,
+                (58, 77, 114),
+                (rect.x + 15, divider_y),
+                (rect.right - 15, divider_y),
+            )
+
+            self._text("CURRENT", rect.x + 15, divider_y + 10, self.font_tiny, COLORS["muted"])
+            current_lines = self._wrapped_lines(
+                details["current"], self.font_small, rect.width - 30, 2
+            )
+            for line_index, line in enumerate(current_lines):
+                self._text(
+                    line,
+                    rect.x + 15,
+                    divider_y + 29 + line_index * 18,
+                    self.font_small,
+                    COLORS["text"],
+                )
+
+            after_y = divider_y + 70
+            self._text("AFTER PICKING", rect.x + 15, after_y, self.font_tiny, accent)
+            after_lines = self._wrapped_lines(
+                details["after"], self.font_small, rect.width - 30, 3
+            )
+            for line_index, line in enumerate(after_lines):
+                self._text(
+                    line,
+                    rect.x + 15,
+                    after_y + 19 + line_index * 18,
+                    self.font_small,
+                    COLORS["text"],
+                )
         self._draw_modal_footer(
             "BATTLE PAUSED  •  SELECT WITH MOUSE OR KEYS 1–3",
             accent,
@@ -954,7 +995,7 @@ class ArenaRenderer:
             column = index // 10
             row = index % 10
             label = self._fit_text(
-                f"{name}  ×{stacks}", self.font_small, 188, COLORS["text"]
+                f"{name}  T{stacks}", self.font_small, 188, COLORS["text"]
             )
             self.surface.blit(
                 label,

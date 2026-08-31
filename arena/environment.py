@@ -268,6 +268,7 @@ class ArenaEnv(gym.Env):
         self.projectiles: list[Projectile] = []
         self.danger_zones: list[DangerZone] = []
         self.phase = 1
+        self.phase_max_steps = self._phase_step_budget()
         self.step_count = 0
         self.phase_step_count = 0
         self.phase_transition_steps = 0
@@ -280,6 +281,7 @@ class ArenaEnv(gym.Env):
         self.episode_stats: dict[str, float | int] = {}
         self.upgrade_banner_steps = 0
         self.last_upgrade_name = "Pulse Cannon"
+        self.last_upgrade_detail = "Base weapon online"
         self.upgrade_stacks: dict[str, int] = {}
         self.pending_choice_kind: str | None = None
         self.pending_choices: list[dict[str, Any]] = []
@@ -311,6 +313,7 @@ class ArenaEnv(gym.Env):
         del options
 
         self.phase = 1
+        self.phase_max_steps = self._phase_step_budget()
         self.step_count = 0
         self.phase_step_count = 0
         self.phase_transition_steps = 0
@@ -325,6 +328,7 @@ class ArenaEnv(gym.Env):
         self.last_events = {}
         self.upgrade_banner_steps = 0
         self.last_upgrade_name = "Pulse Cannon"
+        self.last_upgrade_detail = "Base weapon online"
         self.upgrade_stacks = {
             str(item["id"]): 0 for item in self.progression_cfg["upgrade_catalog"]
         }
@@ -599,6 +603,26 @@ class ArenaEnv(gym.Env):
             if target is not None:
                 angle = math.atan2(target.y - self.player.y, target.x - self.player.x)
                 self.player.angle = angle
+        elif self.control_style == "rotation":
+            # Rotation remains an explicit aiming control.  A narrow shared
+            # magnetism cone only corrects near-misses for human and AI pilots.
+            maximum_distance = float(self.player_cfg["rotation_aim_assist_range"])
+            maximum_difference = math.radians(
+                float(self.player_cfg["rotation_aim_assist_degrees"])
+            )
+            candidates: list[tuple[float, float]] = []
+            for target in [*self.enemies, *self.spawners]:
+                dx = target.x - self.player.x
+                dy = target.y - self.player.y
+                distance = math.hypot(dx, dy)
+                if distance > maximum_distance:
+                    continue
+                target_angle = math.atan2(dy, dx)
+                difference = (target_angle - angle + math.pi) % math.tau - math.pi
+                if abs(difference) <= maximum_difference:
+                    candidates.append((abs(difference) + distance * 1e-6, difference))
+            if candidates:
+                angle += min(candidates, key=lambda candidate: candidate[0])[1]
 
         profile = self.weapon_profile()
         shot_count = int(profile["shot_count"])
@@ -682,7 +706,7 @@ class ArenaEnv(gym.Env):
     def drone_count(self) -> int:
         if not self.support_drone_active:
             return 0
-        return min(4, 1 + max(0, self.drone_level - 1) // 3)
+        return self._drone_count_for_level(self.drone_level)
 
     @property
     def overdrive_active(self) -> bool:
@@ -804,6 +828,68 @@ class ArenaEnv(gym.Env):
         return self.phase % interval == 0
 
     @property
+    def boss_encounter_number(self) -> int:
+        """Return the one-based boss number, or zero outside a boss phase."""
+
+        if not self.is_boss_phase:
+            return 0
+        return max(1, self.phase // max(1, int(self.phase_cfg["boss_interval"])))
+
+    def boss_summon_limit_for_phase(self) -> int:
+        """Scale a finite reinforcement budget gradually across boss encounters."""
+
+        if not self.is_boss_phase:
+            return 0
+        first = int(self.phase_cfg["boss_first_summon_limit"])
+        growth = int(self.phase_cfg["boss_summon_growth_per_encounter"])
+        maximum = int(self.phase_cfg["boss_summon_limit"])
+        return min(maximum, first + (self.boss_encounter_number - 1) * growth)
+
+    def boss_active_summon_limit_for_phase(self) -> int:
+        if not self.is_boss_phase:
+            return 0
+        maximum = int(self.phase_cfg["boss_summon_active_limit"])
+        return min(maximum, self.boss_encounter_number)
+
+    def miniboss_chance_for_phase(self) -> float:
+        """Increase optional Rift Hunter frequency after the fifth phase."""
+
+        growth_steps = max(
+            0,
+            self.phase - int(self.phase_cfg["miniboss_chance_growth_start_phase"]),
+        )
+        return min(
+            float(self.phase_cfg["miniboss_chance_max"]),
+            float(self.phase_cfg["miniboss_chance"])
+            + growth_steps * float(self.phase_cfg["miniboss_chance_growth_per_phase"]),
+        )
+
+    def maximum_active_enemies(self) -> int:
+        normal_limit = min(
+            int(self.phase_cfg["maximum_enemy_absolute"]),
+            int(self.enemy_cfg["maximum_active"])
+            + (self.phase - 1)
+            * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
+        )
+        if self.boss_encounter_number == 1:
+            return min(
+                normal_limit,
+                int(self.phase_cfg["first_boss_maximum_active_enemies"]),
+            )
+        return normal_limit
+
+    def _phase_step_budget(self) -> int:
+        seconds = float(self.sim_cfg["phase_time_limit_seconds"])
+        if self.is_boss_phase:
+            bonus_key = (
+                "first_boss_time_bonus_seconds"
+                if self.boss_encounter_number == 1
+                else "boss_time_bonus_seconds"
+            )
+            seconds += float(self.sim_cfg[bonus_key])
+        return max(1, round(seconds * self.fps))
+
+    @property
     def support_drone_active(self) -> bool:
         return self.drone_level > 0 or self.support_drone_phase == self.phase
 
@@ -836,6 +922,216 @@ class ArenaEnv(gym.Env):
                         "Core squadron complete: gain repeatable Drone Mastery."
                     )
         return catalog
+
+    @staticmethod
+    def _drone_count_for_level(level: int) -> int:
+        if level <= 0:
+            return 0
+        return min(4, 1 + max(0, level - 1) // 3)
+
+    def _project_drone_upgrade(self, amount: int) -> tuple[int, int, int]:
+        """Return projected core tier, mastery tier and drone count."""
+
+        core = self.upgrade_stacks.get("drone", 0)
+        mastery = self.upgrade_stacks.get("drone_mastery", 0)
+        core_gain = min(max(0, 8 - core), max(0, amount))
+        surplus = max(0, amount - core_gain)
+        next_core = core + core_gain
+        next_mastery = mastery + (max(1, math.ceil(surplus / 2)) if surplus else 0)
+        return (
+            next_core,
+            next_mastery,
+            self._drone_count_for_level(next_core + next_mastery),
+        )
+
+    @classmethod
+    def _drone_combat_summary(cls, core: int, mastery: int) -> str:
+        level = core + mastery
+        count = cls._drone_count_for_level(level)
+        damage_percent = round(
+            100 * (0.52 + 0.10 * math.sqrt(max(0, level)) + 0.04 * math.sqrt(max(0, mastery)))
+        )
+        reload_seconds = max(
+            0.20,
+            0.48 - 0.025 * min(8, core) - 0.012 * math.sqrt(max(0, mastery)),
+        )
+        return f"{count} drone(s); {damage_percent}% dmg; {reload_seconds:.3f}s reload"
+
+    def choice_card_details(self, choice: dict[str, Any]) -> dict[str, str]:
+        """Build a concise, truthful current-versus-next preview for a draft card."""
+
+        item_id = str(choice["id"])
+        kind = self.pending_choice_kind or "level_up"
+        stacks = self.upgrade_stacks.get(item_id, 0)
+        maximum = int(choice.get("max_stacks", 1))
+        repeatable = bool(choice.get("repeatable", False))
+        if repeatable:
+            status = f"MASTERY {stacks} -> {stacks + 1}"
+        elif stacks == 0:
+            status = f"NEW - TIER 1 / {maximum}"
+        else:
+            status = f"TIER {stacks} -> {stacks + 1} / {maximum}"
+        current = "Not installed"
+        after = str(choice.get("description", "Upgrade applied"))
+        name = str(choice["name"])
+
+        if kind == "level_up":
+            base_cooldown = float(self.player_cfg["fire_cooldown_seconds"])
+            previews: dict[str, tuple[str, str]] = {
+                "hull": (
+                    f"Max hull {self.player.max_health:.0f}",
+                    f"Max hull {self.player.max_health + 20:.0f}; repair 20",
+                ),
+                "repair": (
+                    f"Hull {self.player.health:.0f}/{self.player.max_health:.0f}",
+                    f"Hull {min(self.player.max_health, self.player.health + self.player.max_health * 0.45):.0f}/{self.player.max_health:.0f}",
+                ),
+                "damage": (
+                    f"Core damage bonus +{12 * stacks}%",
+                    f"Core damage bonus +{12 * (stacks + 1)}%",
+                ),
+                "fire_rate": (
+                    f"Base reload {base_cooldown * 0.9**stacks:.3f}s",
+                    f"Base reload {base_cooldown * 0.9**(stacks + 1):.3f}s",
+                ),
+                "multishot": (
+                    f"{1 + stacks} {'beam' if 1 + stacks == 1 else 'beams'} per volley",
+                    f"{2 + stacks} beams per volley",
+                ),
+                "range": (
+                    f"Range +{18 * stacks}%; speed +{6 * stacks}%",
+                    f"Range +{18 * (stacks + 1)}%; speed +{6 * (stacks + 1)}%",
+                ),
+                "laser": (
+                    f"Weapon: {self.weapon_profile()['name']}",
+                    "Prism Laser; +15% damage, +40% speed",
+                ),
+                "piercing": (
+                    f"Pass through {stacks} extra targets",
+                    f"Pass through {stacks + 1} extra targets",
+                ),
+                "splash": (
+                    f"Blast radius {28 * stacks}px",
+                    f"Blast radius {28 * (stacks + 1)}px",
+                ),
+                "shield": (
+                    f"Damage resistance {min(50, 10 * stacks)}%",
+                    f"Damage resistance {min(50, 10 * (stacks + 1))}%",
+                ),
+                "engine": (
+                    f"Movement bonus +{7.5 * stacks:g}%",
+                    f"Movement bonus +{7.5 * (stacks + 1):g}%",
+                ),
+                "homing": (
+                    f"Guidance strength tier {stacks}",
+                    f"Guidance strength tier {stacks + 1}",
+                ),
+                "regen": (
+                    f"Regeneration {float(self.progression_cfg['passive_regen_per_second']) * stacks:.1f} hull/s",
+                    f"Regeneration {float(self.progression_cfg['passive_regen_per_second']) * (stacks + 1):.1f} hull/s",
+                ),
+                "capacitor": (
+                    f"Beam +{0.8 * stacks:.1f}px; assist +{20 * stacks}px",
+                    f"Beam +{0.8 * (stacks + 1):.1f}px; assist +{20 * (stacks + 1)}px",
+                ),
+                "critical": (
+                    f"Critical chance {min(40, 8 * stacks)}%",
+                    f"Critical chance {min(40, 8 * (stacks + 1))}%",
+                ),
+                "leech": (
+                    f"Restore {2 * stacks}% hull per kill",
+                    f"Restore {2 * (stacks + 1)}% hull per kill",
+                ),
+                "riftbreaker": (
+                    f"Boss damage bonus +{12 * stacks}%",
+                    f"Boss damage bonus +{12 * (stacks + 1)}%",
+                ),
+                "weapon_mastery": (
+                    f"Mastery damage bonus +{4 * stacks}%",
+                    f"Mastery damage bonus +{4 * (stacks + 1)}%",
+                ),
+                "hull_mastery": (
+                    f"Max hull {self.player.max_health:.0f}",
+                    f"Max hull {self.player.max_health + 10:.0f}; repair 10",
+                ),
+                "drone_mastery": (
+                    f"Drone mastery tier {stacks}",
+                    f"Drone mastery tier {stacks + 1}; faster + stronger",
+                ),
+            }
+            if item_id == "drone":
+                next_core, next_mastery, _ = self._project_drone_upgrade(1)
+                core = self.upgrade_stacks.get("drone", 0)
+                mastery = self.upgrade_stacks.get("drone_mastery", 0)
+                current = f"Core T{core}; " + self._drone_combat_summary(core, mastery)
+                after = f"Core T{next_core}; " + self._drone_combat_summary(
+                    next_core, next_mastery
+                )
+                status = (
+                    f"NEW - CORE T1 / 8"
+                    if self.upgrade_stacks.get("drone", 0) == 0
+                    else f"CORE T{self.upgrade_stacks.get('drone', 0)} -> T{next_core} / 8"
+                )
+            elif item_id in previews:
+                current, after = previews[item_id]
+            if item_id == "repair":
+                status = "INSTANT REPAIR"
+        elif kind == "phase_reward":
+            status = "NEXT-PHASE SUPPORT"
+            if item_id == "repair_cache":
+                current = f"Hull {self.player.health:.0f}/{self.player.max_health:.0f}"
+                after = f"Hull {min(self.player.max_health, self.player.health + self.player.max_health * 0.60):.0f}/{self.player.max_health:.0f}"
+            elif item_id == "nova_bomb":
+                current = "Nova bomb armed" if self.nova_bomb_armed else "No bomb armed"
+                after = "Next assault opens with an arena-wide blast"
+            elif item_id == "wingman":
+                name = "Wingman Core"
+                next_core, next_mastery, _ = self._project_drone_upgrade(1)
+                core = self.upgrade_stacks.get("drone", 0)
+                mastery = self.upgrade_stacks.get("drone_mastery", 0)
+                current = f"Core T{core}; " + self._drone_combat_summary(core, mastery)
+                after = f"Core T{next_core}; " + self._drone_combat_summary(
+                    next_core, next_mastery
+                )
+                status = "PERMANENT DRONE UPGRADE"
+            elif item_id == "overdrive":
+                current = "Inactive" if not self.overdrive_active else "Already active"
+                after = "+25% damage and faster fire for next assault"
+            elif item_id == "aegis":
+                current = f"{self.barrier_charges} Aegis charge(s)"
+                after = f"{self.barrier_charges + 2} Aegis charges"
+        elif kind == "boss_reward":
+            status = "PERMANENT BOSS RELIC"
+            if item_id == "artifact_core":
+                artifact = self.upgrade_stacks.get("artifact", 0)
+                if artifact < 12:
+                    current = f"Artifact T{artifact}; max hull {self.player.max_health:.0f}"
+                    after = f"Artifact T{artifact + 1}; +8% damage; +15 hull"
+                else:
+                    mastery = self.upgrade_stacks.get("weapon_mastery", 0)
+                    current = f"Weapon mastery T{mastery}"
+                    after = f"Weapon mastery T{mastery + 1}; +4% damage"
+            elif item_id == "drone_squadron":
+                next_core, next_mastery, _ = self._project_drone_upgrade(2)
+                core = self.upgrade_stacks.get("drone", 0)
+                mastery = self.upgrade_stacks.get("drone_mastery", 0)
+                current = f"Core T{core}; " + self._drone_combat_summary(core, mastery)
+                after = f"Core T{next_core}; " + self._drone_combat_summary(
+                    next_core, next_mastery
+                )
+            elif item_id == "full_restore":
+                current = f"Hull {self.player.health:.0f}/{self.player.max_health:.0f}; Aegis {self.barrier_charges}"
+                after = f"Full hull; Aegis {self.barrier_charges + 3}"
+            elif item_id == "temporal_overdrive":
+                current = "Standard weapon output"
+                after = "+25% damage and faster fire for two assaults"
+
+        return {
+            "name": name,
+            "status": status,
+            "current": current,
+            "after": after,
+        }
 
     def _roll_choices(self, kind: str) -> list[dict[str, Any]]:
         catalog = self._choice_catalog(kind)
@@ -961,6 +1257,7 @@ class ArenaEnv(gym.Env):
         kind = self.pending_choice_kind
         selected = dict(self.pending_choices[index])
         selected_id = str(selected["id"])
+        preview = self.choice_card_details(selected)
         if kind == "level_up":
             if selected_id == "hull":
                 self.upgrade_stacks[selected_id] += 1
@@ -1019,6 +1316,7 @@ class ArenaEnv(gym.Env):
             ) + 1
 
         self.last_upgrade_name = str(selected["name"])
+        self.last_upgrade_detail = preview["after"]
         self.upgrade_banner_steps = max(
             1,
             int(float(self.progression_cfg["upgrade_banner_seconds"]) * self.fps),
@@ -1026,6 +1324,7 @@ class ArenaEnv(gym.Env):
         if events is not None:
             events["choice_selected"] = selected_id
             events["upgrade_unlocked"] = self.last_upgrade_name
+            events["upgrade_detail"] = self.last_upgrade_detail
         self.pending_choice_kind = None
         self.pending_choices = []
         self._prepare_next_choice(events)
@@ -1297,11 +1596,7 @@ class ArenaEnv(gym.Env):
         if self.phase_transition_steps > 0:
             return
 
-        max_enemies = min(
-            int(self.phase_cfg["maximum_enemy_absolute"]),
-            int(self.enemy_cfg["maximum_active"])
-            + (self.phase - 1) * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
-        )
+        max_enemies = self.maximum_active_enemies()
         for spawner in self.spawners:
             spawner.spawn_cooldown_steps -= 1
             if spawner.spawn_cooldown_steps <= 0:
@@ -1364,7 +1659,7 @@ class ArenaEnv(gym.Env):
         There is no shield regeneration or unlimited summon/XP farming. Summons
         wait while the player is near the boss or a barrage is telegraphing.
         """
-        limit = int(self.phase_cfg["boss_summon_limit"])
+        limit = self.boss_summon_limit_for_phase()
         for boss in self.spawners:
             if not boss.is_boss:
                 continue
@@ -1376,12 +1671,8 @@ class ArenaEnv(gym.Env):
                 boss.summons_used >= limit or boss.summon_cooldown_steps > 0
                 or boss.health / boss.max_health > threshold
                 or sum(enemy.is_miniboss for enemy in self.enemies)
-                >= int(self.phase_cfg["boss_summon_active_limit"])
-                or len(self.enemies) >= min(
-                    int(self.phase_cfg["maximum_enemy_absolute"]),
-                    int(self.enemy_cfg["maximum_active"])
-                    + (self.phase - 1) * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
-                )
+                >= self.boss_active_summon_limit_for_phase()
+                or len(self.enemies) >= self.maximum_active_enemies()
                 or math.hypot(boss.x - self.player.x, boss.y - self.player.y) < 180.0
                 or any(zone.telegraph_steps > 0 for zone in self.danger_zones)
             ):
@@ -1416,6 +1707,8 @@ class ArenaEnv(gym.Env):
             12, self.phase - 1
         )
         damage = float(self.phase_cfg["boss_skill_damage"]) * damage_growth
+        if self.boss_encounter_number == 1:
+            damage *= float(self.phase_cfg["first_boss_skill_damage_multiplier"])
         predicted_x = float(np.clip(self.player.x + self.player.vx * 0.32, 0, self.width))
         predicted_y = float(
             np.clip(
@@ -1639,6 +1932,7 @@ class ArenaEnv(gym.Env):
 
         self.phase += 1
         self.phase_step_count = 0
+        self.phase_max_steps = self._phase_step_budget()
         events["phase_advanced"] = True
         self.phase_transition_steps = max(
             0, int(float(self.phase_cfg["transition_seconds"]) * self.fps)
@@ -1671,11 +1965,21 @@ class ArenaEnv(gym.Env):
         for x, y in positions:
             max_health = float(self.spawner_cfg["max_health"]) * health_scale
             if boss_phase:
-                max_health *= float(self.phase_cfg["boss_health_multiplier"])
-            boss_number = max(0, self.phase // int(self.phase_cfg["boss_interval"]) - 1)
+                health_key = (
+                    "first_boss_health_multiplier"
+                    if self.boss_encounter_number == 1
+                    else "boss_health_multiplier"
+                )
+                max_health *= float(self.phase_cfg[health_key])
+            boss_number = max(0, self.boss_encounter_number - 1)
+            shield_base = (
+                float(self.phase_cfg["first_boss_shield_fraction"])
+                if self.boss_encounter_number == 1
+                else float(self.phase_cfg["boss_shield_fraction"])
+            )
             shield_fraction = min(
                 float(self.phase_cfg["boss_shield_max_fraction"]),
-                float(self.phase_cfg["boss_shield_fraction"])
+                shield_base
                 + boss_number
                 * float(self.phase_cfg["boss_shield_growth_per_encounter"]),
             )
@@ -1705,9 +2009,7 @@ class ArenaEnv(gym.Env):
             )
         elif self.phase >= int(self.phase_cfg["miniboss_start_phase"]):
             pity = self.phases_since_miniboss >= int(self.phase_cfg["miniboss_pity_phases"])
-            if pity or float(self.np_random.random()) < float(
-                self.phase_cfg["miniboss_chance"]
-            ):
+            if pity or float(self.np_random.random()) < self.miniboss_chance_for_phase():
                 self._spawn_miniboss(self.spawners[0])
                 self.phases_since_miniboss = 0
                 if events is not None:
@@ -1848,8 +2150,18 @@ class ArenaEnv(gym.Env):
             1.0 + (self.phase - 1) * float(self.phase_cfg["enemy_speed_growth"]),
         )
         if spawner.is_boss:
-            health_scale *= float(self.phase_cfg["boss_enemy_health_multiplier"])
-            speed_scale *= float(self.phase_cfg["boss_enemy_speed_multiplier"])
+            health_key = (
+                "first_boss_enemy_health_multiplier"
+                if self.boss_encounter_number == 1
+                else "boss_enemy_health_multiplier"
+            )
+            speed_key = (
+                "first_boss_enemy_speed_multiplier"
+                if self.boss_encounter_number == 1
+                else "boss_enemy_speed_multiplier"
+            )
+            health_scale *= float(self.phase_cfg[health_key])
+            speed_scale *= float(self.phase_cfg[speed_key])
         if is_miniboss:
             health_scale *= float(self.phase_cfg["miniboss_health_multiplier"])
             speed_scale *= float(self.phase_cfg["miniboss_speed_multiplier"])
@@ -1880,7 +2192,12 @@ class ArenaEnv(gym.Env):
         base_seconds = float(self.spawner_cfg["spawn_interval_seconds"])
         speedup = 1.0 + (self.phase - 1) * float(self.phase_cfg["spawn_rate_growth"])
         if is_boss or (spawner is not None and spawner.is_boss):
-            base_seconds *= float(self.phase_cfg["boss_spawn_rate_multiplier"])
+            rate_key = (
+                "first_boss_spawn_rate_multiplier"
+                if self.boss_encounter_number == 1
+                else "boss_spawn_rate_multiplier"
+            )
+            base_seconds *= float(self.phase_cfg[rate_key])
         seconds = max(
             float(self.phase_cfg["minimum_spawn_interval_seconds"]),
             base_seconds / speedup,
@@ -2052,7 +2369,7 @@ class ArenaEnv(gym.Env):
                 *[float(np.clip(w / 160.0, 0, 1)) for w in walls],
                 float(np.clip(spawner_clearance / 300.0, 0, 1)),
                 boss.shield / max(1.0, boss.max_shield) if boss else 0.0,
-                (1.0-boss.summons_used/max(1,int(self.phase_cfg['boss_summon_limit']))) if boss else 0.0,
+                (1.0-boss.summons_used/max(1, self.boss_summon_limit_for_phase())) if boss else 0.0,
                 hx*cos+hy*sin, hy*cos-hx*sin,
                 boss.summon_cooldown_steps / max(1.0,self.fps*float(self.phase_cfg['boss_summon_interval_seconds'])) if boss else 0.0]
 
@@ -2170,11 +2487,7 @@ class ArenaEnv(gym.Env):
         active_target_features = self._active_target_features()
         fire_cooldown = self.weapon_cooldown_steps()
         profile = self.weapon_profile()
-        max_enemies = min(
-            int(self.phase_cfg["maximum_enemy_absolute"]),
-            int(self.enemy_cfg["maximum_active"])
-            + (self.phase - 1) * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
-        )
+        max_enemies = self.maximum_active_enemies()
         minibosses = [enemy for enemy in self.enemies if enemy.is_miniboss]
         miniboss_health = self._target_features(minibosses)[3]
         hazard_features = self._danger_zone_features()

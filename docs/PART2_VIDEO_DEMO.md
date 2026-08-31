@@ -14,11 +14,12 @@ video.
    Hold a movement/rotation key with `Space` to demonstrate simultaneous manual
    steering and fire. Press `Tab` once to show the composed build statistics,
    permanent drone tiers, and support systems, then close it. When a
-   phase clears, point out the animated deployment banner, fresh 60-second phase
-   clock, and clean battlefield. Also show the level-up ring animation.
+   phase clears, point out the animated deployment banner, refreshed phase
+   clock, and clean battlefield. Show a draft card's current/next values and the
+   result banner, then show the level-up ring animation.
 3. Return to the launcher and open **Watch Rotation DQN**. Explain that this
    agent must learn heading, signed turn direction, thrust, and forward shooting.
-   The launcher's disclosed deterministic demo seed 23004 reaches phase 4 and
+   The launcher's disclosed deterministic demo seed 53006 reaches phase 4 and
    visibly defeats the phase-3 boss rift in the submitted model. Point out the
    special boss-phase warning and named multi-lane countdown, then show the policy
    repositioning before a cross/diagonal/trident/nova barrage.

@@ -26,8 +26,9 @@ class ThreatTests(unittest.TestCase):
     def tearDown(self):
         self.env.close()
 
-    def boss(self):
-        self.env.phase = 3
+    def boss(self, phase=3):
+        self.env.phase = phase
+        self.env.phase_max_steps = self.env._phase_step_budget()
         self.env.spawners.clear()
         self.env._spawn_phase_spawners()
         return self.env.spawners[0]
@@ -48,7 +49,7 @@ class ThreatTests(unittest.TestCase):
         self.assertAlmostEqual(events['damage_dealt_spawner'], shield + 10)
 
     def test_summons_are_finite_and_have_a_cooldown(self):
-        boss = self.boss()
+        boss = self.boss(9)
         self.env.player.x = self.env.width - boss.x
         self.env.player.y = self.env.height - boss.y + self.env.playfield_top
         boss.health = boss.max_health * 0.2
@@ -70,6 +71,43 @@ class ThreatTests(unittest.TestCase):
         boss.summon_cooldown_steps = 0
         self.env._update_boss_summons(events)
         self.assertEqual(boss.summons_used, 3)
+
+    def test_first_boss_is_fairer_then_reinforcement_budget_scales_gradually(self):
+        first = self.boss(3)
+        first_effective_health = first.health + first.shield
+        first_spawn_interval = self.env._spawn_interval_steps(first)
+        self.env._spawn_enemy(first)
+        first_minion_health = self.env.enemies[-1].max_health
+        self.assertEqual(self.env.boss_summon_limit_for_phase(), 1)
+        self.assertEqual(self.env.boss_active_summon_limit_for_phase(), 1)
+        self.assertEqual(self.env.maximum_active_enemies(), 7)
+        self.assertEqual(self.env.phase_max_steps, 90 * self.env.fps)
+
+        second = self.boss(6)
+        second_spawn_interval = self.env._spawn_interval_steps(second)
+        self.env._spawn_enemy(second)
+        self.assertGreater(second.health + second.shield, first_effective_health)
+        self.assertGreater(first_spawn_interval, second_spawn_interval)
+        self.assertGreater(self.env.enemies[-1].max_health, first_minion_health)
+        self.assertEqual(self.env.boss_summon_limit_for_phase(), 2)
+        self.assertEqual(self.env.boss_active_summon_limit_for_phase(), 2)
+        self.assertGreater(self.env.maximum_active_enemies(), 7)
+        self.assertEqual(self.env.phase_max_steps, 70 * self.env.fps)
+
+        self.boss(12)
+        self.assertEqual(self.env.boss_summon_limit_for_phase(), 4)
+        self.assertEqual(self.env.boss_active_summon_limit_for_phase(), 2)
+
+    def test_miniboss_frequency_rises_after_phase_five_with_a_cap(self):
+        self.env.phase = 4
+        early = self.env.miniboss_chance_for_phase()
+        self.env.phase = 6
+        growing = self.env.miniboss_chance_for_phase()
+        self.env.phase = 99
+        capped = self.env.miniboss_chance_for_phase()
+        self.assertEqual(early, 0.24)
+        self.assertGreater(growing, early)
+        self.assertEqual(capped, 0.66)
 
     def test_summons_do_not_appear_on_a_close_player(self):
         boss = self.boss()

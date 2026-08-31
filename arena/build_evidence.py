@@ -360,10 +360,18 @@ def _capture_environment_preview() -> None:
         )
         env.phase_transition_steps = 0
         env.manual_choices = True
-        env._queue_choice("level_up")
-        env._prepare_next_choice()
+        env.pending_choice_kind = "phase_reward"
+        support_catalog = {
+            str(item["id"]): dict(item)
+            for item in env.progression_cfg["phase_reward_catalog"]
+        }
+        env.pending_choices = [
+            support_catalog["wingman"],
+            support_catalog["overdrive"],
+            support_catalog["aegis"],
+        ]
         renderer.render(
-            footer_text="THREE-CARD DRAFT  •  manual choice pauses the battle timer"
+            footer_text="CLEAR UPGRADE PREVIEW  •  current build compared with the exact result"
         )
         pygame.image.save(renderer.surface, ARENA_LOG_DIR / "choice_showcase.png")
         env.pending_choice_kind = None
@@ -424,7 +432,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "The preserved three-profile sweep is historical schema-5 evidence; schema-7 safety-aware comparisons are in safety_experiment/.",
+        "note": "The preserved three-profile sweep is historical schema-5 evidence; final schema-7 balance comparisons are in balance_experiment/ and the pre-balance safety audit is in safety_experiment/.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events

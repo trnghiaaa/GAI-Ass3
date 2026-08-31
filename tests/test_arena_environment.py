@@ -269,6 +269,28 @@ class ArenaEnvironmentTests(unittest.TestCase):
         self.assertGreater(profile["splash_radius"], 0.0)
         self.assertTrue(all(item.weapon_kind == "laser" for item in self.env.projectiles))
 
+    def test_rotation_aim_assist_only_corrects_a_nearly_aligned_shot(self) -> None:
+        env = ArenaEnv(control_style="rotation")
+        try:
+            env.reset(seed=92)
+            target = env.spawners[0]
+            desired = math.atan2(target.y - env.player.y, target.x - env.player.x)
+            env.player.angle = desired + math.radians(6)
+            env._fire_projectile(auto_aim=False)
+            assisted = math.atan2(env.projectiles[-1].vy, env.projectiles[-1].vx)
+            self.assertAlmostEqual(assisted, desired, places=5)
+
+            env.projectiles.clear()
+            env.player.fire_cooldown_steps = 0
+            original = desired + math.radians(12)
+            env.player.angle = original
+            env._fire_projectile(auto_aim=False)
+            unassisted = math.atan2(env.projectiles[-1].vy, env.projectiles[-1].vx)
+            difference = (unassisted - original + math.pi) % math.tau - math.pi
+            self.assertAlmostEqual(difference, 0.0, places=5)
+        finally:
+            env.close()
+
     def test_combat_xp_levels_up_without_changing_environment_reward(self) -> None:
         events = {
             "enemies_destroyed": 10,
@@ -341,6 +363,43 @@ class ArenaEnvironmentTests(unittest.TestCase):
             env.choose_pending_choice(0)
             self.assertTrue(env.support_drone_active)
             self.assertEqual(env.drone_level, 1)
+        finally:
+            env.close()
+
+    def test_upgrade_cards_explain_current_and_next_tier_effects(self) -> None:
+        env = ArenaEnv(control_style="direct", manual_choices=True)
+        try:
+            env.reset(seed=91)
+            env.upgrade_stacks["multishot"] = 2
+            multishot = next(
+                item
+                for item in env.progression_cfg["upgrade_catalog"]
+                if item["id"] == "multishot"
+            )
+            env.pending_choice_kind = "level_up"
+            details = env.choice_card_details(multishot)
+            self.assertEqual(details["status"], "TIER 2 -> 3 / 6")
+            self.assertEqual(details["current"], "3 beams per volley")
+            self.assertEqual(details["after"], "4 beams per volley")
+
+            env.upgrade_stacks["drone"] = 3
+            wingman = next(
+                item
+                for item in env.progression_cfg["phase_reward_catalog"]
+                if item["id"] == "wingman"
+            )
+            env.pending_choice_kind = "phase_reward"
+            env.pending_choices = [wingman]
+            details = env.choice_card_details(wingman)
+            self.assertEqual(details["name"], "Wingman Core")
+            self.assertIn("Core T3", details["current"])
+            self.assertIn("1 drone(s)", details["current"])
+            self.assertIn("Core T4", details["after"])
+            self.assertIn("2 drone(s)", details["after"])
+
+            env.choose_pending_choice(0)
+            self.assertEqual(env.upgrade_stacks["drone"], 4)
+            self.assertIn("Core T4", env.last_upgrade_detail)
         finally:
             env.close()
 

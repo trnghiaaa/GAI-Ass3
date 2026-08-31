@@ -30,9 +30,9 @@ python -m gridworld.play --level 0
 
 ## 3. Part II Action Arena
 
-> Schema-7 difficulty, boss, pause-UI, and safety-aware learning work is
-> complete. See `docs/PART2_SAFETY_EXPERIMENT.md` for the final common-seed
-> holdout, including the rotation candidates that were deliberately rejected.
+> Schema-7 difficulty, boss, pause-UI, upgrade-clarity, and safety-aware learning
+> work is complete. See `docs/PART2_BALANCE_EXPERIMENT.md` for the final
+> common-seed holdout and rejected rotation candidate.
 
 The Part II environment is a continuous-coordinate Pygame combat arena named
 **Neon Rift Arena**. The easiest entry point is the unified visual launcher:
@@ -63,7 +63,9 @@ python -m arena.play --control-style rotation
 ```
 
 For rotation controls, use `W` to thrust, `A`/`D` to rotate, and hold `Space` to
-fire while thrusting or turning. In both modes, `R` restarts an episode and
+fire while thrusting or turning. Rotation shots receive a narrow seven-degree
+aim correction only when the pilot is already aligned with a target; aiming is
+still controlled by rotation. In both modes, `R` restarts an episode and
 `Esc` quits. `P` or the visible PAUSE/RESUME button freezes the simulation and
 phase timer. `Tab` opens a readable ship-build panel and pauses the manual battle.
 
@@ -77,16 +79,19 @@ The arena provides:
 - Clean phase hand-offs that withdraw surviving hostiles and clear old shots
   without awarding fake kills, XP, or RL reward
 - A gradual phase director, random Rift Hunter minibosses, and a boss rift every third phase
-- Bosses with phase-scaled health, a visible 30–45% shield, and a finite
-  three-Hunter summon budget with cooldown and active-enemy safety caps
+- An onboarding Boss 1 with an 18% shield, one Hunter reinforcement, fewer
+  simultaneous minions, and a 90-second deadline; later bosses use 32.5–45%
+  shields, a 70-second deadline, and finite 2/3/4-Hunter budgets
 - Grouped horizontal, vertical, diagonal, cross, trident, and circular boss
   barrages with readable names/countdowns and one-hit-per-cast fairness
-- A fresh 60-second combat deadline for every phase, plus a long episode safety cap
+- A fresh 60-second deadline for ordinary phases, boss-specific time budgets,
+  and a separate long episode safety cap
 - Headless, human-window, and RGB-array rendering modes
 - Targeting reticles, impact particles, projectile trails, damage feedback,
   readable HUD telemetry, animated level-up/phase/boss transitions, and
   report-ready RGB screenshots
-- Uncapped combat levels and three-card drafts spanning 21 upgrade/mastery paths
+- Uncapped combat levels and three-card drafts spanning 21 upgrade/mastery
+  paths, with NEW/current/next-rank previews on every card
 - Permanent, upgradable wingman squadrons plus five between-phase support choices
 - Strong post-boss relic drafts and automatic repair/Aegis miniboss caches
 
@@ -183,11 +188,17 @@ drones, critical beams, kill-based hull siphon, or specialist Riftbreaker
 damage. Once the regular paths mature, repeatable weapon, hull, and drone
 masteries keep the ship growing with no combat-level cap. Clearing a phase offers
 repair, an armed arena bomb, a permanent wingman tier, overdrive, or Aegis.
+Every card shows the installed tier and concrete result before selection (for
+example, beam count, cooldown, hull, resistance, or Wingman Core/mastery/drone
+count). The build banner then confirms the applied result rather than repeating
+only the generic upgrade name.
 Random Rift Hunters drop XP plus a repair/Aegis cache. Every third phase replaces
 ordinary rifts with a shielded boss that telegraphs named multi-lane sweeps, crosses,
 diagonal lattices, trident walls, and a circular nova cage;
 victory opens a stronger permanent-relic draft. Speed, damage, spawn rate, and
 active-enemy counts use fairness caps while health and player mastery keep scaling.
+Optional Rift Hunter probability begins at 24% and rises by six percentage
+points per phase after Phase 5, capped at 66%.
 Ordinary kills grant 6 XP and cumulative thresholds follow
 `60 * (level - 1)^1.95`, slowing late upgrades without imposing a level cap.
 
@@ -240,11 +251,11 @@ Default models are saved separately as `models/arena/dqn_direct.zip` and
 `models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
 checkpoints, deterministic seeded benchmarks, plots, and summaries are written
 under `logs/arena`. On the final schema-7 30-seed holdout, direct achieved
-510.30 reward, 100% progression, mean/max Phase 5.70/12, and 1.10 boss kills;
-rotation achieved 89.48 reward, 100% progression, and Phase 2.70/3. Direct
-recorded 4.77 boss dodges versus 1.37 hits; rotation recorded 1.27 versus 0.60.
-Matching random baselines scored -14.80 reward/3.33% progression and
--37.83/0% respectively.
+521.93 reward, 100% progression, mean/max Phase 6.10/11, and 1.30 boss kills;
+rotation achieved 106.24 reward, 100% progression, and mean/max Phase 2.83/4.
+Direct recorded 3.23 boss dodges versus 0.97 hits; rotation recorded 1.60 versus
+1.67. Matching random baselines scored -16.60/0% progression and -38.81/0%
+respectively.
 
 ### Visual Evaluation
 
@@ -261,7 +272,8 @@ Playback is deterministic (`model.predict(..., deterministic=True)`) and shows
 the saved model controlling the actual submitted environment. Use `P` to pause,
 `.` to single-step, `+/-` to change speed, `Tab` to inspect the current build,
 `R` to replay, and `Esc` to exit. Launcher playback runs one episode by default.
-Each cleared phase refreshes its 60-second deadline, so successful play can
+Each cleared phase refreshes its deadline: 60 seconds ordinarily, 90 seconds
+for the onboarding boss, and 70 seconds for later bosses. Successful play can
 continue while an agent that stalls still reaches a clear terminal condition.
 
 Build and verify the final report evidence after training:
