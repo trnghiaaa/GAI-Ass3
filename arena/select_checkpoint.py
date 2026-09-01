@@ -46,6 +46,10 @@ def _score(normal: dict[str, Any], boss: dict[str, Any]) -> float:
         + 35.0 * float(boss["mean_bosses_destroyed"])
         + 10.0 * float(boss["mean_boss_skills_dodged"])
         - 24.0 * float(boss["mean_boss_skill_hits"])
+        + 10.0 * float(boss["mean_boss_defenders_destroyed"])
+        + 2.0 * float(boss["mean_missiles_evaded"])
+        - 12.0 * float(boss["mean_missile_hits"])
+        - 0.75 * float(boss["mean_boss_immune_hits"])
     )
 
 

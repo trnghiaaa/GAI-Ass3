@@ -24,7 +24,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
         observation, info = self.env.reset(seed=7)
 
         self.assertTrue(self.env.observation_space.contains(observation))
-        self.assertEqual(observation.shape, (89,))
+        self.assertEqual(observation.shape, self.env.observation_space.shape)
         self.assertEqual(self.env.player.health, self.env.player.max_health)
         self.assertEqual(info["phase"], 1)
         self.assertEqual(len(self.env.spawners), 2)
@@ -300,12 +300,15 @@ class ArenaEnvironmentTests(unittest.TestCase):
         self.env._apply_combat_progression(events)
         self.env._prepare_next_choice(events)
 
-        self.assertEqual(events["xp_gained"], 60.0)
+        self.assertEqual(
+            events["xp_gained"],
+            10.0 * float(self.env.progression_cfg["enemy_xp"]),
+        )
         self.assertEqual(events["levels_gained"], 1)
         self.assertIsNotNone(events["upgrade_unlocked"])
         self.assertIsNotNone(events["choice_selected"])
         self.assertEqual(self.env.player.level, 2)
-        self.assertEqual(self.env.player.xp, 60.0)
+        self.assertEqual(self.env.player.xp, events["xp_gained"])
 
         reward_events = {
             "damage_dealt_enemy": 0.0,

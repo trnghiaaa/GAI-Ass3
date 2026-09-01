@@ -21,6 +21,7 @@ ROW_FIELDS = (
     "shots_fired", "projectile_hits", "accuracy", "hits_per_projectile", "player_level", "xp_earned",
     "weapon_name", "upgrades_chosen", "phase_rewards_chosen", "bosses_destroyed",
     "minibosses_destroyed", "boss_skills_dodged", "boss_skill_hits",
+    "boss_defenders_destroyed", "boss_immune_hits", "missiles_evaded", "missile_hits",
     "boss_rewards_chosen", "drone_level", "barrier_charges",
     "build_summary",
     "contact_events", "crowd_fraction", "wall_fraction", "mean_enemy_clearance",
@@ -128,6 +129,10 @@ def evaluate_model(
                 "minibosses_destroyed": int(stats.get("minibosses_destroyed", 0)),
                 "boss_skills_dodged": int(stats.get("boss_skills_dodged", 0)),
                 "boss_skill_hits": int(stats.get("boss_skill_hits", 0)),
+                "boss_defenders_destroyed": int(stats.get("boss_defenders_destroyed", 0)),
+                "boss_immune_hits": int(stats.get("boss_immune_hits", 0)),
+                "missiles_evaded": int(stats.get("missiles_evaded", 0)),
+                "missile_hits": int(stats.get("missile_hits", 0)),
                 "boss_rewards_chosen": int(stats.get("boss_rewards_chosen", 0)),
                 "drone_level": int(final_info.get("drone_level", 0)),
                 "barrier_charges": int(final_info.get("barrier_charges", 0)),
@@ -194,6 +199,18 @@ def evaluate_model(
         ),
         "mean_boss_skill_hits": round(
             fmean(int(row["boss_skill_hits"]) for row in rows), 4
+        ),
+        "mean_boss_defenders_destroyed": round(
+            fmean(int(row["boss_defenders_destroyed"]) for row in rows), 4
+        ),
+        "mean_boss_immune_hits": round(
+            fmean(int(row["boss_immune_hits"]) for row in rows), 4
+        ),
+        "mean_missiles_evaded": round(
+            fmean(int(row["missiles_evaded"]) for row in rows), 4
+        ),
+        "mean_missile_hits": round(
+            fmean(int(row["missile_hits"]) for row in rows), 4
         ),
         "mean_drone_level": round(
             fmean(int(row["drone_level"]) for row in rows), 4

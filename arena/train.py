@@ -60,6 +60,8 @@ MONITOR_INFO_KEYS = (
     "episode_max_level",
     "active_minibosses",
     "active_boss_hazards",
+    "active_boss_defenders",
+    "active_enemy_missiles",
     "drone_level",
 )
 
@@ -93,6 +95,10 @@ class ArenaTelemetryCallback(BaseCallback):
             "minibosses_destroyed",
             "boss_skills_dodged",
             "boss_skill_hits",
+            "boss_defenders_destroyed",
+            "boss_immune_hits",
+            "missiles_evaded",
+            "missile_hits",
             "hazard_exposure",
             "damage_taken",
         ):
@@ -219,6 +225,7 @@ def train_control_style(
     new_inputs_only: bool = False,
     boss_curriculum: float = 0.0,
     curriculum_phases: tuple[int, ...] = (3,),
+    action_repeat_override: int | None = None,
 ) -> dict[str, Any]:
     """Train, save, and independently benchmark one control-style policy."""
 
@@ -236,7 +243,13 @@ def train_control_style(
     if not curriculum_phases:
         raise ValueError("curriculum_phases cannot be empty")
     training_seed = int(settings["seed"] if seed is None else seed)
-    action_repeat = int(settings["action_repeat"])
+    action_repeat = int(
+        settings["action_repeat"]
+        if action_repeat_override is None
+        else action_repeat_override
+    )
+    if action_repeat < 1:
+        raise ValueError("action repeat must be positive")
     stem = run_name or f"dqn_{control_style}"
     run_dir = ARENA_TRAINING_DIR / stem
     if model_path(control_style, run_name).exists() or run_dir.exists():
@@ -380,6 +393,10 @@ def train_control_style(
             + 0.08 * float(candidate_benchmark["mean_enemy_clearance"])
             + 12.0 * float(boss_benchmark["mean_boss_skills_dodged"])
             - 18.0 * float(boss_benchmark["mean_boss_skill_hits"])
+            + 8.0 * float(boss_benchmark["mean_boss_defenders_destroyed"])
+            + 2.0 * float(boss_benchmark["mean_missiles_evaded"])
+            - 10.0 * float(boss_benchmark["mean_missile_hits"])
+            - 0.5 * float(boss_benchmark["mean_boss_immune_hits"])
             + 12.0 * float(boss_benchmark["mean_bosses_destroyed"])
         )
         candidate_results.append(
@@ -499,6 +516,7 @@ def build_parser() -> argparse.ArgumentParser:
             "safety_exploration",
             "threat_aware",
             "boss_dodge",
+            "boss_intermission",
         ),
         default="balanced",
     )
@@ -512,6 +530,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--init-model', type=Path, default=None)
     parser.add_argument('--cooldown-mask', action='store_true')
     parser.add_argument('--new-inputs-only', action='store_true')
+    parser.add_argument(
+        "--action-repeat",
+        type=int,
+        default=None,
+        help="Optional held-action cadence for a documented control ablation",
+    )
     parser.add_argument(
         "--boss-curriculum",
         type=float,
@@ -557,6 +581,7 @@ def main() -> None:
                 for value in args.curriculum_phases.split(",")
                 if value.strip()
             ),
+            action_repeat_override=args.action_repeat,
         )
 
 

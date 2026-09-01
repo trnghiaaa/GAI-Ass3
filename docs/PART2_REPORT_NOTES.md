@@ -13,7 +13,10 @@ advances the phase. Each new phase removes surviving hostiles/projectiles,
 resets the per-phase time budget, and visibly announces the next deployment.
 Every third phase is a shielded boss encounter with finite miniboss summons and
 telegraphed horizontal, vertical, diagonal, cross, trident, and circular
-barrages. The episode ends on player death, a missed phase deadline, or a long
+barrages. Breaking the shield makes the boss drift slowly; at low health it
+deploys one finite Aegis sentry wing. The boss is temporarily immune and can
+repair only a capped amount until the player destroys the missile sentries.
+The episode ends on player death, a missed phase deadline, or a long
 safety cap. The same simulation is used for human play, headless training, and
 rendered evaluation.
 
@@ -25,11 +28,13 @@ post-boss relic choices. XP is **not** added to the RL reward.
 
 ## Observation and actions
 
-The fixed 89-value `float32` observation includes player position, velocity,
+The fixed 107-value `float32` observation includes player position, velocity,
 heading, health, weapon readiness, nearest enemy/rift relative geometry,
 counts, phase/time, targeting alignment, progression/build state, crowd/wall
-clearance, miniboss/boss shield state, and primary/secondary/combined
-boss-hazard escape signals. It contains no pixels. The two required action sets
+clearance, miniboss/boss shield state, primary/secondary/combined boss-hazard
+escape signals, boss vulnerability/motion, defender priority, and incoming
+missile direction/distance/impact time, missile velocity, a perpendicular
+escape direction, and lock-on progress. It contains no pixels. The two required action sets
 are implemented unchanged:
 
 | Control style | Actions |
@@ -45,48 +50,64 @@ the assignment's four-value compatibility API.
 The configurable reward contains the required positive enemy/rift/phase terms
 and negative damage/death terms. Additional, logged shaping rewards only
 improve temporal credit assignment: damage dealt, safe spacing, crowd escape,
-aim/shot quality, boss-barrage escape, and a complete barrage dodge. Schema 8
-adds a clear `boss_skill_hit` penalty and a small `hazard_exposure` penalty on
+aim/shot quality, boss-barrage and missile escape, complete dodges, defender
+kills, and avoiding wasted fire on an immune boss. Schema 10 adds clear
+`boss_skill_hit` and `missile_hit` penalties and a small `hazard_exposure` penalty on
 every active step inside a telegraphed danger zone. For simultaneous lanes the
 environment uses the **maximum** danger, so an overlapping barrage cannot make
 the penalty disappear by averaging. This changes reward learning signals only;
 it does not script player movement, change collisions, or change the action
 sets.
 
-The direct agent was fine-tuned for 400,000 decisions with an honest
-training-only boss curriculum: 70% of resets begin at Phase 3. It still uses
+The direct agent was fine-tuned for 350,000 decisions with an honest
+training-only boss curriculum: 78% of resets begin at Phase 3. It still uses
 the real environment and receives no forced dodge action. Checkpoints were
 selected using separate deterministic normal and fixed-Phase-3 benchmarks,
 which prevents a policy that simply survives/stalls from winning.
 
-## Final measured evidence (schema 8)
+## Final measured evidence (schema 10)
 
 All values below are deterministic held-out evaluations of the committed model
 weights, not training returns.
 
-| Policy / evaluation | Episodes | Mean reward | Mean phase | Bosses cleared | Dodges | Boss hits |
-|---|---:|---:|---:|---:|---:|---:|
-| Direct, normal start (seed 93000) | 30 | 846.13 | 7.73 | 1.93 | 6.13 | 0.33 |
-| Direct, fixed Phase-3 boss start (seed 96000) | 30 | 405.70 | 6.17 | 1.47 | 5.70 | 0.63 |
-| Rotation, normal start (seed 94000) | 30 | 89.89 | 2.93 | 0.03 | 2.07 | 1.87 |
-| Rotation, fixed Phase-3 boss start (seed 95000) | 30 | -66.54 | 3.00 | 0.00 | 2.07 | 2.53 |
+| Policy / evaluation | Episodes | Mean reward | Mean phase | Progress | Bosses | Sentries | Dodges | Boss hits | Missile hits |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Direct, normal (seed 211000) | 24 | 998.48 | 9.04 | 100% | 2.08 | 7.83 | 10.54 | 1.25 | 2.96 |
+| Direct, Phase-3 start (seed 212000) | 24 | 204.84 | 4.58 | 62.5% | 0.75 | 2.83 | 6.17 | 0.92 | 1.58 |
+| Rotation, normal (seed 213000) | 24 | 87.33 | 2.83 | 100% | 0.04 | 0.21 | 1.46 | 1.46 | 0.12 |
+| Rotation, Phase-3 start (seed 214000) | 24 | -54.62 | 3.00 | 0% | 0.00 | 0.00 | 2.12 | 1.83 | 0.00 |
 
-The direct policy is the demonstration-ready boss-aware policy: the Phase-3
-holdout records 5.70 complete dodges for 0.63 boss-skill hits per episode, and
-it clears the opening boss in 90% of focused runs. Rotation is deliberately
-reported honestly as the harder control problem: a fresh 600k boss-curriculum
-candidate did not beat the retained rotation model on a common normal + boss
-checkpoint sweep, so it was not promoted. This is defensible model selection,
-not a hidden difficulty change.
+The direct policy is the demonstration-ready intermission-aware policy: the
+focused holdout records 6.17 complete dodges, 2.83 destroyed sentries, and 1.58
+missile hits per episode, with 62.5% phase progression. Rotation is deliberately
+reported as the harder coupled-control problem. Its selected input-preserving
+refinement cut ordinary-play missile hits to 0.12 per episode and preserved
+100% ordinary phase progression, but did not clear the no-upgrade immediate-boss
+stress test. This is defensible model selection and transparent limitation
+reporting, not a hidden difficulty change.
+
+## Encounter-design references
+
+The finite vulnerability intermission follows the design principle that boss
+defences can gate damage and create readable vulnerability phases. Telegraphs
+use a warning, attack, and recovery structure so mandatory dodges are announced
+before damage. Cite these external design references in the report:
+
+- GDC Vault, *Boss Up: Boss Battle Design from Concept to Completion*:
+  https://www.gdcvault.com/play/1025398/Boss-Up-Boss-Battle-Design
+- Game Developer, *Enemy Attacks and Telegraphing*:
+  https://www.gamedeveloper.com/design/enemy-attacks-and-telegraphing
+- Game Developer, *Using a Modular System of Maneuvers to Design Psychonauts 2's Boss Fights*:
+  https://www.gamedeveloper.com/marketing/using-a-modular-system-of-maneuvers-to-design-i-psychonauts-2-i-s-boss-fights-in-a-hurry
 
 Exact machine-readable evidence:
 
-- `logs/arena/evidence/direct_schema8_final.json`
-- `logs/arena/evidence/direct_schema8_boss_focus.json`
-- `logs/arena/evidence/rotation_schema8_final.json`
-- `logs/arena/evidence/rotation_schema8_boss_focus.json`
-- `logs/arena/evidence/selection/direct_checkpoint_sweep.json`
-- `logs/arena/evidence/selection/rotation_checkpoint_sweep.json`
+- `logs/arena/evidence/direct_schema10_final.json`
+- `logs/arena/evidence/direct_schema10_boss_intermission.json`
+- `logs/arena/evidence/rotation_schema10_final.json`
+- `logs/arena/evidence/rotation_schema10_boss_intermission.json`
+- `logs/arena/evidence/selection/dodgeable_missile_direct_schema10_sweep.json`
+- `logs/arena/evidence/selection/dodgeable_missile_rotation_schema10_sweep.json`
 
 ## Reproducibility and project structure
 

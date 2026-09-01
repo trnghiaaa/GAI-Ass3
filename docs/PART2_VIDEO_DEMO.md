@@ -9,13 +9,16 @@ Aim for 3–4 minutes of the ten-minute group video.
    transition. Use `P` to pause and `Tab` for the build panel.
 3. Continue to a Phase-3 boss (or use a deterministic replay that reaches it).
    Point out the named warning/telegraph, multiple boss lanes, the policy
-   moving out of danger, and the boss/phase reward. State that the direct
+   moving out of danger, then the shield-break movement and low-health Aegis
+   intermission. Show that fire redirects to sentries while the boss displays
+   immunity, and that red missiles warn, guide briefly, then commit to a
+   dodgeable path while cyan shots are friendly. State that the direct
    model was trained with real Phase-3 resets, not with a scripted dodge.
 4. Return to the launcher and show **Watch Rotation DQN** briefly. Explain the
    harder coupled thrust/turn/forward-shoot action set and keep the comparison
    honest: it is a trained policy but is weaker against an immediate boss than
    direct control.
-5. Show `logs/arena/evidence/direct_schema8_boss_focus.json` and the
+5. Show `logs/arena/evidence/direct_schema10_boss_intermission.json` and the
    TensorBoard scalar page. Quote final values only from the JSON files.
 
 Checklist:

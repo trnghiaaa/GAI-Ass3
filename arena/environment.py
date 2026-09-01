@@ -138,10 +138,28 @@ class ObservationIndex(IntEnum):
     HAZARD_ESCAPE_ALIGNMENT = 86
     HAZARD_ESCAPE_TURN = 87
     BOSS_SUMMON_COOLDOWN = 88
+    BOSS_HEALTH = 89
+    BOSS_VULNERABLE = 90
+    BOSS_DEFENDER_COUNT = 91
+    NEAREST_DEFENDER_DIRECTION_X = 92
+    NEAREST_DEFENDER_DIRECTION_Y = 93
+    NEAREST_DEFENDER_DISTANCE = 94
+    NEAREST_DEFENDER_HEALTH = 95
+    NEAREST_MISSILE_DIRECTION_X = 96
+    NEAREST_MISSILE_DIRECTION_Y = 97
+    NEAREST_MISSILE_DISTANCE = 98
+    NEAREST_MISSILE_TIME_TO_IMPACT = 99
+    BOSS_VELOCITY_X = 100
+    BOSS_VELOCITY_Y = 101
+    NEAREST_MISSILE_VELOCITY_X = 102
+    NEAREST_MISSILE_VELOCITY_Y = 103
+    MISSILE_ESCAPE_X = 104
+    MISSILE_ESCAPE_Y = 105
+    MISSILE_LOCK_ON = 106
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
-ENVIRONMENT_SCHEMA_VERSION = 8
+ENVIRONMENT_SCHEMA_VERSION = 10
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -257,6 +275,16 @@ class ArenaEnv(gym.Env):
             ObservationIndex.CROWD_ESCAPE_Y,
             ObservationIndex.HAZARD_ESCAPE_ALIGNMENT,
             ObservationIndex.HAZARD_ESCAPE_TURN,
+            ObservationIndex.NEAREST_DEFENDER_DIRECTION_X,
+            ObservationIndex.NEAREST_DEFENDER_DIRECTION_Y,
+            ObservationIndex.NEAREST_MISSILE_DIRECTION_X,
+            ObservationIndex.NEAREST_MISSILE_DIRECTION_Y,
+            ObservationIndex.BOSS_VELOCITY_X,
+            ObservationIndex.BOSS_VELOCITY_Y,
+            ObservationIndex.NEAREST_MISSILE_VELOCITY_X,
+            ObservationIndex.NEAREST_MISSILE_VELOCITY_Y,
+            ObservationIndex.MISSILE_ESCAPE_X,
+            ObservationIndex.MISSILE_ESCAPE_Y,
         )
         low[[int(index) for index in signed_features]] = -1.0
         high = np.ones(len(self.observation_names), dtype=np.float32)
@@ -370,6 +398,13 @@ class ArenaEnv(gym.Env):
             "boss_skills_cast": 0,
             "boss_skills_dodged": 0,
             "boss_skill_hits": 0,
+            "boss_defenders_spawned": 0,
+            "boss_defenders_destroyed": 0,
+            "boss_immune_hits": 0,
+            "boss_health_regenerated": 0.0,
+            "missiles_fired": 0,
+            "missiles_evaded": 0,
+            "missile_hits": 0,
             "hazard_exposure": 0.0,
             "sustain_healed": 0.0,
             "boss_rewards_chosen": 0,
@@ -436,6 +471,14 @@ class ArenaEnv(gym.Env):
             "boss_skills_cast": 0,
             "boss_skills_dodged": 0,
             "boss_skill_hits": 0,
+            "boss_defenders_spawned": 0,
+            "boss_defenders_destroyed": 0,
+            "boss_immune_hits": 0,
+            "boss_health_regenerated": 0.0,
+            "missiles_fired": 0,
+            "missiles_evaded": 0,
+            "missile_hits": 0,
+            "missile_escape_improvement": 0.0,
             "hazard_escape_improvement": 0.0,
             "hazard_exposure": 0.0,
             "sustain_healed": 0.0,
@@ -457,6 +500,7 @@ class ArenaEnv(gym.Env):
                 self._shaping_snapshot()["target_alignment"]
             )
         self._update_support_drone(events)
+        self._update_boss_movement_and_defenders(events)
         self._update_projectiles(events)
         # A dense, auditable warning-zone signal teaches the policy before the
         # delayed boss strike lands. It does not alter damage or game physics.
@@ -619,7 +663,7 @@ class ArenaEnv(gym.Env):
                 float(self.player_cfg["rotation_aim_assist_degrees"])
             )
             candidates: list[tuple[float, float]] = []
-            for target in [*self.enemies, *self.spawners]:
+            for target in self._priority_targets():
                 dx = target.x - self.player.x
                 dy = target.y - self.player.y
                 distance = math.hypot(dx, dy)
@@ -858,6 +902,32 @@ class ArenaEnv(gym.Env):
             return 0
         maximum = int(self.phase_cfg["boss_summon_active_limit"])
         return min(maximum, self.boss_encounter_number)
+
+    def boss_defender_count_for_phase(self) -> int:
+        """Return the finite sentry count for the low-health intermission."""
+
+        if not self.is_boss_phase:
+            return 0
+        first = int(self.phase_cfg["boss_defender_first_count"])
+        growth = int(self.phase_cfg["boss_defender_count_growth"])
+        maximum = int(self.phase_cfg["boss_defender_max_count"])
+        return min(maximum, first + (self.boss_encounter_number - 1) * growth)
+
+    @property
+    def boss_defenders(self) -> list[Enemy]:
+        return [enemy for enemy in self.enemies if enemy.is_boss_defender]
+
+    @property
+    def boss_intermission_active(self) -> bool:
+        return bool(self.boss_defenders)
+
+    def boss_is_vulnerable(self, boss: Spawner | None = None) -> bool:
+        """Bosses can be damaged unless their finite sentry wave is active."""
+
+        candidate = boss or next(
+            (spawner for spawner in self.spawners if spawner.is_boss), None
+        )
+        return bool(candidate is not None and not self.boss_intermission_active)
 
     def miniboss_chance_for_phase(self) -> float:
         """Increase optional Rift Hunter frequency after the fifth phase."""
@@ -1358,6 +1428,219 @@ class ArenaEnv(gym.Env):
         self.upgrade_banner_steps = max(0, self.upgrade_banner_steps - 1)
         for enemy in self.enemies:
             enemy.attack_cooldown_steps = max(0, enemy.attack_cooldown_steps - 1)
+            enemy.missile_cooldown_steps = max(0, enemy.missile_cooldown_steps - 1)
+
+    def _spawn_boss_defenders(self, boss: Spawner, events: dict[str, Any]) -> None:
+        """Deploy one finite, clearly signalled low-health defender wave."""
+
+        count = self.boss_defender_count_for_phase()
+        orbit_radius = float(self.phase_cfg["boss_defender_orbit_radius"])
+        health_scale = (
+            1.0
+            + (self.phase - 1) * float(self.phase_cfg["enemy_health_growth"])
+        ) * float(self.phase_cfg["boss_defender_health_multiplier"])
+        max_health = float(self.enemy_cfg["max_health"]) * health_scale
+        interval = max(
+            1,
+            int(
+                float(self.phase_cfg["boss_defender_missile_interval_seconds"])
+                * self.fps
+            ),
+        )
+        for index in range(count):
+            angle = math.tau * index / max(1, count)
+            radius = 17.0 if index % 2 == 0 else 14.0
+            self.enemies.append(
+                Enemy(
+                    x=float(
+                        np.clip(
+                            boss.x + math.cos(angle) * orbit_radius,
+                            radius,
+                            self.width - radius,
+                        )
+                    ),
+                    y=float(
+                        np.clip(
+                            boss.y + math.sin(angle) * orbit_radius,
+                            self.playfield_top + radius,
+                            self.height - radius,
+                        )
+                    ),
+                    radius=radius,
+                    entity_id=self._new_id(),
+                    max_health=max_health,
+                    health=max_health,
+                    speed=float(self.phase_cfg["boss_move_speed"]) * 1.35,
+                    is_elite=True,
+                    is_boss_defender=True,
+                    defender_kind="turret" if index % 2 == 0 else "interceptor",
+                    orbit_angle=angle,
+                    missile_cooldown_steps=max(1, interval // 2 + index * interval // count),
+                )
+            )
+        boss.defender_wave_started = True
+        boss.defender_regen_cap = min(
+            boss.max_health,
+            boss.health
+            + boss.max_health * float(self.phase_cfg["boss_defender_regen_fraction"]),
+        )
+        events["boss_defenders_spawned"] += count
+        events["enemies_spawned"] += count
+        self.last_upgrade_name = "BOSS AEGIS: destroy the sentry wing"
+        self.last_upgrade_detail = "The boss is immune and repairing while sentries remain"
+        self.upgrade_banner_steps = max(
+            self.upgrade_banner_steps,
+            int(float(self.progression_cfg["upgrade_banner_seconds"]) * self.fps),
+        )
+
+    def _fire_enemy_missile(self, defender: Enemy, events: dict[str, Any]) -> None:
+        """Fire a telegraphed missile with brief guidance and a dodgeable path."""
+
+        angle = math.atan2(self.player.y - defender.y, self.player.x - defender.x)
+        speed = float(self.phase_cfg["boss_defender_missile_speed"])
+        radius = 7.0
+        offset = defender.radius + radius + 3.0
+        self.projectiles.append(
+            Projectile(
+                x=defender.x + math.cos(angle) * offset,
+                y=defender.y + math.sin(angle) * offset,
+                radius=radius,
+                entity_id=self._new_id(),
+                vx=math.cos(angle) * speed,
+                vy=math.sin(angle) * speed,
+                damage=float(self.phase_cfg["boss_defender_missile_damage"])
+                * (1.0 + 0.035 * min(12, self.phase - 1)),
+                lifetime_steps=max(
+                    1,
+                    int(
+                        float(self.phase_cfg["boss_defender_missile_lifetime_seconds"])
+                        * self.fps
+                    ),
+                ),
+                weapon_kind="enemy_missile",
+                owner="enemy",
+                telegraph_steps=max(
+                    1,
+                    int(
+                        float(self.phase_cfg["boss_defender_missile_telegraph_seconds"])
+                        * self.fps
+                    ),
+                ),
+                homing_turn_rate=math.radians(
+                    float(self.phase_cfg["boss_defender_missile_turn_degrees"])
+                ),
+                guidance_steps=max(
+                    0,
+                    int(
+                        float(
+                            self.phase_cfg[
+                                "boss_defender_missile_guidance_seconds"
+                            ]
+                        )
+                        * self.fps
+                    ),
+                ),
+            )
+        )
+        events["missiles_fired"] += 1
+
+    def _update_boss_movement_and_defenders(self, events: dict[str, Any]) -> None:
+        """Advance the mobile boss and its one-shot defensive intermission."""
+
+        boss = next((spawner for spawner in self.spawners if spawner.is_boss), None)
+        if boss is None:
+            return
+
+        # The shielded opening remains a readable stationary damage check.
+        # Once broken, a slow orbit prevents point-blank camping without turning
+        # the rift into a fast chaser.
+        if boss.shield <= 0.0:
+            dx = self.player.x - boss.x
+            dy = self.player.y - boss.y
+            distance = max(1e-6, math.hypot(dx, dy))
+            desired = float(self.phase_cfg["boss_move_standoff"])
+            radial = float(np.clip((distance - desired) / desired, -0.65, 0.65))
+            orbit_sign = 1.0 if self.boss_encounter_number % 2 else -1.0
+            direction_x = dx / distance * radial - dy / distance * 0.58 * orbit_sign
+            direction_y = dy / distance * radial + dx / distance * 0.58 * orbit_sign
+            length = max(1e-6, math.hypot(direction_x, direction_y))
+            speed = float(self.phase_cfg["boss_move_speed"]) * min(
+                1.35, 1.0 + 0.08 * (self.boss_encounter_number - 1)
+            )
+            boss.vx = direction_x / length * speed
+            boss.vy = direction_y / length * speed
+            boss.x += boss.vx * self.dt
+            boss.y += boss.vy * self.dt
+            boss.x = float(np.clip(boss.x, boss.radius, self.width - boss.radius))
+            boss.y = float(
+                np.clip(
+                    boss.y,
+                    self.playfield_top + boss.radius,
+                    self.height - boss.radius,
+                )
+            )
+
+        health_ratio = boss.health / max(1.0, boss.max_health)
+        if (
+            boss.shield <= 0.0
+            and not boss.defender_wave_started
+            and health_ratio <= float(self.phase_cfg["boss_defender_health_gate"])
+        ):
+            self._spawn_boss_defenders(boss, events)
+
+        defenders = self.boss_defenders
+        if not defenders:
+            return
+
+        regeneration = (
+            boss.max_health
+            * float(self.phase_cfg["boss_defender_regen_per_second"])
+            * self.dt
+        )
+        before = boss.health
+        boss.health = min(boss.defender_regen_cap, boss.health + regeneration)
+        events["boss_health_regenerated"] += boss.health - before
+
+        orbit_radius = float(self.phase_cfg["boss_defender_orbit_radius"])
+        missile_interval = max(
+            1,
+            int(
+                float(self.phase_cfg["boss_defender_missile_interval_seconds"])
+                * self.fps
+            ),
+        )
+        count = len(defenders)
+        for index, defender in enumerate(defenders):
+            defender.orbit_angle += self.dt * (
+                0.55 if defender.defender_kind == "turret" else 0.85
+            )
+            radius = orbit_radius + (18.0 if defender.defender_kind == "interceptor" else 0.0)
+            desired_x = boss.x + math.cos(defender.orbit_angle) * radius
+            desired_y = boss.y + math.sin(defender.orbit_angle) * radius
+            dx = desired_x - defender.x
+            dy = desired_y - defender.y
+            distance = max(1e-6, math.hypot(dx, dy))
+            maximum_move = defender.speed * self.dt
+            scale = min(1.0, maximum_move / distance)
+            defender.vx = dx / self.dt * scale
+            defender.vy = dy / self.dt * scale
+            defender.x += dx * scale
+            defender.y += dy * scale
+            defender.x = float(np.clip(defender.x, defender.radius, self.width - defender.radius))
+            defender.y = float(
+                np.clip(
+                    defender.y,
+                    self.playfield_top + defender.radius,
+                    self.height - defender.radius,
+                )
+            )
+            if defender.missile_cooldown_steps <= 0:
+                self._fire_enemy_missile(defender, events)
+                cadence_scale = max(0.72, 1.0 - 0.05 * (self.boss_encounter_number - 1))
+                defender.missile_cooldown_steps = max(
+                    1,
+                    int(missile_interval * cadence_scale + index * 3 / max(1, count)),
+                )
 
     def _update_support_drone(self, events: dict[str, Any]) -> None:
         if not self.support_drone_active or self.drone_cooldown_steps > 0:
@@ -1409,7 +1692,7 @@ class ArenaEnv(gym.Env):
         homing = self.upgrade_stacks.get("homing", 0)
         if homing <= 0 or projectile.owner != "player":
             return
-        candidates: list[Enemy | Spawner] = [*self.enemies, *self.spawners]
+        candidates = self._priority_targets()
         if not candidates:
             return
         target = min(
@@ -1422,6 +1705,29 @@ class ArenaEnv(gym.Env):
         maximum_turn = math.radians(1.5 + 1.8 * homing)
         angle = current + float(np.clip(difference, -maximum_turn, maximum_turn))
         speed = math.hypot(projectile.vx, projectile.vy)
+        projectile.vx = math.cos(angle) * speed
+        projectile.vy = math.sin(angle) * speed
+
+    def _steer_enemy_missile(self, projectile: Projectile) -> None:
+        desired = math.atan2(
+            self.player.y - projectile.y, self.player.x - projectile.x
+        )
+        current = math.atan2(projectile.vy, projectile.vx)
+        difference = (desired - current + math.pi) % math.tau - math.pi
+        angle = current + float(
+            np.clip(difference, -projectile.homing_turn_rate, projectile.homing_turn_rate)
+        )
+        speed = math.hypot(projectile.vx, projectile.vy)
+        projectile.vx = math.cos(angle) * speed
+        projectile.vy = math.sin(angle) * speed
+
+    def _aim_enemy_missile_at_player(self, projectile: Projectile) -> None:
+        """Track during the visible lock-on without moving the missile."""
+
+        angle = math.atan2(
+            self.player.y - projectile.y, self.player.x - projectile.x
+        )
+        speed = max(1.0, math.hypot(projectile.vx, projectile.vy))
         projectile.vx = math.cos(angle) * speed
         projectile.vy = math.sin(angle) * speed
 
@@ -1439,6 +1745,19 @@ class ArenaEnv(gym.Env):
         if target.health <= 0.0:
             return
         is_spawner = isinstance(target, Spawner)
+        if is_spawner and target.is_boss and self.boss_intermission_active:
+            events["boss_immune_hits"] += 1
+            if count_hit:
+                events["projectile_hits" if source == "player" else "drone_hits"] += 1
+            events["impacts"].append(
+                {
+                    "x": float(target.x),
+                    "y": float(target.y),
+                    "kind": "boss_immune",
+                    "destroyed": False,
+                }
+            )
+            return
         effective_amount = float(amount)
         riftbreaker_tiers = self.upgrade_stacks.get("riftbreaker", 0)
         if riftbreaker_tiers and (
@@ -1480,8 +1799,47 @@ class ArenaEnv(gym.Env):
         destroyed_enemy_ids: set[int] = set()
         destroyed_spawner_ids: set[int] = set()
         miniboss_ids = {enemy.entity_id for enemy in self.enemies if enemy.is_miniboss}
+        defender_ids = {
+            enemy.entity_id for enemy in self.enemies if enemy.is_boss_defender
+        }
 
         for projectile in self.projectiles:
+            if projectile.owner == "enemy":
+                projectile.lifetime_steps -= 1
+                if projectile.telegraph_steps > 0:
+                    self._aim_enemy_missile_at_player(projectile)
+                    projectile.telegraph_steps -= 1
+                    surviving_projectiles.append(projectile)
+                    continue
+                if projectile.guidance_steps > 0:
+                    self._steer_enemy_missile(projectile)
+                    projectile.guidance_steps -= 1
+                projectile.x += projectile.vx * self.dt
+                projectile.y += projectile.vy * self.dt
+                if circles_overlap(projectile, self.player):
+                    if self._apply_player_damage(projectile.damage, events) > 0.0:
+                        events["missile_hits"] += 1
+                    events["impacts"].append(
+                        {
+                            "x": float(self.player.x),
+                            "y": float(self.player.y),
+                            "kind": "missile",
+                            "destroyed": True,
+                        }
+                    )
+                    continue
+                if (
+                    projectile.lifetime_steps <= 0
+                    or projectile.x < -projectile.radius
+                    or projectile.x > self.width + projectile.radius
+                    or projectile.y < self.playfield_top - projectile.radius
+                    or projectile.y > self.height + projectile.radius
+                ):
+                    events["missiles_evaded"] += 1
+                    continue
+                surviving_projectiles.append(projectile)
+                continue
+
             self._steer_projectile(projectile)
             projectile.x += projectile.vx * self.dt
             projectile.y += projectile.vy * self.dt
@@ -1545,6 +1903,9 @@ class ArenaEnv(gym.Env):
             events["minibosses_destroyed"] += len(
                 destroyed_enemy_ids.intersection(miniboss_ids)
             )
+            events["boss_defenders_destroyed"] += len(
+                destroyed_enemy_ids.intersection(defender_ids)
+            )
             self._grant_miniboss_caches(events)
         if destroyed_spawner_ids:
             self.episode_stats["bosses_destroyed"] = int(
@@ -1570,7 +1931,7 @@ class ArenaEnv(gym.Env):
             dx = self.player.x - enemy.x
             dy = self.player.y - enemy.y
             distance = math.hypot(dx, dy)
-            if distance > 1e-8:
+            if distance > 1e-8 and not enemy.is_boss_defender:
                 enemy.vx = dx / distance * enemy.speed
                 enemy.vy = dy / distance * enemy.speed
                 enemy.x += enemy.vx * self.dt
@@ -1583,6 +1944,8 @@ class ArenaEnv(gym.Env):
                     contact_damage *= 1.2
                 if enemy.is_miniboss:
                     contact_damage *= float(self.phase_cfg["miniboss_contact_multiplier"])
+                if enemy.is_boss_defender:
+                    contact_damage *= 0.8
                 self._apply_player_damage(contact_damage, events)
                 enemy.attack_cooldown_steps = cooldown_steps
 
@@ -1606,6 +1969,8 @@ class ArenaEnv(gym.Env):
 
         max_enemies = self.maximum_active_enemies()
         for spawner in self.spawners:
+            if spawner.is_boss and self.boss_intermission_active:
+                continue
             spawner.spawn_cooldown_steps -= 1
             if spawner.spawn_cooldown_steps <= 0:
                 if len(self.enemies) < max_enemies:
@@ -1665,7 +2030,8 @@ class ArenaEnv(gym.Env):
         """Release a finite reinforcement budget at evenly spaced health gates.
 
         There is no shield regeneration or unlimited summon/XP farming. Summons
-        wait while the player is near the boss or a barrage is telegraphing.
+        wait while the player is near the boss, a barrage is telegraphing, or
+        the finite sentry intermission is active.
         """
         limit = self.boss_summon_limit_for_phase()
         for boss in self.spawners:
@@ -1677,6 +2043,7 @@ class ArenaEnv(gym.Env):
             threshold = 1.0 - (boss.summons_used + 1) / (limit + 1)
             if (
                 boss.summons_used >= limit or boss.summon_cooldown_steps > 0
+                or self.boss_intermission_active
                 or boss.health / boss.max_health > threshold
                 or sum(enemy.is_miniboss for enemy in self.enemies)
                 >= self.boss_active_summon_limit_for_phase()
@@ -2226,7 +2593,7 @@ class ArenaEnv(gym.Env):
     def _nearest_target(
         self, max_distance: float | None = None
     ) -> Enemy | Spawner | None:
-        targets: list[Enemy | Spawner] = [*self.enemies, *self.spawners]
+        targets = self._priority_targets()
         if max_distance is not None:
             max_distance_squared = max_distance * max_distance
             targets = [
@@ -2243,6 +2610,19 @@ class ArenaEnv(gym.Env):
             key=lambda target: (target.x - self.player.x) ** 2
             + (target.y - self.player.y) ** 2,
         )
+
+    def _priority_targets(self) -> list[Enemy | Spawner]:
+        """Expose the current damageable objective to aim-assist and agents.
+
+        During the finite boss intermission, sentries are the only valid
+        progression targets. This keeps direct aim assist, drones, homing beams,
+        the reticle, and observation targeting consistent with boss immunity.
+        """
+
+        defenders = self.boss_defenders
+        if defenders:
+            return list(defenders)
+        return [*self.enemies, *self.spawners]
 
     def _target_features(
         self, targets: list[Enemy] | list[Spawner]
@@ -2383,9 +2763,114 @@ class ArenaEnv(gym.Env):
                 hx*cos+hy*sin, hy*cos-hx*sin,
                 boss.summon_cooldown_steps / max(1.0,self.fps*float(self.phase_cfg['boss_summon_interval_seconds'])) if boss else 0.0]
 
+    def _nearest_enemy_missile(self) -> Projectile | None:
+        missiles = [
+            projectile
+            for projectile in self.projectiles
+            if projectile.owner == "enemy" and projectile.weapon_kind == "enemy_missile"
+        ]
+        return min(
+            missiles,
+            key=lambda item: (item.x - self.player.x) ** 2
+            + (item.y - self.player.y) ** 2,
+            default=None,
+        )
+
+    def _missile_risk(self, missile: Projectile | None = None) -> float:
+        candidate = missile or self._nearest_enemy_missile()
+        if candidate is None:
+            return 0.0
+        speed = max(1.0, math.hypot(candidate.vx, candidate.vy))
+        ux, uy = candidate.vx / speed, candidate.vy / speed
+        to_player_x = self.player.x - candidate.x
+        to_player_y = self.player.y - candidate.y
+        along = to_player_x * ux + to_player_y * uy
+        lateral = abs(ux * to_player_y - uy * to_player_x)
+        telegraph = candidate.telegraph_steps / max(1.0, self.fps)
+        if along <= 0.0 and candidate.telegraph_steps <= 0:
+            return 0.0
+        time_to_cross = max(0.0, along) / speed + telegraph
+        collision_lane = candidate.radius + self.player.radius + 12.0
+        lateral_risk = np.clip(
+            1.0 - max(0.0, lateral - collision_lane) / 105.0,
+            0.0,
+            1.0,
+        )
+        time_risk = np.clip(1.0 - time_to_cross / 2.6, 0.0, 1.0)
+        return float(lateral_risk * time_risk)
+
+    def _boss_intermission_observation(self) -> list[float]:
+        """Expose boss vulnerability, sentry priority, and incoming missiles."""
+
+        boss = next((spawner for spawner in self.spawners if spawner.is_boss), None)
+        defenders = self.boss_defenders
+        defender_features = self._target_features(defenders)
+        missile = self._nearest_enemy_missile()
+        if missile is None:
+            missile_features = (0.0, 0.0, 1.0, 1.0)
+            missile_motion = (0.0, 0.0, 0.0, 0.0, 0.0)
+        else:
+            dx = missile.x - self.player.x
+            dy = missile.y - self.player.y
+            distance = max(1e-6, math.hypot(dx, dy))
+            diagonal = math.hypot(self.width, self.height - self.playfield_top)
+            speed = max(1.0, math.hypot(missile.vx, missile.vy))
+            velocity_x, velocity_y = missile.vx / speed, missile.vy / speed
+            to_player_x, to_player_y = -dx, -dy
+            along = to_player_x * velocity_x + to_player_y * velocity_y
+            telegraph = missile.telegraph_steps / max(1.0, self.fps)
+            time_to_cross = max(0.0, along) / speed + telegraph
+            left_x, left_y = -velocity_y, velocity_x
+            cross = velocity_x * to_player_y - velocity_y * to_player_x
+            if abs(cross) < 1e-6:
+                lateral_velocity = self.player.vx * left_x + self.player.vy * left_y
+                side = (
+                    1.0
+                    if lateral_velocity > 1e-6
+                    or (abs(lateral_velocity) <= 1e-6 and missile.entity_id % 2 == 0)
+                    else -1.0
+                )
+            else:
+                side = 1.0 if cross > 0.0 else -1.0
+            telegraph_total = max(
+                1.0,
+                float(self.phase_cfg["boss_defender_missile_telegraph_seconds"])
+                * self.fps,
+            )
+            missile_features = (
+                dx / distance,
+                dy / distance,
+                float(np.clip(distance / diagonal, 0.0, 1.0)),
+                float(np.clip(time_to_cross / 3.0, 0.0, 1.0)),
+            )
+            missile_motion = (
+                velocity_x,
+                velocity_y,
+                left_x * side,
+                left_y * side,
+                float(np.clip(missile.telegraph_steps / telegraph_total, 0.0, 1.0)),
+            )
+        move_scale = max(1.0, float(self.phase_cfg["boss_move_speed"]) * 1.35)
+        return [
+            boss.health / max(1.0, boss.max_health) if boss else 0.0,
+            float(self.boss_is_vulnerable(boss)) if boss else 0.0,
+            np.clip(
+                len(defenders)
+                / max(1, int(self.phase_cfg["boss_defender_max_count"])),
+                0.0,
+                1.0,
+            ),
+            *defender_features,
+            *missile_features,
+            np.clip(boss.vx / move_scale, -1.0, 1.0) if boss else 0.0,
+            np.clip(boss.vy / move_scale, -1.0, 1.0) if boss else 0.0,
+            *missile_motion,
+        ]
+
     def _shaping_snapshot(self) -> dict[str, Any]:
         """Capture potential features used for small, explainable shaping terms."""
 
+        missile = self._nearest_enemy_missile()
         spawner = min(
             self.spawners,
             key=lambda item: (item.x - self.player.x) ** 2
@@ -2423,6 +2908,8 @@ class ArenaEnv(gym.Env):
                 sorted({zone.attack_id for zone in self.danger_zones})
             ),
             "hazard_risk": self._danger_zone_risk(),
+            "missile_id": None if missile is None else missile.entity_id,
+            "missile_risk": self._missile_risk(missile),
             "enemy_pressure": {
                 enemy.entity_id: (
                     max(
@@ -2486,6 +2973,10 @@ class ArenaEnv(gym.Env):
             events["hazard_escape_improvement"] = float(before["hazard_risk"]) - float(
                 after["hazard_risk"]
             )
+        if before["missile_id"] is not None and before["missile_id"] == after["missile_id"]:
+            events["missile_escape_improvement"] = float(
+                before["missile_risk"]
+            ) - float(after["missile_risk"])
 
     def _get_observation(self) -> np.ndarray:
         engine_multiplier = 1.0 + 0.075 * self.upgrade_stacks.get("engine", 0)
@@ -2571,6 +3062,7 @@ class ArenaEnv(gym.Env):
                 self.upgrade_stacks.get("leech", 0) / 4.0,
                 self.upgrade_stacks.get("riftbreaker", 0) / 6.0,
                 *self._threat_observation(),
+                *self._boss_intermission_observation(),
             ],
             dtype=np.float32,
         )
@@ -2626,6 +3118,18 @@ class ArenaEnv(gym.Env):
             * float(self.reward_cfg["boss_skill_dodged"]),
             "boss_skill_hit": int(events.get("boss_skill_hits", 0))
             * float(self.reward_cfg["boss_skill_hit"]),
+            "boss_defender_destroyed": int(
+                events.get("boss_defenders_destroyed", 0)
+            )
+            * float(self.reward_cfg["boss_defender_destroyed"]),
+            "boss_immune_hit": int(events.get("boss_immune_hits", 0))
+            * float(self.reward_cfg["boss_immune_hit"]),
+            "missile_evaded": int(events.get("missiles_evaded", 0))
+            * float(self.reward_cfg["missile_evaded"]),
+            "missile_hit": int(events.get("missile_hits", 0))
+            * float(self.reward_cfg["missile_hit"]),
+            "missile_escape": float(events.get("missile_escape_improvement", 0.0))
+            * float(self.reward_cfg["missile_escape"]),
             "hazard_escape": float(events.get("hazard_escape_improvement", 0.0))
             * float(self.reward_cfg["hazard_escape"]),
             "hazard_exposure": float(events.get("hazard_exposure", 0.0))
@@ -2671,6 +3175,13 @@ class ArenaEnv(gym.Env):
             "boss_skills_cast",
             "boss_skills_dodged",
             "boss_skill_hits",
+            "boss_defenders_spawned",
+            "boss_defenders_destroyed",
+            "boss_immune_hits",
+            "boss_health_regenerated",
+            "missiles_fired",
+            "missiles_evaded",
+            "missile_hits",
             "hazard_exposure",
             "miniboss_caches",
             "sustain_healed",
@@ -2724,6 +3235,11 @@ class ArenaEnv(gym.Env):
             "nova_bomb_armed": self.nova_bomb_armed,
             "active_minibosses": sum(enemy.is_miniboss for enemy in self.enemies),
             "active_boss_hazards": len(self.danger_zones),
+            "boss_vulnerable": self.boss_is_vulnerable(),
+            "active_boss_defenders": len(self.boss_defenders),
+            "active_enemy_missiles": sum(
+                projectile.owner == "enemy" for projectile in self.projectiles
+            ),
             "active_boss_attack": (
                 self.danger_zones[0].attack_name if self.danger_zones else None
             ),

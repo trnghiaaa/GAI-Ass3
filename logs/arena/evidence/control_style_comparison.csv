@@ -1,3 +1,3 @@
 control_style,episodes,seed_start,action_repeat,algorithm,timesteps,network,mean_reward,reward_std,mean_phase,max_phase,phase_progression_rate,survival_rate,mean_enemies_destroyed,mean_spawners_destroyed,mean_accuracy,mean_hits_per_projectile,mean_player_level,max_player_level,mean_xp_earned,mean_bosses_destroyed,mean_minibosses_destroyed,mean_boss_skills_dodged,mean_boss_skill_hits,mean_drone_level,mean_upgrades_chosen
-direct,30,93000,4,DQN,400000,256x256,846.128405,1130.606256,7.7333,34,1.0,0.033333,117.4333,22.5667,0.920846,0.934777,5.9333,16,1933.5667,1.9333,2.0333,6.1333,0.3333,2.2667,4.9333
-rotation,30,94000,4,DQN,300000,256x256,89.891331,50.925741,2.9333,5,1.0,0.0,10.1,4.9667,0.551742,0.551742,2.6333,4,258.9667,0.0333,0.0333,2.0667,1.8667,0.8,1.6333
+direct,24,211000,4,DQN,350000,256x256,998.479756,692.456311,9.0417,18,1.0,0.0,138.375,27.0417,0.762469,0.778522,8.375,15,2656.125,2.0833,2.8333,10.5417,1.25,2.25,7.375
+rotation,24,213000,4,DQN,400000,256x256,87.32686,65.959022,2.8333,5,1.0,0.0,8.5833,4.8333,0.629999,0.629999,2.875,6,288.875,0.0417,0.0833,1.4583,1.4583,0.7083,1.875

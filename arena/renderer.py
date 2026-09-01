@@ -26,6 +26,10 @@ COLORS = {
     "spawner_core": (255, 116, 226),
     "boss": (255, 84, 176),
     "miniboss": (255, 154, 54),
+    "defender": (255, 196, 72),
+    "missile": (255, 62, 94),
+    "missile_dark": (116, 20, 49),
+    "allied_fire": (76, 220, 255),
     "hazard": (255, 67, 112),
     "hazard_safe": (255, 195, 67),
     "drone": (78, 229, 181),
@@ -112,6 +116,7 @@ class ArenaRenderer:
         self._draw_progression_fx()
         self._draw_vignette()
         self._draw_hud(footer_text)
+        self._draw_projectile_legend()
         self._draw_pause_button(paused)
 
         if (
@@ -365,11 +370,15 @@ class ArenaRenderer:
         for enemy in self.env.enemies:
             center = (round(enemy.x), round(enemy.y))
             enemy_color = (
-                COLORS["miniboss"]
-                if enemy.is_miniboss
-                else (COLORS["boss"] if enemy.is_elite else COLORS["enemy"])
+                COLORS["defender"]
+                if enemy.is_boss_defender
+                else (
+                    COLORS["miniboss"]
+                    if enemy.is_miniboss
+                    else (COLORS["boss"] if enemy.is_elite else COLORS["enemy"])
+                )
             )
-            glow_size = 76 if enemy.is_miniboss else 48
+            glow_size = 76 if enemy.is_miniboss else (58 if enemy.is_boss_defender else 48)
             glow = pygame.Surface((glow_size, glow_size), pygame.SRCALPHA)
             pygame.draw.circle(
                 glow, (*enemy_color, 42), (glow_size // 2, glow_size // 2), glow_size // 2 - 2
@@ -378,14 +387,31 @@ class ArenaRenderer:
                 glow, (center[0] - glow_size // 2, center[1] - glow_size // 2)
             )
 
-            pygame.draw.circle(self.surface, COLORS["enemy_dark"], center, round(enemy.radius))
-            pygame.draw.circle(self.surface, enemy_color, center, round(enemy.radius), 3)
-            heading = math.atan2(enemy.vy, enemy.vx)
-            eye = (
-                round(enemy.x + math.cos(heading) * 7),
-                round(enemy.y + math.sin(heading) * 7),
-            )
-            pygame.draw.circle(self.surface, COLORS["player_core"], eye, 3)
+            if enemy.is_boss_defender and enemy.defender_kind == "turret":
+                body = pygame.Rect(0, 0, round(enemy.radius * 1.7), round(enemy.radius * 1.7))
+                body.center = center
+                pygame.draw.rect(self.surface, COLORS["enemy_dark"], body, border_radius=4)
+                pygame.draw.rect(self.surface, enemy_color, body, 3, border_radius=4)
+                pygame.draw.circle(self.surface, enemy_color, center, 5, 2)
+            else:
+                pygame.draw.circle(self.surface, COLORS["enemy_dark"], center, round(enemy.radius))
+                pygame.draw.circle(self.surface, enemy_color, center, round(enemy.radius), 3)
+            if enemy.is_boss_defender:
+                # A compact in-body glyph stays readable at arena edges and
+                # avoids overlapping labels when several sentries orbit close.
+                glyph = self.font_tiny.render(
+                    "T" if enemy.defender_kind == "turret" else "I",
+                    True,
+                    COLORS["player_core"],
+                )
+                self.surface.blit(glyph, glyph.get_rect(center=center))
+            else:
+                heading = math.atan2(enemy.vy, enemy.vx)
+                eye = (
+                    round(enemy.x + math.cos(heading) * 7),
+                    round(enemy.y + math.sin(heading) * 7),
+                )
+                pygame.draw.circle(self.surface, COLORS["player_core"], eye, 3)
             if enemy.is_miniboss:
                 label = self.font_tiny.render("RIFT HUNTER", True, COLORS["miniboss"])
                 self.surface.blit(
@@ -437,6 +463,14 @@ class ArenaRenderer:
                         round(spawner.radius + 14 + pulse),
                         3,
                     )
+                if self.env.boss_intermission_active:
+                    pygame.draw.circle(
+                        self.surface,
+                        COLORS["defender"],
+                        center,
+                        round(spawner.radius + 18 + pulse),
+                        4,
+                    )
             bar_width = 100 if spawner.is_boss else 56
             if spawner.is_boss and spawner.max_shield > 0.0:
                 shield_rect = pygame.Rect(round(spawner.x - 50), max(self.env.playfield_top + 5, round(spawner.y - spawner.radius - 25)), 100, 5)
@@ -444,9 +478,19 @@ class ArenaRenderer:
                 fill = shield_rect.copy()
                 fill.width = round(100 * max(0.0, spawner.shield / spawner.max_shield))
                 pygame.draw.rect(self.surface, (80, 200, 255), fill)
+                if self.env.boss_intermission_active:
+                    boss_status = f"AEGIS ACTIVE  •  SENTRIES {len(self.env.boss_defenders)}"
+                    status_color = COLORS["defender"]
+                else:
+                    boss_status = (
+                        f"SHIELD {max(0, round(spawner.shield))}  •  "
+                        f"SUMMONS {spawner.summons_used}/{self.env.boss_summon_limit_for_phase()}"
+                    )
+                    status_color = (120, 215, 255)
                 shield_label = self.font_tiny.render(
-                    f"SHIELD {max(0, round(spawner.shield))}  •  SUMMONS {spawner.summons_used}/{self.env.boss_summon_limit_for_phase()}",
-                    True, (120, 215, 255),
+                    boss_status,
+                    True,
+                    status_color,
                 )
                 label_rect = shield_label.get_rect(
                     center=(center[0], center[1] + spawner.radius + 61)
@@ -471,6 +515,41 @@ class ArenaRenderer:
     def _draw_projectiles(self) -> None:
         for projectile in self.env.projectiles:
             center = (round(projectile.x), round(projectile.y))
+            if projectile.owner == "enemy" and projectile.weapon_kind == "enemy_missile":
+                if projectile.telegraph_steps > 0:
+                    pulse = 9 + int(3 * math.sin(self.env.step_count * 0.45))
+                    pygame.draw.line(
+                        self.surface,
+                        COLORS["missile"],
+                        center,
+                        (round(self.env.player.x), round(self.env.player.y)),
+                        2,
+                    )
+                    pygame.draw.circle(self.surface, COLORS["missile"], center, pulse, 2)
+                    pygame.draw.circle(self.surface, COLORS["missile"], center, 4)
+                else:
+                    angle = math.atan2(projectile.vy, projectile.vx)
+                    rear = (
+                        round(projectile.x - math.cos(angle) * 15),
+                        round(projectile.y - math.sin(angle) * 15),
+                    )
+                    pygame.draw.line(self.surface, COLORS["missile_dark"], rear, center, 7)
+                    pygame.draw.line(self.surface, COLORS["missile"], rear, center, 3)
+                    nose = (
+                        round(projectile.x + math.cos(angle) * 10),
+                        round(projectile.y + math.sin(angle) * 10),
+                    )
+                    left = (
+                        round(projectile.x + math.cos(angle + 2.45) * 8),
+                        round(projectile.y + math.sin(angle + 2.45) * 8),
+                    )
+                    right = (
+                        round(projectile.x + math.cos(angle - 2.45) * 8),
+                        round(projectile.y + math.sin(angle - 2.45) * 8),
+                    )
+                    pygame.draw.polygon(self.surface, COLORS["missile"], (nose, left, right))
+                    pygame.draw.circle(self.surface, (255, 238, 244), center, 2)
+                continue
             speed = max(1.0, math.hypot(projectile.vx, projectile.vy))
             is_beam = projectile.weapon_kind in ("laser", "nova")
             tail_length = 30 if is_beam else 15
@@ -485,11 +564,11 @@ class ArenaRenderer:
             elif projectile.weapon_kind == "laser":
                 outer, core = COLORS["laser"], COLORS["player_core"]
             elif projectile.weapon_kind == "rapid":
-                outer, core = (255, 137, 58), COLORS["projectile"]
+                outer, core = (80, 170, 255), (235, 250, 255)
             elif projectile.weapon_kind == "twin":
-                outer, core = COLORS["player"], COLORS["projectile"]
+                outer, core = (80, 235, 224), (235, 250, 255)
             else:
-                outer, core = (255, 132, 44), COLORS["projectile"]
+                outer, core = COLORS["allied_fire"], (235, 250, 255)
             if projectile.is_critical:
                 outer, core = (255, 198, 62), (255, 255, 255)
                 pulse = 10 + int(2 * math.sin(self.env.step_count * 0.4))
@@ -498,6 +577,26 @@ class ArenaRenderer:
             pygame.draw.line(self.surface, core, tail, center, 2)
             pygame.draw.circle(self.surface, outer, center, 7 if is_beam else 8)
             pygame.draw.circle(self.surface, core, center, 3 if is_beam else 4)
+
+    def _draw_projectile_legend(self) -> None:
+        """Show an unobtrusive combat legend while hostile missiles exist."""
+
+        if not self.env.boss_intermission_active and not any(
+            projectile.owner == "enemy" for projectile in self.env.projectiles
+        ):
+            return
+        panel = pygame.Surface((222, 26), pygame.SRCALPHA)
+        panel.fill((8, 13, 31, 218))
+        pygame.draw.rect(panel, (55, 75, 112), panel.get_rect(), 1, border_radius=7)
+        pygame.draw.circle(panel, COLORS["allied_fire"], (13, 13), 4)
+        panel.blit(self.font_tiny.render("CYAN: ALLY", True, COLORS["muted"]), (23, 5))
+        pygame.draw.polygon(
+            panel,
+            COLORS["missile"],
+            ((119, 8), (127, 13), (119, 18)),
+        )
+        panel.blit(self.font_tiny.render("RED: HOSTILE", True, COLORS["text"]), (135, 5))
+        self.surface.blit(panel, (14, self.env.height - 64))
 
     def _draw_targeting_reticle(self) -> None:
         target = self.env._nearest_target()

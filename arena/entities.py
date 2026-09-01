@@ -37,6 +37,10 @@ class Enemy(Body):
     attack_cooldown_steps: int = 0
     is_elite: bool = False
     is_miniboss: bool = False
+    is_boss_defender: bool = False
+    defender_kind: str = ""
+    orbit_angle: float = 0.0
+    missile_cooldown_steps: int = 0
 
 
 @dataclass
@@ -50,6 +54,10 @@ class Spawner(Body):
     shield: float = 0.0
     summons_used: int = 0
     summon_cooldown_steps: int = 0
+    vx: float = 0.0
+    vy: float = 0.0
+    defender_wave_started: bool = False
+    defender_regen_cap: float = 0.0
 
 
 @dataclass
@@ -64,6 +72,9 @@ class Projectile(Body):
     pierces_remaining: int = 0
     splash_radius: float = 0.0
     is_critical: bool = False
+    telegraph_steps: int = 0
+    homing_turn_rate: float = 0.0
+    guidance_steps: int = 0
     hit_entity_ids: set[int] = field(default_factory=set)
 
 

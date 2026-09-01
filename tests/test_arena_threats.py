@@ -33,10 +33,15 @@ class ThreatTests(unittest.TestCase):
         self.env._spawn_phase_spawners()
         return self.env.spawners[0]
 
-    def test_later_xp_thresholds_are_harder_but_first_upgrade_unchanged(self):
-        self.assertEqual(self.env.xp_threshold_for_level(2), 60)
-        self.assertGreater(self.env.xp_threshold_for_level(5), 60 * 4**1.85)
-        self.assertEqual(self.env.progression_cfg["enemy_xp"], 6)
+    def test_upgrades_arrive_faster_but_late_thresholds_still_scale(self):
+        self.assertEqual(self.env.xp_threshold_for_level(2), 52)
+        self.assertGreater(self.env.xp_threshold_for_level(5), 52 * 4**1.8)
+        self.assertEqual(self.env.progression_cfg["enemy_xp"], 7)
+        phase_one_objective_xp = (
+            2 * self.env.progression_cfg["spawner_xp"]
+            + self.env.progression_cfg["phase_xp"]
+        )
+        self.assertGreaterEqual(phase_one_objective_xp, self.env.xp_threshold_for_level(2))
 
     def test_shield_absorbs_then_overflows_without_regeneration(self):
         boss = self.boss()
@@ -180,6 +185,137 @@ class ThreatTests(unittest.TestCase):
         _, breakdown = self.env._calculate_reward(events, terminated=False)
         self.assertEqual(breakdown["boss_skill_hit"], -8.0)
 
+    def test_shield_break_makes_boss_move_slowly(self):
+        boss = self.boss()
+        boss.shield = 0.0
+        boss.health = boss.max_health
+        before = (boss.x, boss.y)
+        self.env._update_boss_movement_and_defenders(defaultdict(float))
+        self.assertNotEqual((boss.x, boss.y), before)
+        self.assertLessEqual(
+            np.hypot(boss.vx, boss.vy),
+            float(self.env.phase_cfg["boss_move_speed"]) * 1.01,
+        )
+
+    def test_low_health_defender_wave_blocks_boss_then_restores_priority(self):
+        boss = self.boss()
+        boss.shield = 0.0
+        boss.health = boss.max_health * 0.40
+        events = defaultdict(float, impacts=[])
+        self.env._update_boss_movement_and_defenders(events)
+        self.assertTrue(boss.defender_wave_started)
+        self.assertEqual(
+            len(self.env.boss_defenders), self.env.boss_defender_count_for_phase()
+        )
+        self.assertFalse(self.env.boss_is_vulnerable(boss))
+        self.assertIn(self.env._nearest_target(), self.env.boss_defenders)
+
+        health_before = boss.health
+        self.env._damage_target(
+            boss, 100.0, events, set(), set(), source="player", count_hit=True
+        )
+        self.assertEqual(boss.health, health_before)
+        self.assertEqual(events["boss_immune_hits"], 1)
+
+        self.env.enemies = [
+            enemy for enemy in self.env.enemies if not enemy.is_boss_defender
+        ]
+        self.assertTrue(self.env.boss_is_vulnerable(boss))
+        self.env._damage_target(
+            boss, 10.0, events, set(), set(), source="player", count_hit=True
+        )
+        self.assertLess(boss.health, health_before)
+
+    def test_defenders_fire_telegraphed_missiles_and_observation_exposes_them(self):
+        boss = self.boss()
+        boss.shield = 0.0
+        boss.health = boss.max_health * 0.40
+        events = defaultdict(float, impacts=[])
+        self.env._update_boss_movement_and_defenders(events)
+        defender = self.env.boss_defenders[0]
+        defender.missile_cooldown_steps = 0
+        self.env._update_boss_movement_and_defenders(events)
+        missile = next(
+            projectile
+            for projectile in self.env.projectiles
+            if projectile.weapon_kind == "enemy_missile"
+        )
+        self.assertGreater(missile.telegraph_steps, 0)
+        observation = self.env._get_observation()
+        self.assertGreater(observation[I.BOSS_DEFENDER_COUNT], 0.0)
+        self.assertEqual(observation[I.BOSS_VULNERABLE], 0.0)
+        self.assertLess(observation[I.NEAREST_MISSILE_DISTANCE], 1.0)
+        self.assertGreater(observation[I.MISSILE_LOCK_ON], 0.0)
+        self.assertGreater(
+            np.hypot(
+                observation[I.MISSILE_ESCAPE_X],
+                observation[I.MISSILE_ESCAPE_Y],
+            ),
+            0.9,
+        )
+        self.assertTrue(self.env.observation_space.contains(observation))
+
+    def test_sentry_missile_has_finite_guidance_and_can_be_dodged(self):
+        self.env.enemies.clear()
+        self.env.spawners.clear()
+        self.env.projectiles.clear()
+        self.env.player.x, self.env.player.y = 430.0, 300.0
+        self.env.player.health = self.env.player.max_health
+        defender = Enemy(
+            130.0,
+            300.0,
+            17.0,
+            8001,
+            50.0,
+            50.0,
+            0.0,
+            is_boss_defender=True,
+            defender_kind="turret",
+        )
+        events = defaultdict(float, impacts=[])
+        self.env._fire_enemy_missile(defender, events)
+        missile = self.env.projectiles[0]
+        telegraph_steps = missile.telegraph_steps
+
+        for _ in range(telegraph_steps):
+            self.env._update_projectiles(events)
+        self.assertEqual(missile.telegraph_steps, 0)
+
+        # Move perpendicular after launch. Guidance expires quickly, so the
+        # missile crosses the old line rather than turning forever.
+        for _ in range(240):
+            self.env.player.y = min(
+                self.env.height - self.env.player.radius,
+                self.env.player.y + float(self.env.player_cfg["direct_speed"]) * self.env.dt,
+            )
+            self.env._update_projectiles(events)
+            if not self.env.projectiles:
+                break
+        self.assertEqual(self.env.player.health, self.env.player.max_health)
+        self.assertEqual(missile.guidance_steps, 0)
+        self.assertGreaterEqual(events["missiles_evaded"], 1)
+
+    def test_defender_repair_is_capped_and_wave_cannot_repeat(self):
+        boss = self.boss()
+        boss.shield = 0.0
+        boss.health = boss.max_health * 0.40
+        events = defaultdict(float, impacts=[])
+        self.env._update_boss_movement_and_defenders(events)
+        repair_cap = boss.defender_regen_cap
+
+        for _ in range(self.env.fps * 30):
+            self.env._update_boss_movement_and_defenders(events)
+        self.assertLessEqual(boss.health, repair_cap)
+        self.assertGreater(events["boss_health_regenerated"], 0.0)
+
+        self.env.enemies = [
+            enemy for enemy in self.env.enemies if not enemy.is_boss_defender
+        ]
+        spawned_before = events["boss_defenders_spawned"]
+        self.env._update_boss_movement_and_defenders(events)
+        self.assertEqual(events["boss_defenders_spawned"], spawned_before)
+        self.assertFalse(self.env.boss_intermission_active)
+
     def test_crowd_reward_does_not_credit_enemy_removal(self):
         p = self.env.player
         self.env.enemies = [Enemy(p.x+60, p.y, 15, 91, 50, 50, 72)]
@@ -237,7 +373,7 @@ class ThreatTests(unittest.TestCase):
         old = DQN('MlpPolicy', old_env, policy_kwargs={'net_arch':[256,256]}, buffer_size=10)
         new = DQN('MlpPolicy', self.env, policy_kwargs={'net_arch':[256,256]}, buffer_size=10)
         transfer_prefix_policy(old, new)
-        sample = torch.randn(3,89)
+        sample = torch.randn(3, len(self.env.observation_names))
         with torch.no_grad():
             torch.testing.assert_close(old.q_net(sample[:,:70]), new.q_net(sample))
             torch.testing.assert_close(old.q_net_target(sample[:,:70]), new.q_net_target(sample))
@@ -253,7 +389,7 @@ class ThreatTests(unittest.TestCase):
                 p.zero_()
             model.q_net_target.q_net[-1].bias[4] = 1000.0
             model.q_net.q_net[-1].bias[4] = 1000.0
-        obs = np.zeros(89, dtype=np.float32)
+        obs = np.zeros(len(self.env.observation_names), dtype=np.float32)
         action, _ = model.predict(obs, deterministic=True)
         self.assertNotEqual(int(action), 4)
         model.replay_buffer.add(obs, obs, np.array([0]), np.array([0.0]), np.array([False]), [{}])

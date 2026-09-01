@@ -33,6 +33,7 @@ def _write_metadata(
     holdout: Path,
     mode: str,
     run_name: str | None = None,
+    boss_holdout: Path | None = None,
 ) -> None:
     metrics = _load_json(holdout)["aggregate"]
     metrics.update(
@@ -59,6 +60,9 @@ def _write_metadata(
     )
     if run_name is not None:
         result["run_name"] = run_name
+    if boss_holdout is not None:
+        _load_json(boss_holdout)["aggregate"]
+        result["boss_focus_evaluation"] = str(boss_holdout)
     destination.with_suffix(".metadata.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
     )
@@ -70,6 +74,7 @@ def promote_checkpoint(
     metadata: Path,
     holdout: Path,
     run_name: str | None = None,
+    boss_holdout: Path | None = None,
 ) -> None:
     source_metadata = _load_json(metadata)
     if source_metadata["control_style"] != style:
@@ -86,6 +91,7 @@ def promote_checkpoint(
         holdout,
         "validated_checkpoint",
         run_name,
+        boss_holdout,
     )
 
 
@@ -127,6 +133,12 @@ def main() -> None:
     parser.add_argument("--control-style", choices=("rotation", "direct"), required=True)
     parser.add_argument("--holdout", type=Path, required=True)
     parser.add_argument(
+        "--boss-holdout",
+        type=Path,
+        default=None,
+        help="Optional fixed-boss benchmark recorded beside the normal holdout",
+    )
+    parser.add_argument(
         "--run-name",
         default=None,
         help="Training run containing the promoted model's reproducibility artifacts",
@@ -134,6 +146,8 @@ def main() -> None:
     args = parser.parse_args()
     if not args.holdout.is_file():
         raise FileNotFoundError(args.holdout)
+    if args.boss_holdout is not None and not args.boss_holdout.is_file():
+        raise FileNotFoundError(args.boss_holdout)
     if args.mode == "checkpoint":
         promote_checkpoint(
             args.source,
@@ -141,6 +155,7 @@ def main() -> None:
             args.source_metadata,
             args.holdout,
             args.run_name,
+            args.boss_holdout,
         )
     else:
         promote_prefix(args.source, args.control_style, args.source_metadata, args.holdout)

@@ -428,6 +428,27 @@ def _capture_environment_preview() -> None:
         )
         pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "boss_showcase.png")
 
+        env.danger_zones = []
+        boss = next(spawner for spawner in env.spawners if spawner.is_boss)
+        # Stage the report frame away from HUD/arena edges so every telegraph,
+        # sentry and health plate is visible without changing live gameplay.
+        boss.x, boss.y = 630.0, 245.0
+        env.player.x, env.player.y = 310.0, 410.0
+        boss.shield = 0.0
+        boss.health = boss.max_health * 0.38
+        defender_events = {"boss_defenders_spawned": 0, "enemies_spawned": 0}
+        env._spawn_boss_defenders(boss, defender_events)
+        env._fire_enemy_missile(
+            env.boss_defenders[0], {"missiles_fired": 0}
+        )
+        renderer.render(
+            footer_text="AEGIS INTERMISSION  •  destroy sentries  •  dodge telegraphed missiles"
+        )
+        pygame.image.save(
+            renderer.surface,
+            ARENA_EVIDENCE_DIR / "boss_intermission_showcase.png",
+        )
+
         env.phase = 4
         env.spawners = []
         env.enemies = []
@@ -469,7 +490,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "Final schema-8 evidence includes revalidated models, a boss-focused curriculum for direct control, and fixed-seed checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
+        "note": "Final schema-10 evidence includes revalidated models, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events
@@ -485,6 +506,7 @@ def build() -> None:
             "boss_transition_showcase.png",
             "choice_showcase.png",
             "boss_showcase.png",
+            "boss_intermission_showcase.png",
             "miniboss_showcase.png",
             "boss_reward_showcase.png",
             "random_baseline_direct.csv",

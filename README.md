@@ -30,7 +30,7 @@ python -m gridworld.play --level 0
 
 ## 3. Part II Action Arena
 
-> Schema-8 boss-safety learning, pause/UI, upgrade clarity, and tidy final
+> Schema-9 boss-intermission learning, pause/UI, upgrade clarity, and tidy final
 > evidence are complete. See `docs/PART2_REPORT_NOTES.md` for current metrics
 > and `docs/PART2_RUBRIC_EVIDENCE.md` for the marking-evidence map.
 
@@ -82,6 +82,9 @@ The arena provides:
 - An onboarding Boss 1 with an 18% shield, one Hunter reinforcement, fewer
   simultaneous minions, and a 90-second deadline; later bosses use 32.5–45%
   shields, a 70-second deadline, and finite 2/3/4-Hunter budgets
+- Bosses begin moving slowly after their shield breaks. At low health they
+  deploy one finite, telegraphed Aegis sentry wing: the boss becomes immune and
+  repairs only a capped amount until those missile turrets/interceptors fall
 - Grouped horizontal, vertical, diagonal, cross, trident, and circular boss
   barrages with readable names/countdowns and one-hit-per-cast fairness
 - A fresh 60-second deadline for ordinary phases, boss-specific time budgets,
@@ -126,7 +129,7 @@ env.close()
 
 ### Arena Observation Vector
 
-The agent receives a one-dimensional `float32` vector with exactly 89
+The agent receives a one-dimensional `float32` vector with exactly 107
 normalized features. It never receives the rendered pixels.
 
 | Indices | Features | Range | Meaning |
@@ -160,6 +163,11 @@ normalized features. It never receives the rendered pixels.
 | 79–83 | Four wall clearances and nearest-spawner surface clearance | `[0, 1]` | Provides explicit room to maneuver and target spacing |
 | 84–85 | Boss shield fraction and remaining summon budget | `[0, 1]` | Exposes finite boss defenses and reinforcements |
 | 86–88 | Body-relative hazard escape alignment/turn and boss summon cooldown | mixed normalized | Relates hazard direction to ship steering and summon readiness |
+| 89–91 | Boss health, vulnerability and defender count | `[0, 1]` | Makes the Aegis intermission and its completion explicit |
+| 92–95 | Nearest defender direction X/Y, distance and health | mixed normalized | Exposes the only damageable progression target while the boss is immune |
+| 96–99 | Nearest missile direction X/Y, distance and impact time | mixed normalized | Supports anticipatory missile avoidance rather than reacting after damage |
+| 100–101 | Boss velocity X/Y | `[-1, 1]` | Lets the policy track the shield-broken mobile boss |
+| 102–106 | Missile velocity X/Y, recommended escape X/Y, lock-on fraction | mixed normalized | Makes the telegraph, finite guidance window, and safest perpendicular dodge directly observable |
 
 If a target type is absent, its four target features are `(0, 0, 1, 0)`:
 no direction, maximum normalized distance, and zero health. Stable feature
@@ -195,12 +203,18 @@ only the generic upgrade name.
 Random Rift Hunters drop XP plus a repair/Aegis cache. Every third phase replaces
 ordinary rifts with a shielded boss that telegraphs named multi-lane sweeps, crosses,
 diagonal lattices, trident walls, and a circular nova cage;
+after the shield breaks the boss drifts around the arena, and a low-health
+Aegis intermission temporarily redirects combat to a finite sentry wing. Sentry
+missiles show a stationary warning trace, guide gently for only 0.3 seconds,
+then commit to a ballistic path. This makes lateral evasion readable and
+testably dodgeable rather than unavoidable permanent homing;
 victory opens a stronger permanent-relic draft. Speed, damage, spawn rate, and
 active-enemy counts use fairness caps while health and player mastery keep scaling.
 Optional Rift Hunter probability begins at 24% and rises by six percentage
 points per phase after Phase 5, capped at 66%.
-Ordinary kills grant 6 XP and cumulative thresholds follow
-`60 * (level - 1)^1.95`, slowing late upgrades without imposing a level cap.
+Ordinary kills grant 7 XP and cumulative thresholds follow
+`52 * (level - 1)^1.85`. Phase 1 guarantees enough objective XP for the first
+draft, while the superlinear curve still slows late upgrades without a level cap.
 
 During headless training and learned-policy playback, a deterministic heuristic
 chooses from the same seeded three-card offers using health, upcoming boss risk,
@@ -219,7 +233,9 @@ separation, aim improvement, and
 well-aligned shots. Shaping never changes health, collisions, entity movement,
 or terminal rules. A potential-difference term rewards movement out of an
 unchanged boss barrage, while a full dodge remains a separate event reward.
-Schema 8 also logs a boss-skill-hit penalty and a small per-step hazard-exposure
+Schema 10 also logs boss-skill and missile-hit penalties, explicit sentry-kill
+credit, a small penalty for wasting shots on an immune boss, potential-based
+missile escape credit, and a small per-step hazard-exposure
 penalty. Overlapping boss lanes use the highest danger value rather than an
 average, so standing in one active lane cannot be masked by safer lanes.
 Combat XP is deliberately excluded from this total. Every
@@ -229,7 +245,7 @@ every RL reward term auditable.
 ### Stable-Baselines3 Training
 
 Use a unique `--run-name` for new runs; training refuses to overwrite existing
-models or run directories. The `boss_dodge` profile can use a training-only
+models or run directories. The `boss_intermission` profile can use a training-only
 boss curriculum: it samples a genuine Phase-3 reset for a configured fraction
 of training episodes. It never selects actions for the policy or makes the
 boss easier. A changed game still requires training and fresh evaluation.
@@ -239,8 +255,9 @@ network, epsilon schedule, checkpoints, held-out evaluation, TensorBoard, and
 model metadata:
 
 ```bash
-# Boss-aware direct refinement (the submitted direct-policy recipe)
-python -m arena.train --control-style direct --timesteps 400000 --profile boss_dodge --benchmark-episodes 20 --seed 31100 --run-name boss_dodge_direct --init-model models/arena/dqn_direct.zip --boss-curriculum 0.70 --curriculum-phases 3
+# Boss/missile-aware refinements used by the submitted policies
+python -m arena.train --control-style direct --timesteps 350000 --profile boss_intermission --benchmark-episodes 20 --seed 46100 --run-name dodgeable_missile_direct_350k_s46100 --init-model models/arena/dqn_direct.zip --boss-curriculum 0.78 --curriculum-phases 3
+python -m arena.train --control-style rotation --timesteps 400000 --profile boss_intermission --benchmark-episodes 20 --seed 47100 --run-name dodgeable_missile_rotation_400k_s47100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --boss-curriculum 0.76 --curriculum-phases 3
 
 # Generic from-scratch runs
 python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
@@ -258,13 +275,15 @@ Default models are saved separately as `models/arena/dqn_direct.zip` and
 `logs/arena/evidence/` (screenshots and held-outs), `training/` (final monitor,
 curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
-On the current schema-8 30-episode holdouts, direct achieved 846.13 mean
-reward, mean Phase 7.73, 1.93 boss clears, 6.13 dodges and 0.33 boss-skill hits.
-Its fixed-Phase-3 boss test achieved 5.70 dodges, 0.63 hits, 1.47 boss clears,
-and 90% phase progression. Rotation achieved 89.89 mean reward, mean Phase
-2.93, 2.07 dodges and 1.87 hits in ordinary starts. The stronger direct boss
-result is expected because direct movement is the easier action set; both
-models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
+On the current schema-10 24-episode holdouts, direct achieved 998.48 mean
+reward, mean Phase 9.04, 2.08 boss clears, 10.54 boss-skill dodges, and 1.25
+boss-skill hits. Its fixed-Phase-3 test achieved 62.5% phase progression, 0.75
+boss clears, 2.83 sentry kills, 6.17 dodges, 0.92 boss-skill hits, and 1.58
+missile hits per episode. Rotation achieved 87.33 mean reward, mean Phase 2.83,
+100% normal phase progression, and only 0.12 missile hits per episode, but did
+not clear the deliberately harsh no-upgrade Phase-3 stress start. The stronger
+direct boss result is expected because direct movement is the easier action
+set; both models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
 
 ### Visual Evaluation
 
