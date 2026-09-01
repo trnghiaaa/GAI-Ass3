@@ -112,7 +112,8 @@ class ArenaEnvironmentTests(unittest.TestCase):
     def test_direct_shooting_uses_nearest_target_assist(self) -> None:
         self.env.enemies = [
             Enemy(
-                x=self.env.player.x + 100.0,
+                # A useful assist must reach beyond the old 160px radius.
+                x=self.env.player.x + 200.0,
                 y=self.env.player.y,
                 radius=15.0,
                 entity_id=991,

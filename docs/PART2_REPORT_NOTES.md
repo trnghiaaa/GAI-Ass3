@@ -52,6 +52,12 @@ phase/boss/level-up VFX, readable target/health telemetry, XP-based three-card
 drafts, permanent wingmen, support drops, optional Rift Hunter minibosses, and
 post-boss relic choices. XP is **not** added to the RL reward.
 
+Direct controls use a shared 220-pixel target-assist radius. This is large
+enough to make the aim-free directional action set readable on an 800-pixel
+wide arena, while remaining far below the projectile's full travel distance.
+Flux Capacitor upgrades can extend it to 320 pixels. Human and learned play use
+the same value; rotation retains only its narrow 7-degree correction.
+
 ## Observation and actions
 
 The fixed 107-value `float32` observation includes player position, velocity,
@@ -98,14 +104,14 @@ weights, not training returns.
 
 | Policy / evaluation | Episodes | Mean reward | Mean phase | Progress | Bosses | Sentries | Dodges | Boss hits | Missile hits |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Direct, normal (seed 251000) | 24 | 985.83 | 9.71 | 100% | 2.50 | 8.75 | 10.92 | 1.04 | 3.71 |
-| Direct, Phase-3 start (seed 252000) | 24 | 541.28 | 7.29 | 79% | 1.71 | 5.46 | 9.62 | 0.83 | 2.71 |
+| Direct, normal (seed 251000) | 24 | 2549.38 | 16.83 | 100% | 4.79 | 18.08 | 13.50 | 1.42 | 3.92 |
+| Direct, Phase-3 start (seed 252000) | 24 | 865.02 | 9.08 | 92% | 2.21 | 8.00 | 9.25 | 1.08 | 2.75 |
 | Rotation, normal (seed 263000) | 24 | 72.08 | 2.96 | 100% | 0.04 | 0.54 | 1.92 | 2.00 | 0.50 |
 | Rotation, Phase-3 start (seed 264000) | 24 | -55.11 | 3.00 | 0% | 0.00 | 0.00 | 1.33 | 1.67 | 0.00 |
 
 The direct policy is the demonstration-ready intermission-aware policy: the
-focused holdout records 9.62 complete dodges, 5.46 destroyed sentries, only 0.83
-boss-skill hits, and 2.71 missile hits per episode, with 79% phase progression.
+focused holdout records 9.25 complete dodges, 8.00 destroyed sentries, 1.08
+boss-skill hits, and 2.75 missile hits per episode, with 92% phase progression.
 Rotation is deliberately reported as the harder coupled-control problem. Its
 independently reselected 350k checkpoint reached Phase 5 and preserved 100%
 ordinary phase progression, but did not clear the no-upgrade immediate-boss
@@ -128,11 +134,12 @@ before damage. Cite these external design references in the report:
 
 Exact machine-readable evidence:
 
-- `logs/arena/evidence/direct_schema10_tiered_final.json`
-- `logs/arena/evidence/direct_schema10_tiered_boss.json`
-- `logs/arena/evidence/rotation_schema10_tiered_selected_final.json`
-- `logs/arena/evidence/rotation_schema10_tiered_selected_boss.json`
-- `logs/arena/evidence/selection/tiered_rotation_schema10_sweep.json`
+- `logs/arena/evidence/direct_schema10_assist220_selected_final.json`
+- `logs/arena/evidence/direct_schema10_assist220_selected_boss.json`
+- `logs/arena/evidence/rotation_schema10_assist220_tiered_final.json`
+- `logs/arena/evidence/rotation_schema10_assist220_tiered_boss.json`
+- `logs/arena/evidence/selection/assist220_direct_schema10_sweep.json`
+- `logs/arena/evidence/selection/assist220_rotation_schema10_sweep.json`
 
 ## Reproducibility and project structure
 

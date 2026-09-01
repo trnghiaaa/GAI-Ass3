@@ -54,7 +54,8 @@ python -m arena.play --control-style direct
 ```
 
 Use `WASD` or the arrow keys to move and hold `Space` to fire at the same time. Direct mode snaps
-shots to the nearest hostile when its reticle turns green inside assist range;
+shots to the nearest hostile when its reticle turns green inside the balanced
+220-pixel assist range;
 outside that range it fires along the current heading. To try rotation and
 thrust controls instead:
 
@@ -292,11 +293,11 @@ Default models are saved separately as `models/arena/dqn_direct.zip` and
 `logs/arena/evidence/` (screenshots and held-outs), `training/` (final monitor,
 curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
-On the current tier-balanced schema-10 24-episode holdouts, direct achieved
-985.83 mean reward, mean Phase 9.71, 2.50 boss clears, 10.92 boss-skill dodges,
-and 1.04 boss-skill hits. Its fixed-Phase-3 test achieved 79% phase progression,
-1.71 boss clears, 5.46 sentry kills, 9.62 dodges, 0.83 boss-skill hits, and 2.71
-missile hits per episode. Rotation achieved 72.08 mean reward, mean Phase 2.96,
+On the current assist-220/tier-balanced schema-10 24-episode holdouts, direct
+achieved 2549.38 mean reward, mean Phase 16.83, 4.79 boss clears, 13.50
+boss-skill dodges, and 1.42 boss-skill hits. Its fixed-Phase-3 test achieved 92%
+phase progression, 2.21 boss clears, 8.00 sentry kills, 9.25 dodges, 1.08
+boss-skill hits, and 2.75 missile hits per episode. Rotation achieved 72.08 mean reward, mean Phase 2.96,
 100% normal phase progression, reached Phase 5, and averaged 0.50 missile hits,
 but did not clear the deliberately harsh no-upgrade Phase-3 stress start. The
 stronger direct boss result is expected because direct movement is the easier

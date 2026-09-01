@@ -2,9 +2,9 @@
   "comparisons": [
     {
       "control_style": "direct",
-      "random_mean_reward": -6.866629,
-      "trained_mean_reward": 985.832482,
-      "random_phase_progression_rate": 0.125,
+      "random_mean_reward": 23.949796,
+      "trained_mean_reward": 2549.375176,
+      "random_phase_progression_rate": 0.291667,
       "trained_phase_progression_rate": 1.0
     },
     {

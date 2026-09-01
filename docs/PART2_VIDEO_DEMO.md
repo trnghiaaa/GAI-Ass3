@@ -20,7 +20,7 @@ Aim for 3–4 minutes of the ten-minute group video.
    direct control.
 5. Let one AI run end and show that its mission summary stays open. Point out
    the Replay and Main Menu controls instead of cutting away immediately.
-6. Show `logs/arena/evidence/direct_schema10_tiered_boss.json` and the
+6. Show `logs/arena/evidence/direct_schema10_assist220_selected_boss.json` and the
    TensorBoard scalar page. Quote final values only from the JSON files.
 
 Checklist:

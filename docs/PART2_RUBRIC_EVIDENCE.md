@@ -37,6 +37,9 @@ in `info` and the HUD.
   sentry priority, missile timing/velocity/escape/lock-on, and boss velocity.
 - `ObservationIndex`, `OBSERVATION_NAMES`, and `observation_as_dict()` make
   each field inspectable; corresponding tests validate shape/ranges.
+- Direct control uses a shared 220-pixel target assist because its required
+  action set has no aim action. Rotation retains a narrow 7-degree correction;
+  neither mode receives a hidden human/AI targeting difference.
 
 ## I — Two control schemes and saved models
 
@@ -67,11 +70,11 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 
 ## Report-ready artifacts
 
-- `logs/arena/evidence/direct_schema10_tiered_final.{csv,json}`
-- `logs/arena/evidence/direct_schema10_tiered_boss.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_tiered_selected_final.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_tiered_selected_boss.{csv,json}`
-- `logs/arena/evidence/selection/tiered_rotation_schema10_sweep.json`
+- `logs/arena/evidence/direct_schema10_assist220_selected_final.{csv,json}`
+- `logs/arena/evidence/direct_schema10_assist220_selected_boss.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_assist220_tiered_final.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_assist220_tiered_boss.{csv,json}`
+- `logs/arena/evidence/selection/assist220_*_schema10_sweep.json`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/ai_mission_summary_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`

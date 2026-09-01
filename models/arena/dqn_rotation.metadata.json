@@ -505,7 +505,7 @@
     "environment_schema": 10,
     "model": "D:\\A3_Game&AI\\GAI-Ass3\\models\\arena\\dqn_rotation.zip",
     "model_sha256": "d841046764d431e4f52f453a10c6f7f3a83417de0720c835826b7a3ebd557318",
-    "config_sha256": "130d6caca4edeef30d71a639fbe14790e6d385d23bda78ae6c8bb6139da8a1fc",
+    "config_sha256": "484bae1722dcc005c260f54483c7c08a63b5331342c25c965e1cb465ac9d6e8c",
     "prefix_baseline": false,
     "cooldown_mask": false
   },
@@ -569,7 +569,7 @@
   },
   "promoted_from": "logs\\arena\\training\\dodgeable_missile_rotation_400k_s47100\\checkpoints\\dodgeable_missile_rotation_400k_s47100_350000_steps.zip",
   "promoted_from_sha256": "d841046764d431e4f52f453a10c6f7f3a83417de0720c835826b7a3ebd557318",
-  "holdout_evaluation": "logs\\arena\\evidence\\rotation_schema10_tiered_selected_final.json",
+  "holdout_evaluation": "logs\\arena\\evidence\\rotation_schema10_assist220_tiered_final.json",
   "promotion_mode": "validated_checkpoint",
-  "boss_focus_evaluation": "logs\\arena\\evidence\\rotation_schema10_tiered_selected_boss.json"
+  "boss_focus_evaluation": "logs\\arena\\evidence\\rotation_schema10_assist220_tiered_boss.json"
 }

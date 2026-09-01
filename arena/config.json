@@ -18,7 +18,7 @@
         "max_speed": 280,
         "drag": 0.985,
         "fire_cooldown_seconds": 0.22,
-        "target_assist_range": 160,
+        "target_assist_range": 220,
         "rotation_aim_assist_degrees": 7,
         "rotation_aim_assist_range": 520
     },
