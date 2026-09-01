@@ -6,7 +6,7 @@ This file is a navigation aid for markers and report authors. Generated JSON and
 
 | Criterion | Code evidence | Automated evidence |
 |---|---|---|
-| Visual, animated, interactive Pygame | `gridworld/app.py` (`GridworldApp`) and `gridworld/renderer.py` | `tests/test_app.py` |
+| Visual, animated, interactive Pygame | `gridworld/app.py` (`GridworldApp`) and `gridworld/renderer.py` | `tests/part1_gridworld/test_app.py` |
 | Four moves; rocks/borders block | `GridWorldEnv.step()`; blocked attempts remain actions and still run the monster phase | blocked-action environment and app tests |
 | Fire/monster immediate death | `GridWorldEnv.step()` and `_move_monsters()` | fire, step-on-monster, and monster-onto-agent tests |
 | Apple +1 | collectible phase in `GridWorldEnv.step()` | `test_apple_reward_and_reward_completion_terminal` |
