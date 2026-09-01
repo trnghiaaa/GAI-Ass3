@@ -30,8 +30,31 @@ is omitted. The equivalent package entry points are `python -m gridworld` and
 `python -m arena` when run through the same `.venv` interpreter.
 
 On Windows, double-click **`scripts/part1/run_part1.bat`** for Part I or
-**`run_part2.bat`** for Part II. Both automatically use the project `.venv`
+**`scripts/part2/run_part2.bat`** for Part II. Both automatically use the project `.venv`
 when present, so nobody needs to type the interpreter path.
+
+### Repository layout
+
+```text
+arena/                 Part II environment, DQN training, and evaluation
+gridworld/             Part I environment and tabular agents
+tests/
+  part1_gridworld/     Part I tests and fixtures
+  part2_arena/         Part II tests
+  integration/         Combined-launcher tests
+docs/
+  part1/               Part I rubric evidence and screenshots
+  part2/               Part II report notes, rubric map, and video plan
+scripts/
+  part1/               Part I Windows launch/evidence helpers
+  part2/               Part II Windows launcher
+models/                Saved policies grouped by assignment part
+logs/                  Training and evaluation evidence grouped by part
+main.py                Shared visual launcher
+```
+
+Package-specific maps are available in `gridworld/README.md` and
+`arena/README.md`.
 
 ### VS Code run button
 
@@ -260,7 +283,7 @@ logs/gridworld/
   level6_intrinsic_comparison_evidence.png
   level6_intrinsic_comparison_*.csv/json
 
-docs/screenshots/
+docs/part1/screenshots/
   *_preview.png                       # report/video UI captures
 ```
 
@@ -291,12 +314,12 @@ The suite covers:
 
 All visual art is drawn procedurally with Pygame primitives; there are no copied sprites or third-party game assets. Creative work beyond the base specification includes the connected campaign, AI tour, responsive interface, animated interpolation, particles, trail rendering, policy lens, live Q-value inspector, deterministic playback controls, in-window benchmark evidence, held-out champion selection, evidence dashboards, exploration heatmap, multi-seed confidence bands, config provenance, and automated rubric acceptance tests.
 
-See `docs/PART1_RUBRIC_EVIDENCE.md` for the code/artifact mapping and `docs/VIDEO_DEMO_PLAN.md` for a concise recording plan.
+See `docs/part1/RUBRIC_EVIDENCE.md` for the Part I code/artifact mapping.
 ## Part II: Neon Rift Action Arena
 
 > Schema-10 boss-intermission learning, pause/UI, upgrade clarity, and tidy final
-> evidence are complete. See `docs/PART2_REPORT_NOTES.md` for current metrics
-> and `docs/PART2_RUBRIC_EVIDENCE.md` for the marking-evidence map.
+> evidence are complete. See `docs/part2/REPORT_NOTES.md` for current metrics
+> and `docs/part2/RUBRIC_EVIDENCE.md` for the marking-evidence map.
 
 The Part II environment is a continuous-coordinate Pygame combat arena named
 **Neon Rift Arena**. On Windows, launch it through the project environment so
@@ -308,7 +331,7 @@ the saved DQN models use the compatible NumPy and Stable-Baselines3 versions:
 .\.venv\Scripts\python.exe -m arena
 ```
 
-The simplest Windows alternative is `run_part2.bat`, which selects `.venv`
+The simplest Windows alternative is `scripts/part2/run_part2.bat`, which selects `.venv`
 automatically. The repository's shared VS Code launch configuration also uses
 the project environment and avoids PowerShell parsing errors when the project
 path contains an ampersand. The menu offers
@@ -567,7 +590,7 @@ boss-skill hits, and 2.75 missile hits per episode. Rotation achieved 72.08 mean
 100% normal phase progression, reached Phase 5, and averaged 0.50 missile hits,
 but did not clear the deliberately harsh no-upgrade Phase-3 stress start. The
 stronger direct boss result is expected because direct movement is the easier
-action set; both models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
+action set; both models are reported honestly in `docs/part2/REPORT_NOTES.md`.
 
 ### Visual Evaluation
 
@@ -603,6 +626,6 @@ Run the focused mechanics tests with:
 python -m unittest discover -s tests -v
 ```
 
-See `docs/PART2_REPORT_NOTES.md` for final figures,
-`docs/PART2_RUBRIC_EVIDENCE.md` for implementation/artifact mapping, and
-`docs/PART2_VIDEO_DEMO.md` for the recommended recording sequence.
+See `docs/part2/REPORT_NOTES.md` for final figures,
+`docs/part2/RUBRIC_EVIDENCE.md` for implementation/artifact mapping, and
+`docs/part2/VIDEO_DEMO.md` for the recommended recording sequence.

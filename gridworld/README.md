@@ -26,7 +26,7 @@ Related project directories:
 - `tests/part1_gridworld/`: Gridworld regression tests
 - `models/gridworld/`: trained tabular policies
 - `logs/gridworld/`: curves, comparisons, and evaluation evidence
-- `docs/PART1_RUBRIC_EVIDENCE.md`: report and rubric evidence guide
+- `docs/part1/RUBRIC_EVIDENCE.md`: report and rubric evidence guide
 
 Common commands (run from the repository root):
 
