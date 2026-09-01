@@ -696,7 +696,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
 
         self.assertTrue(events["nova_bomb_detonated"])
         self.assertFalse(self.env.nova_bomb_armed)
-        self.assertEqual(len(self.env.spawners), 3)
+        self.assertEqual(len(self.env.spawners), 2)
         self.assertTrue(all(item.health < item.max_health for item in self.env.spawners))
 
 

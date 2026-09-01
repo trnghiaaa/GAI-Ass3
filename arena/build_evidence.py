@@ -490,7 +490,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "Final schema-10 evidence includes revalidated models, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
+        "note": "Final schema-10 evidence includes revalidated models, a measured gradual difficulty curve, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events

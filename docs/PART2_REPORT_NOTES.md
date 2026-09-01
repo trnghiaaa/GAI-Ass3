@@ -20,6 +20,14 @@ The episode ends on player death, a missed phase deadline, or a long
 safety cap. The same simulation is used for human play, headless training, and
 rendered evaluation.
 
+Difficulty remains progressive without compounding into an abrupt post-boss
+spike. Normal encounters start with two rifts and add one every two phases up to
+five. Active enemies start at 16 and cap at 28, spawn cadence has a 0.75-second
+floor, and health/speed continue to rise under bounded late-game curves. Later
+bosses, their minions, minibosses, and Aegis sentries still scale, but use softer
+multipliers than the original curve. The 60-second normal phase clock and boss
+bonuses remain unchanged.
+
 Creative presentation/gameplay additions are intentionally renderer and
 progression layers around the required arena: pause/single-step controls,
 phase/boss/level-up VFX, readable target/health telemetry, XP-based three-card
@@ -72,14 +80,14 @@ weights, not training returns.
 
 | Policy / evaluation | Episodes | Mean reward | Mean phase | Progress | Bosses | Sentries | Dodges | Boss hits | Missile hits |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Direct, normal (seed 211000) | 24 | 998.48 | 9.04 | 100% | 2.08 | 7.83 | 10.54 | 1.25 | 2.96 |
-| Direct, Phase-3 start (seed 212000) | 24 | 204.84 | 4.58 | 62.5% | 0.75 | 2.83 | 6.17 | 0.92 | 1.58 |
-| Rotation, normal (seed 213000) | 24 | 87.33 | 2.83 | 100% | 0.04 | 0.21 | 1.46 | 1.46 | 0.12 |
-| Rotation, Phase-3 start (seed 214000) | 24 | -54.62 | 3.00 | 0% | 0.00 | 0.00 | 2.12 | 1.83 | 0.00 |
+| Direct, normal (seed 231000) | 24 | 1433.58 | 11.33 | 100% | 2.92 | 10.88 | 14.29 | 1.25 | 2.83 |
+| Direct, Phase-3 start (seed 232000) | 24 | 834.62 | 8.79 | 79.2% | 2.04 | 7.92 | 14.54 | 1.38 | 2.83 |
+| Rotation, normal (seed 233000) | 24 | 85.11 | 3.08 | 100% | 0.08 | 0.58 | 2.54 | 1.96 | 0.29 |
+| Rotation, Phase-3 start (seed 234000) | 24 | -60.78 | 3.00 | 0% | 0.00 | 0.00 | 1.79 | 2.25 | 0.00 |
 
 The direct policy is the demonstration-ready intermission-aware policy: the
-focused holdout records 6.17 complete dodges, 2.83 destroyed sentries, and 1.58
-missile hits per episode, with 62.5% phase progression. Rotation is deliberately
+focused holdout records 14.54 complete dodges, 7.92 destroyed sentries, and 2.83
+missile hits per episode, with 79.2% phase progression. Rotation is deliberately
 reported as the harder coupled-control problem. Its selected input-preserving
 refinement cut ordinary-play missile hits to 0.12 per episode and preserved
 100% ordinary phase progression, but did not clear the no-upgrade immediate-boss
@@ -102,10 +110,10 @@ before damage. Cite these external design references in the report:
 
 Exact machine-readable evidence:
 
-- `logs/arena/evidence/direct_schema10_final.json`
-- `logs/arena/evidence/direct_schema10_boss_intermission.json`
-- `logs/arena/evidence/rotation_schema10_final.json`
-- `logs/arena/evidence/rotation_schema10_boss_intermission.json`
+- `logs/arena/evidence/direct_schema10_balanced_v2_final.json`
+- `logs/arena/evidence/direct_schema10_balanced_v2_boss.json`
+- `logs/arena/evidence/rotation_schema10_balanced_v2_final.json`
+- `logs/arena/evidence/rotation_schema10_balanced_v2_boss.json`
 - `logs/arena/evidence/selection/dodgeable_missile_direct_schema10_sweep.json`
 - `logs/arena/evidence/selection/dodgeable_missile_rotation_schema10_sweep.json`
 

@@ -2323,10 +2323,14 @@ class ArenaEnv(gym.Env):
 
     def _spawn_phase_spawners(self, events: dict[str, Any] | None = None) -> None:
         boss_phase = self.is_boss_phase
+        growth_interval = max(
+            1, int(self.phase_cfg["spawner_growth_interval_phases"])
+        )
         count = 1 if boss_phase else min(
             int(self.phase_cfg["maximum_spawners"]),
             int(self.phase_cfg["initial_spawners"])
-            + (self.phase - 1) * int(self.phase_cfg["spawners_added_per_phase"]),
+            + ((self.phase - 1) // growth_interval)
+            * int(self.phase_cfg["spawners_added_per_phase"]),
         )
         positions = self._choose_spawner_positions(count)
         late_phase = max(

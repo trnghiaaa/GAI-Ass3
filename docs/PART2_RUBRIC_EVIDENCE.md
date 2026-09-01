@@ -15,6 +15,8 @@ source for numeric report claims.
 The creative additions (bosses, finite Aegis sentry intermissions, telegraphed
 finite-guidance missiles, minibosses, XP/drafts, wingmen, support drops, VFX and pause
 UI) do not replace any required action, health, collision, or phase mechanic.
+The balanced curve adds rifts every two phases, caps active enemies at 28, and
+softens compound boss/minion health and cadence without removing progression.
 
 ## H — Gym-style API and observation
 
@@ -57,10 +59,10 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 
 ## Report-ready artifacts
 
-- `logs/arena/evidence/direct_schema10_final.{csv,json}`
-- `logs/arena/evidence/direct_schema10_boss_intermission.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_final.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_boss_intermission.{csv,json}`
+- `logs/arena/evidence/direct_schema10_balanced_v2_final.{csv,json}`
+- `logs/arena/evidence/direct_schema10_balanced_v2_boss.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_balanced_v2_final.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_balanced_v2_boss.{csv,json}`
 - `logs/arena/evidence/selection/*_checkpoint_sweep.json`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`

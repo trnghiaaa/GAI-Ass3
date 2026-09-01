@@ -43,6 +43,46 @@ class ThreatTests(unittest.TestCase):
         )
         self.assertGreaterEqual(phase_one_objective_xp, self.env.xp_threshold_for_level(2))
 
+    def test_rift_count_ramps_every_two_phases_instead_of_spiking(self):
+        expected_counts = {1: 2, 2: 2, 4: 3, 5: 4, 7: 5}
+        for phase, expected in expected_counts.items():
+            self.env.phase = phase
+            self.env.spawners.clear()
+            self.env.enemies.clear()
+            self.env._spawn_phase_spawners()
+            self.assertEqual(len(self.env.spawners), expected, msg=f"phase {phase}")
+
+    def test_difficulty_still_rises_but_respects_fairness_caps(self):
+        base_health = float(self.env.enemy_cfg["max_health"])
+        previous_health = 0.0
+        previous_interval = float("inf")
+        for phase in (1, 5, 10, 20):
+            self.env.phase = phase
+            self.env.spawners.clear()
+            self.env.enemies.clear()
+            self.env._spawn_phase_spawners()
+            self.env._spawn_enemy(self.env.spawners[0])
+            enemy = self.env.enemies[-1]
+            interval = self.env._spawn_interval_steps(self.env.spawners[0])
+            self.assertGreater(enemy.max_health, previous_health)
+            self.assertLessEqual(interval, previous_interval)
+            self.assertLessEqual(
+                enemy.speed,
+                float(self.env.enemy_cfg["speed"])
+                * float(self.env.phase_cfg["enemy_speed_max_multiplier"]),
+            )
+            self.assertLessEqual(
+                self.env.maximum_active_enemies(),
+                int(self.env.phase_cfg["maximum_enemy_absolute"]),
+            )
+            self.assertGreaterEqual(
+                interval,
+                int(float(self.env.phase_cfg["minimum_spawn_interval_seconds"]) * self.env.fps),
+            )
+            previous_health = enemy.max_health
+            previous_interval = interval
+        self.assertLess(previous_health, base_health * 3.3)
+
     def test_shield_absorbs_then_overflows_without_regeneration(self):
         boss = self.boss()
         shield = boss.shield

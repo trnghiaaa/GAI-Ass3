@@ -210,6 +210,11 @@ then commit to a ballistic path. This makes lateral evasion readable and
 testably dodgeable rather than unavoidable permanent homing;
 victory opens a stronger permanent-relic draft. Speed, damage, spawn rate, and
 active-enemy counts use fairness caps while health and player mastery keep scaling.
+Normal encounters begin with two rifts and add one only every two phases, up to
+five, avoiding the old jump to five immediately after the first boss. Active
+hostiles begin at 16 and cap at 28; spawn intervals never fall below 0.75 seconds.
+Later boss health, minion multipliers, and sentry health are deliberately softer
+than their original compound curve while still increasing each encounter.
 Optional Rift Hunter probability begins at 24% and rises by six percentage
 points per phase after Phase 5, capped at 66%.
 Ordinary kills grant 7 XP and cumulative thresholds follow
@@ -275,12 +280,12 @@ Default models are saved separately as `models/arena/dqn_direct.zip` and
 `logs/arena/evidence/` (screenshots and held-outs), `training/` (final monitor,
 curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
-On the current schema-10 24-episode holdouts, direct achieved 998.48 mean
-reward, mean Phase 9.04, 2.08 boss clears, 10.54 boss-skill dodges, and 1.25
-boss-skill hits. Its fixed-Phase-3 test achieved 62.5% phase progression, 0.75
-boss clears, 2.83 sentry kills, 6.17 dodges, 0.92 boss-skill hits, and 1.58
-missile hits per episode. Rotation achieved 87.33 mean reward, mean Phase 2.83,
-100% normal phase progression, and only 0.12 missile hits per episode, but did
+On the current balanced schema-10 24-episode holdouts, direct achieved 1433.58
+mean reward, mean Phase 11.33, 2.92 boss clears, 14.29 boss-skill dodges, and
+1.25 boss-skill hits. Its fixed-Phase-3 test achieved 79.2% phase progression,
+2.04 boss clears, 7.92 sentry kills, 14.54 dodges, 1.38 boss-skill hits, and
+2.83 missile hits per episode. Rotation achieved 85.11 mean reward, mean Phase
+3.08, 100% normal phase progression, and only 0.29 missile hits per episode, but did
 not clear the deliberately harsh no-upgrade Phase-3 stress start. The stronger
 direct boss result is expected because direct movement is the easier action
 set; both models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
