@@ -11,20 +11,23 @@ tools.
 
 ## Setup and launch
 
-From this repository directory:
+From this repository directory, create the project environment and install all
+Part I and Part II dependencies. On Windows PowerShell:
 
-```bash
-python -m pip install -r requirements.txt
-python main.py --part 1
-python main.py --part 2
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe main.py --part 1
+.\.venv\Scripts\python.exe main.py --part 2
 ```
 
-`main.py` automatically hands execution to the repository `.venv` when the
-currently selected Python does not have Pygame. This hand-off does not pass the
-virtual-environment path through PowerShell, so it remains safe when a parent
-folder contains `&`, as in `A3_Game&AI`. Part II is the default when `--part`
+Using the `.venv` interpreter directly is recommended, especially for Part II:
+the saved Stable-Baselines3 DQN policies were serialized with the NumPy version
+installed in this project environment. A different global Python environment
+can fail while loading a model with an error such as
+`No module named 'numpy._core.numeric'`. Part II is the default when `--part`
 is omitted. The equivalent package entry points are `python -m gridworld` and
-`python -m arena`.
+`python -m arena` when run through the same `.venv` interpreter.
 
 On Windows, double-click **`scripts/part1/run_part1.bat`** for Part I or
 **`run_part2.bat`** for Part II. Both automatically use the project `.venv`
@@ -296,17 +299,19 @@ See `docs/PART1_RUBRIC_EVIDENCE.md` for the code/artifact mapping and `docs/VIDE
 > and `docs/PART2_RUBRIC_EVIDENCE.md` for the marking-evidence map.
 
 The Part II environment is a continuous-coordinate Pygame combat arena named
-**Neon Rift Arena**. The easiest entry point is the unified visual launcher:
+**Neon Rift Arena**. On Windows, launch it through the project environment so
+the saved DQN models use the compatible NumPy and Stable-Baselines3 versions:
 
-```bash
-python main.py --part 2
-# equivalent module entry point: python -m arena
+```powershell
+.\.venv\Scripts\python.exe main.py --part 2
+# equivalent module entry point:
+.\.venv\Scripts\python.exe -m arena
 ```
 
-You can also open `main.py` and press the VS Code **Run Python File** button.
-The repository's shared VS Code settings select `.venv` and use Command Prompt
-on Windows, avoiding PowerShell parsing errors when the project path contains
-an ampersand. `run_part2.bat` is the double-click fallback. The menu offers
+The simplest Windows alternative is `run_part2.bat`, which selects `.venv`
+automatically. The repository's shared VS Code launch configuration also uses
+the project environment and avoids PowerShell parsing errors when the project
+path contains an ampersand. The menu offers
 manual play and deterministic trained-agent playback for both required control
 schemes. Direct manual play is also available from the command line:
 
