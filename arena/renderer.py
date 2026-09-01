@@ -437,12 +437,6 @@ class ArenaRenderer:
                         round(spawner.radius + 14 + pulse),
                         3,
                     )
-                label = self.font_tiny.render(
-                    "CHANNEL SHIELD" if channeling else "BOSS RIFT",
-                    True,
-                    COLORS["hazard_safe"] if channeling else COLORS["boss"],
-                )
-                self.surface.blit(label, label.get_rect(center=(center[0], center[1] + spawner.radius + 18)))
             bar_width = 100 if spawner.is_boss else 56
             if spawner.is_boss and spawner.max_shield > 0.0:
                 shield_rect = pygame.Rect(round(spawner.x - 50), max(self.env.playfield_top + 5, round(spawner.y - spawner.radius - 25)), 100, 5)
@@ -451,11 +445,20 @@ class ArenaRenderer:
                 fill.width = round(100 * max(0.0, spawner.shield / spawner.max_shield))
                 pygame.draw.rect(self.surface, (80, 200, 255), fill)
                 shield_label = self.font_tiny.render(
-                    f"SHIELD {max(0, round(spawner.shield))}  SUMMONS {spawner.summons_used}/{self.env.boss_summon_limit_for_phase()}",
+                    f"SHIELD {max(0, round(spawner.shield))}  •  SUMMONS {spawner.summons_used}/{self.env.boss_summon_limit_for_phase()}",
                     True, (120, 215, 255),
                 )
-                label_rect = shield_label.get_rect(center=(center[0], center[1] + spawner.radius + 32))
+                label_rect = shield_label.get_rect(
+                    center=(center[0], center[1] + spawner.radius + 61)
+                )
                 label_rect.clamp_ip(self.surface.get_rect().inflate(-12, -12))
+                # A small backing plate keeps the dense boss telemetry legible
+                # over beams, wingmen, and the animated arena background.
+                backing = label_rect.inflate(10, 6)
+                pygame.draw.rect(self.surface, (8, 20, 40), backing, border_radius=4)
+                pygame.draw.rect(
+                    self.surface, (45, 104, 150), backing, width=1, border_radius=4
+                )
                 self.surface.blit(shield_label, label_rect)
             self._draw_health_bar(
                 spawner.x - bar_width / 2,

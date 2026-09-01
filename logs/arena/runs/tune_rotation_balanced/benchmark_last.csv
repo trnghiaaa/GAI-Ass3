@@ -1,7 +1,0 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,hits_per_projectile,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,minibosses_destroyed,boss_skills_dodged,boss_skill_hits,boss_rewards_chosen,drone_level,barrier_charges,build_summary
-1,15201,-34.52917,1,0,622,156,player_destroyed,False,2,0,125.0,112.0,34,5,0.147059,0.147059,1,16.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
-2,15202,-35.733514,1,0,541,136,player_destroyed,False,1,0,50.0,112.0,30,2,0.066667,0.066667,1,8.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
-3,15203,-34.901604,1,0,449,113,player_destroyed,False,1,0,150.0,112.0,9,6,0.666667,0.666667,1,8.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
-4,15204,711.08279,8,7,4742,1186,player_destroyed,False,92,22,11469.7,151.84,573,389,0.678883,0.678883,9,2161.0,Multi-Beam Array,8,5,2,2,1,1,2,0,0,damage:3;multishot:1;homing:1;regen:1;capacitor:1;critical:1;artifact:1
-5,15205,-34.839391,1,0,549,138,player_destroyed,False,2,0,100.0,112.0,30,4,0.133333,0.133333,1,16.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
-6,15206,4.665047,1,0,2483,621,player_destroyed,False,31,0,1550.0,100.8,174,58,0.333333,0.333333,3,248.0,Pulse Cannon,2,0,0,0,0,0,0,0,0,shield:1;critical:1

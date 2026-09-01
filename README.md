@@ -30,9 +30,9 @@ python -m gridworld.play --level 0
 
 ## 3. Part II Action Arena
 
-> Schema-7 difficulty, boss, pause-UI, upgrade-clarity, and safety-aware learning
-> work is complete. See `docs/PART2_BALANCE_EXPERIMENT.md` for the final
-> common-seed holdout and rejected rotation candidate.
+> Schema-8 boss-safety learning, pause/UI, upgrade clarity, and tidy final
+> evidence are complete. See `docs/PART2_REPORT_NOTES.md` for current metrics
+> and `docs/PART2_RUBRIC_EVIDENCE.md` for the marking-evidence map.
 
 The Part II environment is a continuous-coordinate Pygame combat arena named
 **Neon Rift Arena**. The easiest entry point is the unified visual launcher:
@@ -219,6 +219,9 @@ separation, aim improvement, and
 well-aligned shots. Shaping never changes health, collisions, entity movement,
 or terminal rules. A potential-difference term rewards movement out of an
 unchanged boss barrage, while a full dodge remains a separate event reward.
+Schema 8 also logs a boss-skill-hit penalty and a small per-step hazard-exposure
+penalty. Overlapping boss lanes use the highest danger value rather than an
+average, so standing in one active lane cannot be masked by safer lanes.
 Combat XP is deliberately excluded from this total. Every
 `step()` exposes `info["reward_breakdown"]`, making the exact contribution of
 every RL reward term auditable.
@@ -226,19 +229,22 @@ every RL reward term auditable.
 ### Stable-Baselines3 Training
 
 Use a unique `--run-name` for new runs; training refuses to overwrite existing
-models or run directories. Schema-7 experiments include transfer
-(`safety_aware`), from-scratch (`safety_exploration`), and low-rate refinement
-(`safety_consolidation`) profiles. A changed game still requires training and
-fresh evaluation. See the safety experiment document for promotion evidence.
+models or run directories. The `boss_dodge` profile can use a training-only
+boss curriculum: it samples a genuine Phase-3 reset for a configured fraction
+of training episodes. It never selects actions for the policy or makes the
+boss easier. A changed game still requires training and fresh evaluation.
 
 Both policies use SB3 DQN with a configurable MLP, replay buffer, target
 network, epsilon schedule, checkpoints, held-out evaluation, TensorBoard, and
 model metadata:
 
 ```bash
-# New from-scratch runs (not reproductions of the historical schema-5 scores)
-python -m arena.train --control-style direct --timesteps 450000 --profile long_exploration --benchmark-episodes 20 --seed 15100 --run-name new_direct
-python -m arena.train --control-style rotation --timesteps 600000 --profile long_exploration --benchmark-episodes 20 --seed 16100 --run-name new_rotation
+# Boss-aware direct refinement (the submitted direct-policy recipe)
+python -m arena.train --control-style direct --timesteps 400000 --profile boss_dodge --benchmark-episodes 20 --seed 31100 --run-name boss_dodge_direct --init-model models/arena/dqn_direct.zip --boss-curriculum 0.70 --curriculum-phases 3
+
+# Generic from-scratch runs
+python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
+python -m arena.train --control-style rotation --timesteps 300000 --profile balanced --run-name new_rotation
 
 # Generic training is also supported (300,000 decisions by default)
 python -m arena.train --control-style both
@@ -248,14 +254,17 @@ python -m arena.tune --control-style both --timesteps 35000 --benchmark-episodes
 ```
 
 Default models are saved separately as `models/arena/dqn_direct.zip` and
-`models/arena/dqn_rotation.zip`. TensorBoard event files, monitor CSVs,
-checkpoints, deterministic seeded benchmarks, plots, and summaries are written
-under `logs/arena`. On the final schema-7 30-seed holdout, direct achieved
-521.93 reward, 100% progression, mean/max Phase 6.10/11, and 1.30 boss kills;
-rotation achieved 106.24 reward, 100% progression, and mean/max Phase 2.83/4.
-Direct recorded 3.23 boss dodges versus 0.97 hits; rotation recorded 1.60 versus
-1.67. Matching random baselines scored -16.60/0% progression and -38.81/0%
-respectively.
+`models/arena/dqn_rotation.zip`. The compact evidence layout is
+`logs/arena/evidence/` (screenshots and held-outs), `training/` (final monitor,
+curve and selected checkpoint), `tensorboard/`, and `tuning/`.
+
+On the current schema-8 30-episode holdouts, direct achieved 846.13 mean
+reward, mean Phase 7.73, 1.93 boss clears, 6.13 dodges and 0.33 boss-skill hits.
+Its fixed-Phase-3 boss test achieved 5.70 dodges, 0.63 hits, 1.47 boss clears,
+and 90% phase progression. Rotation achieved 89.89 mean reward, mean Phase
+2.93, 2.07 dodges and 1.87 hits in ordinary starts. The stronger direct boss
+result is expected because direct movement is the easier action set; both
+models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
 
 ### Visual Evaluation
 
@@ -288,5 +297,6 @@ Run the focused mechanics tests with:
 python -m unittest discover -s tests -v
 ```
 
-See `docs/PART2_RUBRIC_EVIDENCE.md` for the implementation/artifact mapping and
+See `docs/PART2_REPORT_NOTES.md` for final figures,
+`docs/PART2_RUBRIC_EVIDENCE.md` for implementation/artifact mapping, and
 `docs/PART2_VIDEO_DEMO.md` for the recommended recording sequence.

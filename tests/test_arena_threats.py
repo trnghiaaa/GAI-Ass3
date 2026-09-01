@@ -9,7 +9,7 @@ import numpy as np
 from stable_baselines3 import DQN
 import torch
 
-from arena.entities import Enemy
+from arena.entities import DangerZone, Enemy
 from arena.environment import ArenaEnv, ObservationIndex as I
 from arena.train import transfer_prefix_policy, restrict_to_appended_inputs
 from gymnasium.spaces import Box
@@ -137,6 +137,48 @@ class ThreatTests(unittest.TestCase):
         preferred = self.env._shaping_snapshot()['spawner_distance']
         self.assertGreater(too_close, preferred)
         self.assertAlmostEqual(preferred, 0.0)
+
+    def test_boss_warning_zone_has_dense_exposure_and_hit_penalties(self):
+        player = self.env.player
+        self.env.danger_zones = [
+            DangerZone(
+                kind="circle",
+                x=player.x,
+                y=player.y,
+                radius=90,
+                telegraph_steps=10,
+                active_steps=10,
+                maximum_telegraph_steps=10,
+                damage=20,
+                attack_id=999,
+            )
+        ]
+        _, _, _, _, info = self.env.step(0)
+        self.assertGreater(info["hazard_exposure"], 0.0)
+        self.assertLess(info["reward_breakdown"]["hazard_exposure"], 0.0)
+
+        events = defaultdict(float, boss_skill_hits=1)
+        events.update(
+            damage_dealt_enemy=0.0,
+            damage_dealt_spawner=0.0,
+            enemies_destroyed=0,
+            spawners_destroyed=0,
+            phase_advanced=False,
+            minibosses_destroyed=0,
+            boss_phase_cleared=False,
+            boss_skills_dodged=0,
+            hazard_escape_improvement=0.0,
+            crowd_escape=0.0,
+            crowd_pressure=0.0,
+            phase_timeout=False,
+            damage_taken=0.0,
+            spawner_progress=0.0,
+            aim_improvement=0.0,
+            shot_fired=False,
+            shot_alignment=0.0,
+        )
+        _, breakdown = self.env._calculate_reward(events, terminated=False)
+        self.assertEqual(breakdown["boss_skill_hit"], -8.0)
 
     def test_crowd_reward_does_not_credit_enemy_removal(self):
         p = self.env.player

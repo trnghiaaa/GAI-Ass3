@@ -141,7 +141,7 @@ class ObservationIndex(IntEnum):
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
-ENVIRONMENT_SCHEMA_VERSION = 7
+ENVIRONMENT_SCHEMA_VERSION = 8
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -310,9 +310,12 @@ class ArenaEnv(gym.Env):
         """Reset the full episode and return its initial observation."""
 
         super().reset(seed=seed)
-        del options
+        reset_options = dict(options or {})
+        start_phase = int(reset_options.get("start_phase", 1))
+        if start_phase < 1:
+            raise ValueError("start_phase must be at least 1")
 
-        self.phase = 1
+        self.phase = start_phase
         self.phase_max_steps = self._phase_step_budget()
         self.step_count = 0
         self.phase_step_count = 0
@@ -367,6 +370,7 @@ class ArenaEnv(gym.Env):
             "boss_skills_cast": 0,
             "boss_skills_dodged": 0,
             "boss_skill_hits": 0,
+            "hazard_exposure": 0.0,
             "sustain_healed": 0.0,
             "boss_rewards_chosen": 0,
         }
@@ -433,6 +437,7 @@ class ArenaEnv(gym.Env):
             "boss_skills_dodged": 0,
             "boss_skill_hits": 0,
             "hazard_escape_improvement": 0.0,
+            "hazard_exposure": 0.0,
             "sustain_healed": 0.0,
             "barrier_blocks": 0,
             "phase_timeout": False,
@@ -453,6 +458,9 @@ class ArenaEnv(gym.Env):
             )
         self._update_support_drone(events)
         self._update_projectiles(events)
+        # A dense, auditable warning-zone signal teaches the policy before the
+        # delayed boss strike lands. It does not alter damage or game physics.
+        events["hazard_exposure"] = self._danger_zone_risk()
         self._update_boss_skills(events)
         self._update_enemies(events)
         self._update_spawners(events)
@@ -1903,7 +1911,9 @@ class ArenaEnv(gym.Env):
         for zone in self.danger_zones:
             _, _, distance_to_safety, time_left, _, _ = self._single_danger_zone_features(zone)
             risks.append(distance_to_safety * (2.0 - time_left))
-        return float(sum(risks) / len(risks))
+        # Parallel lanes must not dilute the danger of the lane covering the
+        # player. The most urgent overlap is the decision-relevant risk.
+        return float(max(risks))
 
     def _update_phase(self, events: dict[str, Any]) -> None:
         if self.spawners:
@@ -2614,8 +2624,12 @@ class ArenaEnv(gym.Env):
             ),
             "boss_skill_dodged": int(events.get("boss_skills_dodged", 0))
             * float(self.reward_cfg["boss_skill_dodged"]),
+            "boss_skill_hit": int(events.get("boss_skill_hits", 0))
+            * float(self.reward_cfg["boss_skill_hit"]),
             "hazard_escape": float(events.get("hazard_escape_improvement", 0.0))
             * float(self.reward_cfg["hazard_escape"]),
+            "hazard_exposure": float(events.get("hazard_exposure", 0.0))
+            * float(self.reward_cfg["hazard_exposure"]),
             "crowd_escape": float(events.get("crowd_escape", 0.0)) * float(self.reward_cfg["crowd_escape"]),
             "crowd_contact_risk": max(0.0, float(events.get("crowd_pressure", 0.0)) - 0.5)
             * float(self.reward_cfg["crowd_contact_risk"]),
@@ -2657,6 +2671,7 @@ class ArenaEnv(gym.Env):
             "boss_skills_cast",
             "boss_skills_dodged",
             "boss_skill_hits",
+            "hazard_exposure",
             "miniboss_caches",
             "sustain_healed",
         ):

@@ -16,7 +16,7 @@ from arena.cooldown import load_dqn
 from arena.benchmark import evaluate_model, write_benchmark
 from arena.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
 from arena.renderer import ArenaRenderer
-from arena.settings import ARENA_LOG_DIR, metadata_path, model_path
+from arena.settings import ARENA_EVIDENCE_DIR, metadata_path, model_path
 
 
 def policy_readiness(control_style: str) -> tuple[bool, str]:
@@ -221,7 +221,7 @@ def main(
             action_repeat=action_repeat,
             seed=args.seed,
         )
-        output = ARENA_LOG_DIR / f"{args.control_style}_evaluation"
+        output = ARENA_EVIDENCE_DIR / f"{args.control_style}_evaluation"
         write_benchmark(rows, aggregate, output)
         print(json.dumps(aggregate, indent=2))
     else:

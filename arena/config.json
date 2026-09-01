@@ -328,8 +328,10 @@
         "phase_advanced": 30.0,
         "miniboss_destroyed": 8.0,
         "boss_phase_cleared": 15.0,
-        "boss_skill_dodged": 1.2,
-        "hazard_escape": 1.2,
+        "boss_skill_dodged": 2.5,
+        "boss_skill_hit": -8.0,
+        "hazard_escape": 1.8,
+        "hazard_exposure": -0.025,
         "crowd_escape": 0.9,
         "crowd_contact_risk": -0.004,
         "spawner_standoff": 175.0,
@@ -391,6 +393,14 @@
                 "exploration_fraction": 0.5,
                 "exploration_initial_eps": 0.25,
                 "exploration_final_eps": 0.04,
+                "net_arch": [256, 256]
+            },
+            "boss_dodge": {
+                "learning_rate": 0.000075,
+                "gamma": 0.997,
+                "exploration_fraction": 0.55,
+                "exploration_initial_eps": 0.35,
+                "exploration_final_eps": 0.02,
                 "net_arch": [256, 256]
             },
             "balanced": {},

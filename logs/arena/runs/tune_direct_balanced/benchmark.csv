@@ -1,7 +1,0 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,hits_per_projectile,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,minibosses_destroyed,boss_skills_dodged,boss_skill_hits,boss_rewards_chosen,drone_level,barrier_charges,build_summary
-1,15101,122.437938,3,2,1907,477,player_destroyed,False,17,5,1702.575,120.368,102,45,0.441176,0.441176,3,361.0,Rapid Pulse,2,2,0,0,0,1,0,1,0,fire_rate:1;regen:1;drone:1
-2,15102,158.657533,3,2,2240,560,player_destroyed,False,35,5,3235.224,117.12,134,109,0.813433,0.813433,4,595.0,Pulse Cannon,3,2,0,1,0,1,0,0,0,damage:1;critical:1;riftbreaker:1
-3,15103,116.739145,3,2,1302,326,player_destroyed,False,7,5,1321.9,133.632,71,47,0.661972,0.661972,4,371.0,Pulse Cannon,3,2,0,1,1,3,0,0,0,hull:1;homing:1;riftbreaker:1
-4,15104,221.12824,4,3,1899,475,player_destroyed,False,17,8,2535.2,169.872,185,87,0.47027,0.47027,5,641.0,Multi-Beam Array,4,2,1,0,0,1,1,0,0,damage:1;multishot:2;regen:1
-5,15105,860.668013,9,8,5798,1450,player_destroyed,False,123,27,16674.7625,367.696,672,471,0.700893,0.700893,10,2519.0,Prism Laser,9,6,2,1,0,5,2,4,0,damage:1;multishot:2;laser:1;splash:1;shield:1;drone:4;capacitor:1
-6,15106,31.962241,2,1,978,245,player_destroyed,False,5,2,829.0,103.376,30,21,0.7,0.7,2,135.0,Pulse Cannon,1,1,0,0,0,0,0,1,0,piercing:1;drone:1

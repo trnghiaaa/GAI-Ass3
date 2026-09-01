@@ -20,6 +20,7 @@ SUM_EVENT_KEYS = (
     "spawner_progress",
     "aim_improvement",
     "hazard_escape_improvement",
+    "hazard_exposure",
     "crowd_escape",
     "contact_events",
     "sustain_healed",
@@ -111,4 +112,47 @@ class ActionRepeatWrapper(gym.Wrapper):
         return observation, total_reward, terminated, truncated, last_info
 
 
-__all__ = ["ActionRepeatWrapper", "SUM_EVENT_KEYS"]
+class BossCurriculumWrapper(gym.Wrapper):
+    """Start some training episodes at a boss without changing evaluation.
+
+    The wrapped environment keeps its normal dynamics, observations, rewards,
+    controls, and termination. Only the initial phase is sampled, making rare
+    boss telegraphs common enough for DQN to learn from them.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        *,
+        probability: float = 0.65,
+        phases: tuple[int, ...] = (3,),
+        seed: int = 0,
+    ) -> None:
+        if not 0.0 <= probability <= 1.0:
+            raise ValueError("probability must be between 0 and 1")
+        if not phases or any(int(phase) < 1 for phase in phases):
+            raise ValueError("phases must contain positive phase numbers")
+        super().__init__(env)
+        self.probability = float(probability)
+        self.phases = tuple(int(phase) for phase in phases)
+        self._curriculum_seed = int(seed)
+        self._rng = np.random.default_rng(self._curriculum_seed)
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict[str, Any]]:
+        if seed is not None:
+            self._rng = np.random.default_rng(int(seed) + self._curriculum_seed)
+        reset_options = dict(options or {})
+        if "start_phase" not in reset_options and self._rng.random() < self.probability:
+            reset_options["start_phase"] = int(self._rng.choice(self.phases))
+        observation, info = self.env.reset(seed=seed, options=reset_options)
+        info = dict(info)
+        info["curriculum_start_phase"] = int(self.env.unwrapped.phase)
+        return observation, info
+
+
+__all__ = ["ActionRepeatWrapper", "BossCurriculumWrapper", "SUM_EVENT_KEYS"]

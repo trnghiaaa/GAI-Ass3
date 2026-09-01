@@ -17,56 +17,6 @@ Thumbs.db
 !.vscode/launch.json
 .idea/
 
-# Regenerable Part II training intermediates (keep final models/evidence/logs)
-logs/arena/runs/*/best/
-logs/arena/runs/*/checkpoints/
-logs/arena/runs/*/last_model.zip
-logs/arena/runs/tune_*/evaluations/
-logs/arena/runs/tune_*/benchmark_eval_callback_best.csv
-logs/arena/runs/tune_*/benchmark_eval_callback_best.json
-logs/arena/direct_evaluation.csv
-logs/arena/direct_evaluation.json
-logs/arena/rotation_evaluation.csv
-logs/arena/rotation_evaluation.json
-models/arena/tune_*.zip
-models/arena/tune_*.metadata.json
-
-# Final submission uses dqn_direct.zip and dqn_rotation.zip. Keep experimental
-# safety candidate weights local; their CSV/JSON/plots remain as tuning evidence.
-models/arena/safety_*.zip
-models/arena/safety_*.metadata.json
-logs/arena/tensorboard/safety_rotation_600k_s23100_*/
-logs/arena/tensorboard/safety_rotation_fresh_800k_s24100_*/
-logs/arena/tensorboard/safety_rotation_consolidate_300k_s25100_*/
-logs/arena/runs/safety_rotation_600k_s23100/
-logs/arena/runs/safety_rotation_fresh_800k_s24100/
-logs/arena/runs/safety_rotation_consolidate_300k_s25100/
-models/arena/balance_rotation_600k_s27100.zip
-models/arena/balance_rotation_600k_s27100.metadata.json
-logs/arena/runs/balance_rotation_600k_s27100/
-logs/arena/tensorboard/balance_rotation_600k_s27100_*/
-
-# Superseded tuning reruns; the final sweep and original recorded run stay visible.
-logs/arena/tensorboard/tune_direct_fast_exploration_7/
-logs/arena/tensorboard/tune_direct_fast_exploration_8/
-logs/arena/tensorboard/tune_direct_balanced_7/
-logs/arena/tensorboard/tune_direct_balanced_8/
-logs/arena/tensorboard/tune_direct_long_exploration_7/
-logs/arena/tensorboard/tune_direct_long_exploration_8/
-logs/arena/tensorboard/tune_rotation_fast_exploration_7/
-logs/arena/tensorboard/tune_rotation_fast_exploration_8/
-logs/arena/tensorboard/tune_rotation_balanced_6/
-logs/arena/tensorboard/tune_rotation_balanced_7/
-logs/arena/tensorboard/tune_rotation_long_exploration_6/
-logs/arena/tensorboard/tune_rotation_long_exploration_7/
-
-# Superseded schema-v4/final-preflight reruns; keep only the manifest-selected
-# schema-v5 run for each final model/profile.
-logs/arena/tensorboard/dqn_direct_5/
-logs/arena/tensorboard/dqn_rotation_5/
-logs/arena/tensorboard/tune_direct_fast_exploration_9/
-logs/arena/tensorboard/tune_direct_balanced_9/
-logs/arena/tensorboard/tune_direct_long_exploration_9/
-logs/arena/tensorboard/tune_rotation_fast_exploration_9/
-logs/arena/tensorboard/tune_rotation_balanced_8/
-logs/arena/tensorboard/tune_rotation_long_exploration_8/
+# Local recovery area for superseded training artifacts. It is intentionally
+# excluded from the submission tree; use Git history or retraining as needed.
+.archive/

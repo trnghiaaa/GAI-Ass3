@@ -34,6 +34,8 @@ def main():
     parser.add_argument('--prefix-baseline', action='store_true')
     parser.add_argument('--action-repeat', type=int, default=None,
                         help='Explicit control-cadence ablation; defaults to saved metadata or 4')
+    parser.add_argument('--start-phase', type=int, default=None,
+                        help='Optional fixed initial phase for a focused benchmark')
     args = parser.parse_args()
     if args.output.with_suffix('.json').exists():
         raise FileExistsError('Choose a new output name; existing evaluations are protected')
@@ -52,7 +54,17 @@ def main():
         raise ValueError('Explicit --prefix-baseline required for a smaller frozen model')
     policy = PrefixPolicy(model) if args.prefix_baseline else model
     repeat = args.action_repeat if args.action_repeat is not None else int(metadata.get('action_repeat', 4))
-    rows, aggregate = evaluate_model(policy, args.control_style, episodes=args.episodes, seed=args.seed, action_repeat=repeat)
+    reset_options = (
+        None if args.start_phase is None else {"start_phase": args.start_phase}
+    )
+    rows, aggregate = evaluate_model(
+        policy,
+        args.control_style,
+        episodes=args.episodes,
+        seed=args.seed,
+        action_repeat=repeat,
+        reset_options=reset_options,
+    )
     aggregate['environment_schema'] = ENVIRONMENT_SCHEMA_VERSION
     aggregate['model'] = str(args.model)
     aggregate['model_sha256'] = hashlib.sha256(args.model.read_bytes()).hexdigest()

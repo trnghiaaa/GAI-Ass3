@@ -38,13 +38,14 @@ from arena.benchmark import evaluate_model, write_benchmark
 from arena.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
 from arena.settings import (
     ARENA_LOG_DIR,
+    ARENA_TRAINING_DIR,
     TENSORBOARD_DIR,
     ensure_artifact_directories,
     metadata_path,
     model_path,
     training_settings,
 )
-from arena.wrappers import ActionRepeatWrapper
+from arena.wrappers import ActionRepeatWrapper, BossCurriculumWrapper
 from arena.cooldown import CooldownAwareDQN, load_dqn
 
 
@@ -92,6 +93,7 @@ class ArenaTelemetryCallback(BaseCallback):
             "minibosses_destroyed",
             "boss_skills_dodged",
             "boss_skill_hits",
+            "hazard_exposure",
             "damage_taken",
         ):
             self.logger.record(
@@ -106,10 +108,19 @@ def _make_env(
     action_repeat: int,
     *,
     monitor_file: Path | None = None,
+    boss_curriculum: float = 0.0,
+    curriculum_phases: tuple[int, ...] = (3,),
+    curriculum_seed: int = 0,
 ) -> Monitor:
-    env = ActionRepeatWrapper(
-        ArenaEnv(control_style=control_style), repeat=action_repeat
-    )
+    base_env: gymnasium.Env = ArenaEnv(control_style=control_style)
+    if boss_curriculum > 0.0:
+        base_env = BossCurriculumWrapper(
+            base_env,
+            probability=boss_curriculum,
+            phases=curriculum_phases,
+            seed=curriculum_seed,
+        )
+    env = ActionRepeatWrapper(base_env, repeat=action_repeat)
     filename = str(monitor_file) if monitor_file is not None else None
     return Monitor(env, filename=filename, info_keywords=MONITOR_INFO_KEYS)
 
@@ -206,6 +217,8 @@ def train_control_style(
     init_model: Path | None = None,
     cooldown_mask: bool = False,
     new_inputs_only: bool = False,
+    boss_curriculum: float = 0.0,
+    curriculum_phases: tuple[int, ...] = (3,),
 ) -> dict[str, Any]:
     """Train, save, and independently benchmark one control-style policy."""
 
@@ -218,10 +231,14 @@ def train_control_style(
         raise ValueError("timesteps must be positive")
     if benchmark_episodes < 1:
         raise ValueError("benchmark_episodes must be positive")
+    if not 0.0 <= boss_curriculum <= 1.0:
+        raise ValueError("boss_curriculum must be between 0 and 1")
+    if not curriculum_phases:
+        raise ValueError("curriculum_phases cannot be empty")
     training_seed = int(settings["seed"] if seed is None else seed)
     action_repeat = int(settings["action_repeat"])
     stem = run_name or f"dqn_{control_style}"
-    run_dir = ARENA_LOG_DIR / "runs" / stem
+    run_dir = ARENA_TRAINING_DIR / stem
     if model_path(control_style, run_name).exists() or run_dir.exists():
         raise FileExistsError(f'Preserve existing artifacts: choose a new --run-name ({stem})')
     checkpoint_dir = run_dir / "checkpoints"
@@ -231,7 +248,14 @@ def train_control_style(
     best_dir.mkdir(parents=True, exist_ok=True)
     monitor_file = run_dir / "training.monitor.csv"
 
-    train_env = _make_env(control_style, action_repeat, monitor_file=monitor_file)
+    train_env = _make_env(
+        control_style,
+        action_repeat,
+        monitor_file=monitor_file,
+        boss_curriculum=boss_curriculum,
+        curriculum_phases=curriculum_phases,
+        curriculum_seed=training_seed,
+    )
     eval_env = _make_env(control_style, action_repeat)
     learning_starts = min(
         int(settings["learning_starts"]), max(0, total_timesteps // 5)
@@ -314,7 +338,9 @@ def train_control_style(
     selected_name = ""
     selected_model = model
     selected_rows: list[dict[str, Any]] = []
+    selected_boss_rows: list[dict[str, Any]] = []
     benchmark: dict[str, Any] = {}
+    boss_focus_benchmark: dict[str, Any] = {}
     selected_score = float("-inf")
     for candidate_name, candidate_model in candidates:
         rows, candidate_benchmark = evaluate_model(
@@ -324,8 +350,21 @@ def train_control_style(
             action_repeat=action_repeat,
             seed=training_seed + 10000,
         )
+        boss_rows, boss_benchmark = evaluate_model(
+            candidate_model,
+            control_style,
+            episodes=max(6, benchmark_episodes // 2),
+            action_repeat=action_repeat,
+            seed=training_seed + 20000,
+            reset_options={"start_phase": 3},
+        )
         write_benchmark(
             rows, candidate_benchmark, run_dir / f"benchmark_{candidate_name}"
+        )
+        write_benchmark(
+            boss_rows,
+            boss_benchmark,
+            run_dir / f"boss_benchmark_{candidate_name}",
         )
         score = (
             float(candidate_benchmark["mean_reward"])
@@ -339,20 +378,35 @@ def train_control_style(
             - 3.0 * float(candidate_benchmark["contacts_per_1000_frames"])
             - 20.0 * float(candidate_benchmark["mean_crowd_fraction"])
             + 0.08 * float(candidate_benchmark["mean_enemy_clearance"])
+            + 12.0 * float(boss_benchmark["mean_boss_skills_dodged"])
+            - 18.0 * float(boss_benchmark["mean_boss_skill_hits"])
+            + 12.0 * float(boss_benchmark["mean_bosses_destroyed"])
         )
         candidate_results.append(
-            {"candidate": candidate_name, "selection_score": score, **candidate_benchmark}
+            {
+                "candidate": candidate_name,
+                "selection_score": score,
+                **candidate_benchmark,
+                "boss_focus": boss_benchmark,
+            }
         )
         if score > selected_score:
             selected_score = score
             selected_name = candidate_name
             selected_model = candidate_model
             selected_rows = rows
+            selected_boss_rows = boss_rows
             benchmark = candidate_benchmark
+            boss_focus_benchmark = boss_benchmark
 
     destination = model_path(control_style, run_name)
     selected_model.save(str(destination))
     write_benchmark(selected_rows, benchmark, run_dir / "benchmark")
+    write_benchmark(
+        selected_boss_rows,
+        boss_focus_benchmark,
+        run_dir / "boss_benchmark",
+    )
     with (run_dir / "model_selection.json").open("w", encoding="utf-8") as output:
         json.dump(
             {"selected": selected_name, "candidates": candidate_results},
@@ -372,6 +426,8 @@ def train_control_style(
         "initialization_model": str(init_model) if init_model else None,
         "cooldown_mask": cooldown_mask,
         "new_inputs_only": new_inputs_only,
+        "boss_curriculum_probability": boss_curriculum,
+        "boss_curriculum_phases": list(curriculum_phases),
         "run_name": stem,
         "control_style": control_style,
         "profile": profile,
@@ -400,6 +456,7 @@ def train_control_style(
             )
         },
         "benchmark": benchmark,
+        "boss_focus_benchmark": boss_focus_benchmark,
         "versions": {
             "python": platform.python_version(),
             "gymnasium": gymnasium.__version__,
@@ -441,6 +498,7 @@ def build_parser() -> argparse.ArgumentParser:
             "safety_consolidation",
             "safety_exploration",
             "threat_aware",
+            "boss_dodge",
         ),
         default="balanced",
     )
@@ -454,6 +512,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--init-model', type=Path, default=None)
     parser.add_argument('--cooldown-mask', action='store_true')
     parser.add_argument('--new-inputs-only', action='store_true')
+    parser.add_argument(
+        "--boss-curriculum",
+        type=float,
+        default=0.0,
+        help="Fraction of training episodes that start at a boss phase",
+    )
+    parser.add_argument(
+        "--curriculum-phases",
+        default="3",
+        help="Comma-separated boss phases sampled by the training curriculum",
+    )
     return parser
 
 
@@ -482,6 +551,12 @@ def main() -> None:
             init_model=args.init_model,
             cooldown_mask=args.cooldown_mask,
             new_inputs_only=args.new_inputs_only,
+            boss_curriculum=args.boss_curriculum,
+            curriculum_phases=tuple(
+                int(value.strip())
+                for value in args.curriculum_phases.split(",")
+                if value.strip()
+            ),
         )
 
 

@@ -26,7 +26,9 @@ from arena.environment import (
 )
 from arena.renderer import ArenaRenderer
 from arena.settings import (
+    ARENA_EVIDENCE_DIR,
     ARENA_LOG_DIR,
+    ARENA_TRAINING_DIR,
     PROJECT_ROOT,
     TENSORBOARD_DIR,
     ensure_artifact_directories,
@@ -36,8 +38,6 @@ from arena.settings import (
 
 
 TENSORBOARD_RUN_STEMS = (
-    "dqn_direct",
-    "dqn_rotation",
     "tune_direct_fast_exploration",
     "tune_direct_balanced",
     "tune_direct_long_exploration",
@@ -55,22 +55,59 @@ def _selected_run_stem(style: str) -> str:
     return f'dqn_{style}'
 
 
+def _selected_run_dir(style: str) -> Path:
+    return ARENA_TRAINING_DIR / _selected_run_stem(style)
+
+
+def _final_benchmark_paths(style: str) -> tuple[Path, Path]:
+    """Find the current revalidated benchmark named in final metadata."""
+
+    with metadata_path(style).open("r", encoding="utf-8") as source:
+        metadata = json.load(source)
+    recorded = metadata.get("holdout_evaluation")
+    if recorded:
+        json_path = Path(str(recorded))
+        if not json_path.is_absolute():
+            json_path = PROJECT_ROOT / json_path
+        return json_path.with_suffix(".csv"), json_path
+    stem = _selected_run_dir(style) / "benchmark"
+    return stem.with_suffix(".csv"), stem.with_suffix(".json")
+
+
+def _boss_focus_paths(style: str) -> tuple[Path, Path] | None:
+    """Return the optional fixed-boss evaluation recorded by final metadata."""
+
+    with metadata_path(style).open("r", encoding="utf-8") as source:
+        metadata = json.load(source)
+    recorded = metadata.get("boss_focus_evaluation")
+    if not recorded:
+        return None
+    json_path = Path(str(recorded))
+    if not json_path.is_absolute():
+        json_path = PROJECT_ROOT / json_path
+    return json_path.with_suffix(".csv"), json_path
+
+
 def required_artifacts() -> list[Path]:
     paths: list[Path] = []
     for style in ("direct", "rotation"):
-        run_dir = ARENA_LOG_DIR / "runs" / _selected_run_stem(style)
+        run_dir = _selected_run_dir(style)
+        benchmark_csv, benchmark_json = _final_benchmark_paths(style)
         paths.extend(
             [
                 model_path(style),
                 metadata_path(style),
                 run_dir / "training.monitor.csv",
                 run_dir / "training_curve.png",
-                run_dir / "benchmark.csv",
-                run_dir / "benchmark.json",
+                benchmark_csv,
+                benchmark_json,
                 run_dir / "summary.json",
                 run_dir / "model_selection.json",
             ]
         )
+        boss_focus = _boss_focus_paths(style)
+        if boss_focus:
+            paths.extend(boss_focus)
     paths.extend(
         [
             ARENA_LOG_DIR / "tuning" / "hyperparameter_results.csv",
@@ -154,12 +191,12 @@ def _load_final_metadata() -> list[dict[str, Any]]:
 
 
 def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
-    csv_path = ARENA_LOG_DIR / "control_style_comparison.csv"
+    csv_path = ARENA_EVIDENCE_DIR / "control_style_comparison.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as output:
         writer = csv.DictWriter(output, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    with (ARENA_LOG_DIR / "control_style_comparison.json").open(
+    with (ARENA_EVIDENCE_DIR / "control_style_comparison.json").open(
         "w", encoding="utf-8"
     ) as output:
         json.dump({"control_styles": rows}, output, indent=2)
@@ -184,7 +221,7 @@ def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
             axis.set_yticks([0, 0.25, 0.5, 0.75, 1.0], ["0%", "25%", "50%", "75%", "100%"])
     figure.suptitle("Final Part II deterministic policy comparison")
     figure.tight_layout()
-    figure.savefig(ARENA_LOG_DIR / "control_style_comparison.png", dpi=180)
+    figure.savefig(ARENA_EVIDENCE_DIR / "control_style_comparison.png", dpi=180)
     plt.close(figure)
 
     figure, axis = plt.subplots(figsize=(8.6, 4.8))
@@ -212,7 +249,7 @@ def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
     axis.legend()
     axis.grid(axis="y", alpha=0.2)
     figure.tight_layout()
-    figure.savefig(ARENA_LOG_DIR / "boss_avoidance_comparison.png", dpi=180)
+    figure.savefig(ARENA_EVIDENCE_DIR / "boss_avoidance_comparison.png", dpi=180)
     plt.close(figure)
 
 
@@ -242,7 +279,7 @@ def _write_learning_baseline(final_rows: list[dict[str, Any]]) -> None:
         write_benchmark(
             random_rows,
             random_aggregate,
-            ARENA_LOG_DIR / f"random_baseline_{style}",
+            ARENA_EVIDENCE_DIR / f"random_baseline_{style}",
         )
         trained = next(row for row in final_rows if row["control_style"] == style)
         comparisons.append(
@@ -254,7 +291,7 @@ def _write_learning_baseline(final_rows: list[dict[str, Any]]) -> None:
                 "trained_phase_progression_rate": trained["phase_progression_rate"],
             }
         )
-    with (ARENA_LOG_DIR / "learning_vs_random.json").open("w", encoding="utf-8") as output:
+    with (ARENA_EVIDENCE_DIR / "learning_vs_random.json").open("w", encoding="utf-8") as output:
         json.dump({"comparisons": comparisons}, output, indent=2)
 
     figure, axes = plt.subplots(1, 2, figsize=(10.5, 4.5))
@@ -275,7 +312,7 @@ def _write_learning_baseline(final_rows: list[dict[str, Any]]) -> None:
     axes[0].legend()
     figure.suptitle("Learned policies versus seeded random-action baselines")
     figure.tight_layout()
-    figure.savefig(ARENA_LOG_DIR / "learning_vs_random.png", dpi=180)
+    figure.savefig(ARENA_EVIDENCE_DIR / "learning_vs_random.png", dpi=180)
     plt.close(figure)
 
 
@@ -329,12 +366,12 @@ def _capture_environment_preview() -> None:
         renderer.render(
             footer_text="PART II ENVIRONMENT  •  continuous motion  •  live collision and health systems"
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "environment_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "environment_showcase.png")
         renderer.render(
             footer_text="GAME PAUSED  •  P or RESUME continues",
             paused=True,
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "pause_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "pause_showcase.png")
         env.upgrade_banner_steps = max(
             1,
             int(float(env.progression_cfg["upgrade_banner_seconds"]) * env.fps),
@@ -342,7 +379,7 @@ def _capture_environment_preview() -> None:
         renderer.render(
             footer_text="COMBAT XP  •  composed build upgrades  •  required action sets unchanged"
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "upgrade_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "upgrade_showcase.png")
         env.upgrade_banner_steps = 0
         env.phase = 3
         env.spawners = []
@@ -356,7 +393,7 @@ def _capture_environment_preview() -> None:
             footer_text="BOSS TRANSITION  •  animated threat warning before deployment"
         )
         pygame.image.save(
-            renderer.surface, ARENA_LOG_DIR / "boss_transition_showcase.png"
+            renderer.surface, ARENA_EVIDENCE_DIR / "boss_transition_showcase.png"
         )
         env.phase_transition_steps = 0
         env.manual_choices = True
@@ -373,7 +410,7 @@ def _capture_environment_preview() -> None:
         renderer.render(
             footer_text="CLEAR UPGRADE PREVIEW  •  current build compared with the exact result"
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "choice_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "choice_showcase.png")
         env.pending_choice_kind = None
         env.pending_choices = []
         env.upgrade_banner_steps = 0
@@ -389,7 +426,7 @@ def _capture_environment_preview() -> None:
         renderer.render(
             footer_text="BOSS PHASE  •  readable diagonal warning  •  move before impact"
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "boss_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "boss_showcase.png")
 
         env.phase = 4
         env.spawners = []
@@ -401,7 +438,7 @@ def _capture_environment_preview() -> None:
         renderer.render(
             footer_text="RIFT HUNTER  •  optional miniboss  •  XP + repair + Aegis cache"
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "miniboss_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "miniboss_showcase.png")
 
         boss_catalog = [dict(item) for item in env.progression_cfg["boss_reward_catalog"]]
         env.pending_choice_kind = "boss_reward"
@@ -409,7 +446,7 @@ def _capture_environment_preview() -> None:
         renderer.render(
             footer_text="BOSS RELIC DRAFT  •  lasting rewards match the encounter risk"
         )
-        pygame.image.save(renderer.surface, ARENA_LOG_DIR / "boss_reward_showcase.png")
+        pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "boss_reward_showcase.png")
     finally:
         renderer.close()
         env.close()
@@ -432,7 +469,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "The preserved three-profile sweep is historical schema-5 evidence; final schema-7 balance comparisons are in balance_experiment/ and the pre-balance safety audit is in safety_experiment/.",
+        "note": "Final schema-8 evidence includes revalidated models, a boss-focused curriculum for direct control, and fixed-seed checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events
@@ -458,7 +495,7 @@ def build() -> None:
             "learning_vs_random.png",
         ],
     }
-    with (ARENA_LOG_DIR / "evidence_manifest.json").open("w", encoding="utf-8") as output:
+    with (ARENA_EVIDENCE_DIR / "evidence_manifest.json").open("w", encoding="utf-8") as output:
         json.dump(manifest, output, indent=2)
     print(
         f"Part II evidence ready: {len(required_artifacts())} required files and "

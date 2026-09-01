@@ -9,7 +9,7 @@
   "boss_curriculum_phases": [
     3
   ],
-  "run_name": "final_direct",
+  "run_name": "boss_dodge_direct_400k_s31100",
   "control_style": "direct",
   "profile": "boss_dodge",
   "total_timesteps": 400000,
@@ -111,7 +111,7 @@
     256,
     256
   ],
-  "selected_checkpoint": "boss_dodge_direct_400k_s31100_400000_steps.zip",
+  "selected_checkpoint": "eval_callback_best",
   "checkpoint_candidates": [
     {
       "candidate": "last",
@@ -851,230 +851,230 @@
   },
   "benchmark": {
     "control_style": "direct",
-    "damage_per_1000_frames": 36.317119572407584,
-    "contacts_per_1000_frames": 2.903976926944143,
-    "mean_crowd_fraction": 0.20615503743252261,
-    "mean_wall_fraction": 0.1608784169258657,
-    "mean_enemy_clearance": 108.99065539778225,
-    "mean_simulation_steps": 5039.066666666667,
-    "episodes": 30,
+    "damage_per_1000_frames": 46.69630070928364,
+    "contacts_per_1000_frames": 3.5070759754055056,
+    "mean_crowd_fraction": 0.26634265126175827,
+    "mean_wall_fraction": 0.261622546983331,
+    "mean_enemy_clearance": 92.83115346818036,
+    "mean_simulation_steps": 4448.15,
+    "episodes": 20,
     "action_repeat": 4,
-    "seed_start": 93000,
+    "seed_start": 41100,
     "deterministic": true,
     "reset_options": {},
-    "mean_reward": 846.128405,
-    "reward_std": 1130.606256,
-    "mean_phase": 7.7333,
-    "max_phase": 34,
+    "mean_reward": 645.854841,
+    "reward_std": 786.324018,
+    "mean_phase": 6.75,
+    "max_phase": 24,
     "phase_progression_rate": 1.0,
-    "survival_rate": 0.033333,
-    "mean_enemies_destroyed": 117.4333,
-    "mean_spawners_destroyed": 22.5667,
-    "mean_damage_taken": 183.0044,
-    "mean_accuracy": 0.920846,
-    "mean_hits_per_projectile": 0.934777,
-    "mean_player_level": 5.9333,
-    "max_player_level": 16,
-    "mean_xp_earned": 1933.5667,
-    "mean_bosses_destroyed": 1.9333,
-    "mean_minibosses_destroyed": 2.0333,
-    "mean_boss_skills_dodged": 6.1333,
-    "mean_boss_skill_hits": 0.3333,
-    "mean_drone_level": 2.2667,
-    "mean_upgrades_chosen": 4.9333,
+    "survival_rate": 0.0,
+    "mean_enemies_destroyed": 91.9,
+    "mean_spawners_destroyed": 18.4,
+    "mean_damage_taken": 207.7122,
+    "mean_accuracy": 0.956474,
+    "mean_hits_per_projectile": 0.981192,
+    "mean_player_level": 5.35,
+    "max_player_level": 13,
+    "mean_xp_earned": 1530.65,
+    "mean_bosses_destroyed": 1.65,
+    "mean_minibosses_destroyed": 1.15,
+    "mean_boss_skills_dodged": 5.4,
+    "mean_boss_skill_hits": 0.45,
+    "mean_drone_level": 1.3,
+    "mean_upgrades_chosen": 4.35,
     "phase_diagnostics": {
       "1": {
-        "frames": 7580.0,
-        "damage": 84.0,
-        "contacts": 6.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 11.08179419525066,
-        "contacts_per_1000_frames": 0.7915567282321899
-      },
-      "2": {
-        "frames": 13831.0,
-        "damage": 372.00800000000004,
-        "contacts": 25.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 26.896681367941586,
-        "contacts_per_1000_frames": 1.8075338008820765
-      },
-      "3": {
-        "frames": 14840.0,
-        "damage": 204.37760000000003,
-        "contacts": 20.0,
-        "boss_casts": 68.0,
-        "boss_hits": 4.0,
-        "boss_dodges": 53.0,
-        "damage_per_1000_frames": 13.772075471698116,
-        "contacts_per_1000_frames": 1.3477088948787062
-      },
-      "4": {
-        "frames": 28488.0,
-        "damage": 1304.5760000000002,
-        "contacts": 107.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 45.79387812412244,
-        "contacts_per_1000_frames": 3.7559674248806516
-      },
-      "5": {
-        "frames": 16081.0,
-        "damage": 544.8519999999999,
-        "contacts": 42.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 33.88172377339717,
-        "contacts_per_1000_frames": 2.6117778745102918
-      },
-      "6": {
-        "frames": 13344.0,
-        "damage": 777.7680000000001,
-        "contacts": 63.0,
-        "boss_casts": 67.0,
-        "boss_hits": 3.0,
-        "boss_dodges": 49.0,
-        "damage_per_1000_frames": 58.28597122302159,
-        "contacts_per_1000_frames": 4.721223021582734
-      },
-      "7": {
-        "frames": 9420.0,
-        "damage": 562.4639999999999,
-        "contacts": 37.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 59.70955414012739,
-        "contacts_per_1000_frames": 3.9278131634819533
-      },
-      "8": {
-        "frames": 6872.0,
-        "damage": 161.28000000000003,
-        "contacts": 14.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 23.469150174621657,
-        "contacts_per_1000_frames": 2.0372526193247964
-      },
-      "9": {
-        "frames": 6137.0,
-        "damage": 288.28799999999995,
-        "contacts": 27.0,
-        "boss_casts": 32.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 28.0,
-        "damage_per_1000_frames": 46.975395144207255,
-        "contacts_per_1000_frames": 4.399543751018413
-      },
-      "10": {
-        "frames": 7580.0,
-        "damage": 86.632,
-        "contacts": 11.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 11.429023746701848,
-        "contacts_per_1000_frames": 1.4511873350923483
-      },
-      "11": {
-        "frames": 5225.0,
-        "damage": 78.39999999999999,
+        "frames": 6228.0,
+        "damage": 140.0,
         "contacts": 10.0,
         "boss_casts": 0.0,
         "boss_hits": 0.0,
         "boss_dodges": 0.0,
-        "damage_per_1000_frames": 15.004784688995212,
-        "contacts_per_1000_frames": 1.9138755980861244
+        "damage_per_1000_frames": 22.4791265253693,
+        "contacts_per_1000_frames": 1.6056518946692357
+      },
+      "2": {
+        "frames": 9844.0,
+        "damage": 380.016,
+        "contacts": 26.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 38.60381958553434,
+        "contacts_per_1000_frames": 2.6412027631044293
+      },
+      "3": {
+        "frames": 13920.0,
+        "damage": 145.74336,
+        "contacts": 7.0,
+        "boss_casts": 64.0,
+        "boss_hits": 4.0,
+        "boss_dodges": 50.0,
+        "damage_per_1000_frames": 10.47006896551724,
+        "contacts_per_1000_frames": 0.5028735632183908
+      },
+      "4": {
+        "frames": 17870.0,
+        "damage": 1184.5456,
+        "contacts": 95.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 66.28682708449915,
+        "contacts_per_1000_frames": 5.316172355903749
+      },
+      "5": {
+        "frames": 9140.0,
+        "damage": 441.72799999999995,
+        "contacts": 34.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 48.329102844638946,
+        "contacts_per_1000_frames": 3.719912472647702
+      },
+      "6": {
+        "frames": 6654.0,
+        "damage": 501.04,
+        "contacts": 31.0,
+        "boss_casts": 32.0,
+        "boss_hits": 2.0,
+        "boss_dodges": 27.0,
+        "damage_per_1000_frames": 75.2990682296363,
+        "contacts_per_1000_frames": 4.658851818455065
+      },
+      "7": {
+        "frames": 5364.0,
+        "damage": 395.7212,
+        "contacts": 36.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 73.77352721849367,
+        "contacts_per_1000_frames": 6.7114093959731544
+      },
+      "8": {
+        "frames": 2562.0,
+        "damage": 197.12,
+        "contacts": 16.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 76.93989071038251,
+        "contacts_per_1000_frames": 6.24512099921936
+      },
+      "9": {
+        "frames": 2584.0,
+        "damage": 244.38879999999997,
+        "contacts": 12.0,
+        "boss_casts": 14.0,
+        "boss_hits": 2.0,
+        "boss_dodges": 10.0,
+        "damage_per_1000_frames": 94.57770897832818,
+        "contacts_per_1000_frames": 4.643962848297214
+      },
+      "10": {
+        "frames": 2360.0,
+        "damage": 114.24,
+        "contacts": 14.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 48.40677966101695,
+        "contacts_per_1000_frames": 5.932203389830509
+      },
+      "11": {
+        "frames": 2196.0,
+        "damage": 78.39999999999999,
+        "contacts": 5.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 35.701275045537336,
+        "contacts_per_1000_frames": 2.276867030965392
       },
       "12": {
-        "frames": 3987.0,
-        "damage": 473.39200000000005,
-        "contacts": 23.0,
-        "boss_casts": 24.0,
-        "boss_hits": 2.0,
-        "boss_dodges": 16.0,
-        "damage_per_1000_frames": 118.73388512666166,
-        "contacts_per_1000_frames": 5.768748432405317
+        "frames": 1363.0,
+        "damage": 145.15200000000002,
+        "contacts": 10.0,
+        "boss_casts": 8.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 6.0,
+        "damage_per_1000_frames": 106.49449743213502,
+        "contacts_per_1000_frames": 7.336757153338224
       },
       "13": {
-        "frames": 2415.0,
-        "damage": 145.04,
-        "contacts": 13.0,
+        "frames": 492.0,
+        "damage": 0.0,
+        "contacts": 0.0,
         "boss_casts": 0.0,
         "boss_hits": 0.0,
         "boss_dodges": 0.0,
-        "damage_per_1000_frames": 60.05797101449275,
-        "contacts_per_1000_frames": 5.383022774327122
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
       },
       "14": {
-        "frames": 1363.0,
-        "damage": 127.68,
-        "contacts": 6.0,
+        "frames": 472.0,
+        "damage": 0.0,
+        "contacts": 1.0,
         "boss_casts": 0.0,
         "boss_hits": 0.0,
         "boss_dodges": 0.0,
-        "damage_per_1000_frames": 93.67571533382245,
-        "contacts_per_1000_frames": 4.402054292002934
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 2.1186440677966103
       },
       "15": {
-        "frames": 708.0,
+        "frames": 824.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 6.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 5.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.2135922330097086
+      },
+      "16": {
+        "frames": 1844.0,
+        "damage": 0.0,
+        "contacts": 2.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.0845986984815619
+      },
+      "17": {
+        "frames": 1000.0,
+        "damage": 58.548,
+        "contacts": 2.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 58.548,
+        "contacts_per_1000_frames": 2.0
+      },
+      "18": {
+        "frames": 660.0,
         "damage": 0.0,
         "contacts": 1.0,
         "boss_casts": 5.0,
         "boss_hits": 0.0,
         "boss_dodges": 4.0,
         "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 1.4124293785310735
-      },
-      "16": {
-        "frames": 580.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "17": {
-        "frames": 440.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "18": {
-        "frames": 728.0,
-        "damage": 0.0,
-        "contacts": 1.0,
-        "boss_casts": 6.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 4.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 1.3736263736263736
+        "contacts_per_1000_frames": 1.5151515151515151
       },
       "19": {
-        "frames": 592.0,
+        "frames": 488.0,
         "damage": 0.0,
-        "contacts": 0.0,
+        "contacts": 1.0,
         "boss_casts": 0.0,
         "boss_hits": 0.0,
         "boss_dodges": 0.0,
         "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
+        "contacts_per_1000_frames": 2.0491803278688523
       },
       "20": {
-        "frames": 428.0,
+        "frames": 416.0,
         "damage": 0.0,
         "contacts": 0.0,
         "boss_casts": 0.0,
@@ -1084,152 +1084,46 @@
         "contacts_per_1000_frames": 0.0
       },
       "21": {
-        "frames": 696.0,
-        "damage": 0.0,
-        "contacts": 7.0,
-        "boss_casts": 6.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 3.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 10.057471264367816
-      },
-      "22": {
-        "frames": 448.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "23": {
-        "frames": 408.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "24": {
-        "frames": 672.0,
+        "frames": 972.0,
         "damage": 0.0,
         "contacts": 1.0,
-        "boss_casts": 5.0,
+        "boss_casts": 8.0,
         "boss_hits": 0.0,
-        "boss_dodges": 3.0,
+        "boss_dodges": 6.0,
         "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 1.4880952380952381
+        "contacts_per_1000_frames": 1.02880658436214
       },
-      "25": {
-        "frames": 832.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "26": {
-        "frames": 800.0,
+      "22": {
+        "frames": 700.0,
         "damage": 0.0,
         "contacts": 2.0,
         "boss_casts": 0.0,
         "boss_hits": 0.0,
         "boss_dodges": 0.0,
         "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 2.5
+        "contacts_per_1000_frames": 2.857142857142857
       },
-      "27": {
-        "frames": 644.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 5.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 3.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "28": {
-        "frames": 616.0,
-        "damage": 0.0,
-        "contacts": 0.0,
+      "23": {
+        "frames": 836.0,
+        "damage": 51.800000000000004,
+        "contacts": 2.0,
         "boss_casts": 0.0,
         "boss_hits": 0.0,
         "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
+        "damage_per_1000_frames": 61.96172248803828,
+        "contacts_per_1000_frames": 2.3923444976076556
       },
-      "29": {
-        "frames": 600.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "30": {
-        "frames": 2196.0,
-        "damage": 0.0,
-        "contacts": 6.0,
-        "boss_casts": 18.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 14.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 2.73224043715847
-      },
-      "31": {
-        "frames": 388.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "32": {
-        "frames": 548.0,
-        "damage": 0.0,
-        "contacts": 0.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
-        "boss_dodges": 0.0,
-        "damage_per_1000_frames": 0.0,
-        "contacts_per_1000_frames": 0.0
-      },
-      "33": {
-        "frames": 1284.0,
-        "damage": 123.974,
-        "contacts": 8.0,
-        "boss_casts": 10.0,
+      "24": {
+        "frames": 174.0,
+        "damage": 75.8,
+        "contacts": 3.0,
+        "boss_casts": 1.0,
         "boss_hits": 1.0,
-        "boss_dodges": 7.0,
-        "damage_per_1000_frames": 96.55295950155764,
-        "contacts_per_1000_frames": 6.230529595015576
-      },
-      "34": {
-        "frames": 401.0,
-        "damage": 155.4,
-        "contacts": 9.0,
-        "boss_casts": 0.0,
-        "boss_hits": 0.0,
         "boss_dodges": 0.0,
-        "damage_per_1000_frames": 387.53117206982546,
-        "contacts_per_1000_frames": 22.443890274314214
+        "damage_per_1000_frames": 435.632183908046,
+        "contacts_per_1000_frames": 17.24137931034483
       }
-    },
-    "environment_schema": 8,
-    "model": "D:\\A3_Game&AI\\GAI-Ass3\\models\\arena\\dqn_direct.zip",
-    "model_sha256": "626a0cf382022c43de50a56a42d3b61bcee04212d8bb77cd62399bd26bfd126d",
-    "config_sha256": "a6c663beb94b0eab6c198d0e4bf0cea9b81cc10ecb47e5b319579bf6c15cc3ee",
-    "prefix_baseline": false,
-    "cooldown_mask": false
+    }
   },
   "boss_focus_benchmark": {
     "control_style": "direct",
@@ -1344,10 +1238,5 @@
     "gymnasium": "1.3.0",
     "stable_baselines3": "2.9.0",
     "torch": "2.13.0+cpu"
-  },
-  "promoted_from": "logs\\arena\\training\\final_direct\\checkpoints\\boss_dodge_direct_400k_s31100_400000_steps.zip",
-  "promoted_from_sha256": "626a0cf382022c43de50a56a42d3b61bcee04212d8bb77cd62399bd26bfd126d",
-  "holdout_evaluation": "logs\\arena\\evidence\\direct_schema8_final.json",
-  "boss_focus_evaluation": "logs\\arena\\evidence\\direct_schema8_boss_focus.json",
-  "promotion_mode": "validated_checkpoint"
+  }
 }

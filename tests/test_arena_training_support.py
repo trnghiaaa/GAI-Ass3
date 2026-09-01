@@ -8,10 +8,30 @@ import arena.evaluate_direct as evaluate_direct
 import arena.evaluate_rotation as evaluate_rotation
 from arena.environment import ArenaEnv, ROTATION_ACTIONS
 from arena.settings import training_settings
-from arena.wrappers import ActionRepeatWrapper
+from arena.wrappers import ActionRepeatWrapper, BossCurriculumWrapper
 
 
 class ArenaTrainingSupportTests(unittest.TestCase):
+    def test_boss_curriculum_only_changes_training_reset_phase(self) -> None:
+        base = ArenaEnv(control_style="direct")
+        env = BossCurriculumWrapper(base, probability=1.0, phases=(3,), seed=7)
+        try:
+            observation, info = env.reset(seed=12)
+            self.assertEqual(base.phase, 3)
+            self.assertTrue(base.is_boss_phase)
+            self.assertEqual(info["curriculum_start_phase"], 3)
+            self.assertEqual(observation.shape, base.observation_space.shape)
+        finally:
+            env.close()
+
+    def test_standard_reset_still_starts_at_phase_one(self) -> None:
+        env = ArenaEnv(control_style="direct")
+        try:
+            env.reset(seed=12)
+            self.assertEqual(env.phase, 1)
+        finally:
+            env.close()
+
     def test_action_repeat_accumulates_rewards_events_and_simulation_frames(self) -> None:
         base = ArenaEnv(
             control_style="rotation",

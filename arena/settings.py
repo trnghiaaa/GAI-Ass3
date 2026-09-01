@@ -12,6 +12,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_PATH = Path(__file__).with_name("config.json")
 ARENA_MODEL_DIR = PROJECT_ROOT / "models" / "arena"
 ARENA_LOG_DIR = PROJECT_ROOT / "logs" / "arena"
+ARENA_TRAINING_DIR = ARENA_LOG_DIR / "training"
+ARENA_EVIDENCE_DIR = ARENA_LOG_DIR / "evidence"
 TENSORBOARD_DIR = ARENA_LOG_DIR / "tensorboard"
 
 
@@ -60,12 +62,16 @@ def metadata_path(control_style: str, run_name: str | None = None) -> Path:
 def ensure_artifact_directories() -> None:
     ARENA_MODEL_DIR.mkdir(parents=True, exist_ok=True)
     ARENA_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    ARENA_TRAINING_DIR.mkdir(parents=True, exist_ok=True)
+    ARENA_EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
     TENSORBOARD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 __all__ = [
     "ARENA_LOG_DIR",
+    "ARENA_EVIDENCE_DIR",
     "ARENA_MODEL_DIR",
+    "ARENA_TRAINING_DIR",
     "CONFIG_PATH",
     "PROJECT_ROOT",
     "TENSORBOARD_DIR",

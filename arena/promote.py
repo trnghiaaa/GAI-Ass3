@@ -54,6 +54,7 @@ def _write_metadata(
             "promoted_from_sha256": _sha256(source),
             "holdout_evaluation": str(holdout),
             "promotion_mode": mode,
+            "selected_checkpoint": source.name,
         }
     )
     if run_name is not None:

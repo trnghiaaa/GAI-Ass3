@@ -1,7 +1,0 @@
-episode,seed,reward,phase,phases_advanced,simulation_steps,decisions,end_reason,survived_time_limit,enemies_destroyed,spawners_destroyed,damage_dealt,damage_taken,shots_fired,projectile_hits,accuracy,hits_per_projectile,player_level,xp_earned,weapon_name,upgrades_chosen,phase_rewards_chosen,bosses_destroyed,minibosses_destroyed,boss_skills_dodged,boss_skill_hits,boss_rewards_chosen,drone_level,barrier_charges,build_summary
-1,15100,236.783139,4,3,1822,456,player_destroyed,False,20,9,3244.4,204.528,201,127,0.631841,0.631841,5,700.0,Prism Laser,4,2,1,0,0,3,1,0,0,damage:1;multishot:2;laser:1
-2,15101,-31.512023,1,0,745,187,player_destroyed,False,5,0,275.0,112.0,26,11,0.423077,0.423077,1,40.0,Pulse Cannon,0,0,0,0,0,0,0,0,0,
-3,15102,23.921077,2,1,455,114,player_destroyed,False,1,2,437.5,110.824,18,16,0.888889,0.888889,2,103.0,Nova Payload,1,1,0,0,0,0,0,0,0,splash:1
-4,15103,56.130778,2,1,819,205,player_destroyed,False,4,4,979.0,153.384,56,43,0.767857,0.767857,3,197.0,Rapid Pulse,2,1,0,0,0,0,0,0,0,fire_rate:1
-5,15104,120.637032,3,2,1649,413,player_destroyed,False,16,5,1819.35,105.6,116,52,0.448276,0.448276,3,353.0,Multi-Beam Array,2,2,0,0,0,4,0,1,0,multishot:1;drone:1;critical:1
-6,15105,912.935102,9,8,8099,2025,player_destroyed,False,150,27,18537.3731,186.06,1373,443,0.322651,0.322651,10,2735.0,Prism Laser,9,6,2,1,0,1,2,3,0,damage:2;fire_rate:1;multishot:1;laser:1;splash:1;drone:3;critical:2

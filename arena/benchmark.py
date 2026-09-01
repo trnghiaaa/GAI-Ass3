@@ -36,6 +36,7 @@ def evaluate_model(
     action_repeat: int = 4,
     seed: int = 9000,
     deterministic: bool = True,
+    reset_options: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Evaluate one model and return per-episode rows plus aggregate metrics."""
 
@@ -47,7 +48,7 @@ def evaluate_model(
         env = ActionRepeatWrapper(
             ArenaEnv(control_style=control_style), repeat=action_repeat
         )
-        observation, _ = env.reset(seed=seed + episode)
+        observation, _ = env.reset(seed=seed + episode, options=reset_options)
         episode_reward = 0.0
         decisions = 0
         contacts = 0
@@ -153,6 +154,7 @@ def evaluate_model(
         "action_repeat": action_repeat,
         "seed_start": seed,
         "deterministic": deterministic,
+        "reset_options": dict(reset_options or {}),
         "mean_reward": round(fmean(rewards), 6),
         "reward_std": round(pstdev(rewards), 6),
         "mean_phase": round(fmean(phases), 4),

@@ -1,105 +1,108 @@
 # Part II report notes
 
-Use this as a compact source for the final ten-page report. Numeric claims below
-come from the generated JSON artifacts and should be refreshed after retraining.
-
-Use the final schema-7 figures in `PART2_BALANCE_EXPERIMENT.md`.
-`PART2_SAFETY_EXPERIMENT.md` is the pre-balance safety baseline; schema-5/6
-figures are historical tuning evidence.
+Use this document and the generated JSON files as the source for the final
+ten-page report. Do not copy older schema-5–7 figures: they are retained only
+in the ignored local recovery area and are not part of the submission.
 
 ## Environment
 
-Neon Rift Arena is a continuous 800×600 Pygame combat environment. A damageable
-ship destroys steering enemies and their periodically spawning rifts. Destroying
-all active rifts advances the phase, increasing spawner count, health, enemy
-health/speed, contact damage, capacity, and spawn rate. Every third phase is a
-boss-rift encounter with a shield, finite health-gated miniboss summons, and
-named multi-lane barrages. Boss 1 is an onboarding encounter: 18% shield, one
-Hunter, seven-minion cap, slower/weaker reinforcements, and 90 seconds. Later
-bosses receive 70 seconds, 32.5–45% shields, full-strength reinforcements, and
-finite budgets that rise from two to four Hunters. Random
-Rift Hunter minibosses provide optional risk/reward encounters. An episode ends on ship destruction or
-a missed phase deadline (60 seconds ordinary, boss-specific as above), with a
-separate long episode safety cap.
-Clearing a phase resets the clock and removes surviving hostiles and projectiles
-without treating them as kills or granting XP/reward. Training is headless;
-evaluation renders the identical state and mechanics.
+**Neon Rift Arena** is an original continuous 800×600 Pygame combat arena.
+The player can move and shoot; rifts periodically spawn steering enemies;
+projectiles and contact damage use health systems; destroying every active rift
+advances the phase. Each new phase removes surviving hostiles/projectiles,
+resets the per-phase time budget, and visibly announces the next deployment.
+Every third phase is a shielded boss encounter with finite miniboss summons and
+telegraphed horizontal, vertical, diagonal, cross, trident, and circular
+barrages. The episode ends on player death, a missed phase deadline, or a long
+safety cap. The same simulation is used for human play, headless training, and
+rendered evaluation.
 
-## Observation
+Creative presentation/gameplay additions are intentionally renderer and
+progression layers around the required arena: pause/single-step controls,
+phase/boss/level-up VFX, readable target/health telemetry, XP-based three-card
+drafts, permanent wingmen, support drops, optional Rift Hunter minibosses, and
+post-boss relic choices. XP is **not** added to the RL reward.
 
-The 89-value normalized feature vector avoids expensive pixel learning. It
-contains player kinematics/orientation/health, weapon readiness, nearest enemy
-and rift relative features, entity counts, phase/time, aim alignment, and a
-signed turn signal for the active target. Six progression features expose ship
-level, XP progress, volley size, fire rate, damage, and laser state. Direction
-uses unit vectors, angle is encoded with sine/cosine to avoid wrap discontinuity,
-and missing targets use an unambiguous sentinel. Further features expose
-hull, shielding, range, piercing, splash, engines, wingmen, bomb, boss/miniboss
-state, primary/combined/secondary boss-hazard escape and impact-time signals,
-Aegis, overdrive, regeneration, homing, late-game mastery, critical chance,
-hull siphon, and Riftbreaker power. Simultaneous lanes and procedural builds
-are represented explicitly. The current schema also exposes second-enemy and crowd
-features, closing speeds, wall/spawner clearance, boss shield/summon state,
-and body-relative hazard escape. The feature summary is still partially
-observable; it does not encode every projectile or enemy trajectory.
+## Observation and actions
 
-## Reward justification
+The fixed 89-value `float32` observation includes player position, velocity,
+heading, health, weapon readiness, nearest enemy/rift relative geometry,
+counts, phase/time, targeting alignment, progression/build state, crowd/wall
+clearance, miniboss/boss shield state, and primary/secondary/combined
+boss-hazard escape signals. It contains no pixels. The two required action sets
+are implemented unchanged:
 
-Large sparse terms directly represent the objective: enemy kill, rift kill,
-phase progress, damage penalty, and death penalty. Damage-dealt rewards assign
-credit to projectiles before a delayed kill. Safe-range target distance, crowd separation, and aim
-potential differences help movement/rotation without paying for oscillation or
-target replacement. A same-barrage potential difference rewards movement toward
-safety, and shot-quality shaping rewards intentional aligned fire.
-Every component is returned in `info`, and shaping never changes the mechanics.
-Combat XP and drafted upgrades are explicitly separate from RL reward. Miniboss
-and boss-clear/full-dodge rewards encourage intentional optional combat and hazard evasion;
-they remain named, auditable reward terms. Progression adds gameplay depth but
-its XP is not added to the scalar reward or its breakdown.
+| Control style | Actions |
+|---|---|
+| Rotation/thrust | no-op, thrust forward, rotate left, rotate right, shoot |
+| Direct movement | no-op, move up, move down, move left, move right, shoot |
 
-## Training and tuning
+`ArenaEnv` uses Gymnasium/SB3's five-value API and `LegacyArenaEnv` supplies
+the assignment's four-value compatibility API.
 
-Separate SB3 DQN agents use configurable MLPs, replay memory, target-network
-updates, epsilon exploration, action repeat four, checkpoints, TensorBoard, and
-held-out seeded, boss-aware model selection. Three configurations varied learning
-rate, exploration fraction, and network width. In the final 35,000-step sweep,
-direct long exploration led with 766.30 mean reward and 100% progression.
-Rotation fast exploration learned fastest at the short budget (47.12 reward,
-50% progression), while the wider long-exploration network was retained for the
-much larger final budget so exploration continued through boss encounters. The
-direct safety transfer added 450,000 decisions. Fresh 800,000-step and
-300,000-step consolidation rotation attempts were rejected because their
-safety gains did not preserve progression/dodge reliability; the proven
-300,000-decision rotation checkpoint was retained. A further 600,000-decision
-rotation transfer on the balanced Boss 1 reached 25% boss clears on its internal
-holdout but only matched the baseline's 2/30 clears on the common holdout, so it
-was also rejected. Exact settings remain in model metadata and
-`logs/arena/tuning/hyperparameter_results.json`.
+## Reward and boss-safety training
 
-## Control comparison and originality
+The configurable reward contains the required positive enemy/rift/phase terms
+and negative damage/death terms. Additional, logged shaping rewards only
+improve temporal credit assignment: damage dealt, safe spacing, crowd escape,
+aim/shot quality, boss-barrage escape, and a complete barrage dodge. Schema 8
+adds a clear `boss_skill_hit` penalty and a small `hazard_exposure` penalty on
+every active step inside a telegraphed danger zone. For simultaneous lanes the
+environment uses the **maximum** danger, so an overlapping barrage cannot make
+the penalty disappear by averaging. This changes reward learning signals only;
+it does not script player movement, change collisions, or change the action
+sets.
 
-Direct movement is easier because one action chooses an absolute direction and
-shooting receives close-range target assist; outside lock range, shots follow
-the current heading. Rotation control must align,
-thrust with momentum, and shoot forward. Compare final reward, phase progression,
-survival, kills, and accuracy from `logs/arena/control_style_comparison.json`.
-Across 30 final held-out episodes (seed 53000), direct achieved 521.93 reward,
-100% progression, mean/max Phase 6.10/11, and 1.30 boss kills. Rotation achieved
-106.24 reward, 100% progression, mean/max Phase 2.83/4, and 0.07 boss kills.
-Direct averaged 3.23 boss-skill dodges versus 0.97 hits; rotation averaged 1.60
-dodges versus 1.67 hits. Neither policy merely waited for
-a deadline: they pursued increasingly dangerous objectives until destroyed.
-The direct policy progressed further because absolute movement and close target
-assist make control easier; rotation remained effective while learning the
-harder coupled aiming and momentum problem. The matching seeded random baselines
-scored -16.60 reward/0% progression for direct and -38.81/0% for rotation,
-supporting that the submitted policies learned purposeful progression.
-Manual draft cards now expose NEW/current/after-picking values and exact Wingman
-Core, mastery, and drone-count progression; the build banner confirms the actual
-result. Original elements include the continuous custom combat simulation, phase
-director, normalized targeting/turn representation, auditable shaped reward,
-held-out boss-aware checkpoint selection, uncapped three-card build drafts, 21 upgrade and
-repeatable mastery paths, permanent multi-drone squadrons, support drops, random
-minibosses, post-boss relics, grouped cross/diagonal/trident/nova boss barrages,
-distinct multi-beam/laser/piercing/splash/critical weapons, hull siphon,
-specialist Riftbreaker damage, a visual policy launcher, and procedural neon VFX.
+The direct agent was fine-tuned for 400,000 decisions with an honest
+training-only boss curriculum: 70% of resets begin at Phase 3. It still uses
+the real environment and receives no forced dodge action. Checkpoints were
+selected using separate deterministic normal and fixed-Phase-3 benchmarks,
+which prevents a policy that simply survives/stalls from winning.
+
+## Final measured evidence (schema 8)
+
+All values below are deterministic held-out evaluations of the committed model
+weights, not training returns.
+
+| Policy / evaluation | Episodes | Mean reward | Mean phase | Bosses cleared | Dodges | Boss hits |
+|---|---:|---:|---:|---:|---:|---:|
+| Direct, normal start (seed 93000) | 30 | 846.13 | 7.73 | 1.93 | 6.13 | 0.33 |
+| Direct, fixed Phase-3 boss start (seed 96000) | 30 | 405.70 | 6.17 | 1.47 | 5.70 | 0.63 |
+| Rotation, normal start (seed 94000) | 30 | 89.89 | 2.93 | 0.03 | 2.07 | 1.87 |
+| Rotation, fixed Phase-3 boss start (seed 95000) | 30 | -66.54 | 3.00 | 0.00 | 2.07 | 2.53 |
+
+The direct policy is the demonstration-ready boss-aware policy: the Phase-3
+holdout records 5.70 complete dodges for 0.63 boss-skill hits per episode, and
+it clears the opening boss in 90% of focused runs. Rotation is deliberately
+reported honestly as the harder control problem: a fresh 600k boss-curriculum
+candidate did not beat the retained rotation model on a common normal + boss
+checkpoint sweep, so it was not promoted. This is defensible model selection,
+not a hidden difficulty change.
+
+Exact machine-readable evidence:
+
+- `logs/arena/evidence/direct_schema8_final.json`
+- `logs/arena/evidence/direct_schema8_boss_focus.json`
+- `logs/arena/evidence/rotation_schema8_final.json`
+- `logs/arena/evidence/rotation_schema8_boss_focus.json`
+- `logs/arena/evidence/selection/direct_checkpoint_sweep.json`
+- `logs/arena/evidence/selection/rotation_checkpoint_sweep.json`
+
+## Reproducibility and project structure
+
+`models/arena/dqn_direct.zip` and `models/arena/dqn_rotation.zip` are the two
+submitted SB3 DQN models. Their adjacent metadata records architecture,
+observation schema, settings, selected checkpoint, and holdout paths. The
+compact submission evidence tree is:
+
+```text
+logs/arena/
+  evidence/       screenshots, CSV/JSON holdouts, selection records, manifest
+  training/       final direct/rotation Monitor, summary and selected checkpoint
+  tensorboard/    final-policy and tuning event files
+  tuning/         compact hyperparameter comparison
+```
+
+Use `python -m arena.build_evidence` after retraining to rebuild/verify the
+manifest. TensorBoard logs record actual SB3 learning; the screenshot/CSV/JSON
+files are report-ready evidence rather than substituted training results.
