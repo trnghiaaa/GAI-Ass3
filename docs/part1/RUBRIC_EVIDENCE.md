@@ -110,6 +110,7 @@ Artifacts: baseline/intrinsic main models, per-seed evidence models, evidence PN
 - Progressive, purpose-built maps plus model/layout fingerprints that reject obsolete policies.
 - One-command evidence builder and automated rubric acceptance suite.
 - Entirely procedural original art; no external sprites or asset licences required.
+- Original in-memory procedural soundtrack and event-specific effects; no external audio assets or licences required.
 
 ## Verification commands
 

@@ -8,6 +8,16 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
+    "explorer.fileNesting.enabled": true,
+    "explorer.fileNesting.expand": false,
+    "explorer.fileNesting.patterns": {
+        "__init__.py": "__main__.py",
+        "app.py": "renderer.py, play.py",
+        "environment.py": "entities.py, legacy_api.py, wrappers.py",
+        "train.py": "cooldown.py, settings.py, tune.py",
+        "evaluate.py": "evaluate_direct.py, evaluate_rotation.py, benchmark.py",
+        "build_evidence.py": "compare_candidate.py, promote.py, select_checkpoint.py"
+    },
     "files.exclude": {
         "**/__pycache__": true,
         ".pytest_cache": true,

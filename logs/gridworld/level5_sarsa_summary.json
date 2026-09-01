@@ -7,44 +7,63 @@
         "episodes": 1000,
         "epsilon": 0.0,
         "fire_deaths": 0,
-        "mean_environment_reward": 2.906,
-        "mean_steps_on_victory": 35.71578947368421,
-        "monster_deaths": 50,
-        "score": [
-          0.95,
-          -0.0,
-          -50.0,
-          -35.71578947368421
-        ],
-        "seed": 5772,
-        "source": "current_saved_model",
-        "timeouts": 0,
-        "victories": 950,
-        "victory_rate": 0.95
-      },
-      {
-        "episodes": 1000,
-        "epsilon": 0.0,
-        "fire_deaths": 0,
         "mean_environment_reward": 2.943,
-        "mean_steps_on_victory": 39.89886480908153,
+        "mean_steps_on_victory": 40.26418988648091,
         "monster_deaths": 31,
         "score": [
           0.969,
           -0.0,
           -31.0,
-          -39.89886480908153
+          -40.26418988648091
         ],
-        "seed": 5772,
+        "seed": 1729,
         "source": "trained_candidate",
         "timeouts": 0,
         "victories": 969,
         "victory_rate": 0.969
+      },
+      {
+        "episodes": 1000,
+        "epsilon": 0.0,
+        "fire_deaths": 0,
+        "mean_environment_reward": 2.915,
+        "mean_steps_on_victory": 39.220356768100736,
+        "monster_deaths": 47,
+        "score": [
+          0.953,
+          -0.0,
+          -47.0,
+          -39.220356768100736
+        ],
+        "seed": 2718,
+        "source": "trained_candidate",
+        "timeouts": 0,
+        "victories": 953,
+        "victory_rate": 0.953
+      },
+      {
+        "episodes": 1000,
+        "epsilon": 0.0,
+        "fire_deaths": 0,
+        "mean_environment_reward": 2.91,
+        "mean_steps_on_victory": 37.199370409234,
+        "monster_deaths": 47,
+        "score": [
+          0.953,
+          -0.0,
+          -47.0,
+          -37.199370409234
+        ],
+        "seed": 3141,
+        "source": "trained_candidate",
+        "timeouts": 0,
+        "victories": 953,
+        "victory_rate": 0.953
       }
     ],
     "intrinsic_enabled": false,
     "level_id": 5,
-    "selected_seed": 5772,
+    "selected_seed": 1729,
     "selected_source": "trained_candidate",
     "selection_rule": "highest victory rate; then fewer timeouts, fewer monster deaths, and shorter successful paths",
     "validation_episodes": 1000,
@@ -63,9 +82,9 @@
     "intrinsic_strength": 0.0001,
     "max_steps": 400,
     "rolling_window": 50,
-    "seed": 5772
+    "seed": 1729
   },
-  "seed": 5772,
+  "seed": 1729,
   "state_schema": [
     "agent_row",
     "agent_column",
@@ -75,21 +94,21 @@
   ],
   "summary": {
     "episodes": 15000,
-    "first_success_episode": 75,
+    "first_success_episode": 196,
     "overall": {
-      "death_rate": 0.5046,
-      "mean_extrinsic_reward": 1.9286,
+      "death_rate": 0.5003333333333333,
+      "mean_extrinsic_reward": 1.9406,
       "mean_intrinsic_reward": 0.0,
-      "truncation_rate": 0.0041333333333333335,
-      "victory_rate": 0.4912666666666667
+      "truncation_rate": 0.0037333333333333333,
+      "victory_rate": 0.49593333333333334
     },
     "tail": {
-      "death_rate": 0.05,
-      "mean_extrinsic_reward": 2.9,
+      "death_rate": 0.01,
+      "mean_extrinsic_reward": 2.98,
       "mean_intrinsic_reward": 0.0,
-      "mean_steps_on_victory": 42.473684210526315,
+      "mean_steps_on_victory": 39.505050505050505,
       "truncation_rate": 0.0,
-      "victory_rate": 0.95
+      "victory_rate": 0.99
     },
     "tail_window": 100
   }

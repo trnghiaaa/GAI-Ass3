@@ -23,6 +23,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import pygame
 
+from gridworld.audio import GridworldAudio
 from gridworld.environment import (
     ACTION_NAMES,
     DOWN,
@@ -224,6 +225,8 @@ class GridworldApp:
     """One-window application that orchestrates all Part I experiences."""
 
     def __init__(self, max_steps: Optional[int] = None) -> None:
+        if os.environ.get("SDL_VIDEODRIVER") == "dummy":
+            os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
         pygame.init()
         pygame.font.init()
 
@@ -233,6 +236,8 @@ class GridworldApp:
         pygame.display.set_caption("Gridworld AI Lab - Part I")
         self.canvas = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT))
         self.clock = pygame.time.Clock()
+        self.audio = GridworldAudio()
+        self.audio.start_music()
         self.viewport = pygame.Rect(0, 0, VIRTUAL_WIDTH, VIRTUAL_HEIGHT)
         self.viewport_scale = 1.0
 
@@ -352,6 +357,7 @@ class GridworldApp:
             self._draw()
             self._present()
 
+        self.audio.close()
         pygame.quit()
 
     def _poll_events(self) -> None:
@@ -389,6 +395,14 @@ class GridworldApp:
         return (x, y)
 
     def _handle_key(self, event: pygame.event.Event) -> None:
+        if event.key == pygame.K_v:
+            enabled = self.audio.toggle()
+            status = "Audio on" if enabled and self.audio.available else "Audio muted"
+            if enabled and not self.audio.available:
+                status = "Audio device unavailable"
+            self._set_notice(status)
+            return
+
         if event.key == pygame.K_ESCAPE:
             if self.scene == "menu":
                 self.running = False
@@ -500,6 +514,7 @@ class GridworldApp:
             self._perform_step(action)
 
     def _handle_action(self, action: Tuple[Any, ...]) -> None:
+        self.audio.play("click", minimum_interval_ms=45)
         name = action[0]
         if name == "quit":
             self.running = False
@@ -739,6 +754,7 @@ class GridworldApp:
         self.move_anim = 1.0
         self.particles.clear()
         self._refresh_policy_cache()
+        self.audio.play("start")
 
     def _show_missing_model(
         self,
@@ -845,15 +861,25 @@ class GridworldApp:
 
         picked = self.info.get("picked_up")
         if picked:
+            self.audio.play(str(picked))
             reward_text = "" if picked == "key" else f"  +{float(reward):.0f} reward"
             self.event_text = f"Collected {picked}!{reward_text}"
             self.event_time = 2.0
             particle_color = COLORS["yellow"] if picked in ("key", "chest") else COLORS["green"]
             self._spawn_particles(tuple(self.env.agent_pos), particle_color, 18)
         elif self.info.get("blocked"):
+            self.audio.play("blocked", minimum_interval_ms=80)
             reason = str(self.info.get("blocked_reason") or "obstacle").capitalize()
             self.event_text = f"{reason} blocked the move - action still counted"
             self.event_time = 1.8
+        elif before_agent != tuple(self.env.agent_pos):
+            self.audio.play("move", minimum_interval_ms=45)
+
+        events = set(self.info.get("events", ()))
+        if "chest_locked" in events:
+            self.audio.play("locked", minimum_interval_ms=120)
+        if "monsters_moved" in events:
+            self.audio.play("monster", minimum_interval_ms=110)
 
         self._refresh_policy_cache()
 
@@ -878,6 +904,12 @@ class GridworldApp:
         self.result_kind = result_kind
         self.result_detail = detail
         self.paused = True
+        if result_kind == "victory":
+            self.audio.play("victory")
+        elif result_kind == "death":
+            self.audio.play("death")
+        elif result_kind in ("timeout", "error"):
+            self.audio.play("timeout")
         color = COLORS["green"] if result_kind == "victory" else COLORS["red"]
         if self.env is not None:
             self._spawn_particles(tuple(self.env.agent_pos), color, 32)
@@ -1289,7 +1321,7 @@ class GridworldApp:
             x += width + 10
 
         self._text(
-            "Mouse or keyboard: C Campaign  /  F Free Play  /  A AI Showcase  /  ESC Exit",
+            "Mouse or keyboard: C Campaign  /  F Free Play  /  A AI Showcase  /  V Audio  /  ESC Exit",
             (VIRTUAL_WIDTH // 2, 764),
             "small",
             COLORS["faint"],
@@ -2163,7 +2195,7 @@ class GridworldApp:
             legend_y = inspector_y + 170
         else:
             self._draw_manual_controls(status_y + 28)
-            legend_y = status_y + 155
+            legend_y = status_y + 180
 
         self._draw_legend(legend_y)
         if self.control_mode == "manual":
@@ -2183,6 +2215,7 @@ class GridworldApp:
             ("ARROWS / WASD", "Move one tile"),
             ("R", "Restart this level"),
             ("M / ESC", "Return to main menu"),
+            ("V", "Mute / unmute audio"),
         ]
         for index, (key, label) in enumerate(controls):
             row_y = y + 31 + index * 25
@@ -2191,7 +2224,7 @@ class GridworldApp:
 
         self._text(
             "Tip: a blocked move stays in place but still uses one action.",
-            (804, y + 112),
+            (804, y + 137),
             "tiny",
             COLORS["faint"],
             max_width=410,

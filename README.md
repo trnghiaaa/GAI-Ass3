@@ -87,6 +87,7 @@ The Part I launcher provides:
 - **AI Showcase** — select a saved Q-learning, SARSA, or intrinsic policy.
 - **RL Inspector** — inspect current-state Q-values and exact greedy ties.
 - **Policy Lens** — overlay learned actions on the grid.
+- original looping procedural music and event-specific sound effects, with `V` mute.
 - pause, single-step, playback speed, animated movement, particles, trails, responsive resizing, objective cards, and safe timeout/result screens.
 
 Manual controls:
@@ -100,6 +101,7 @@ Manual controls:
 | `.` or Right Arrow while paused | Single AI step |
 | `+` / `-` | Change AI playback speed |
 | `1` or `0` on an AI result screen | Reset replay speed to 1x |
+| V | Mute or unmute the procedural music and sound effects |
 | M or Esc | Menu |
 
 AI campaign transitions always begin the next level at 1x. The result screen also
