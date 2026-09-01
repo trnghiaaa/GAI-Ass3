@@ -6,7 +6,9 @@
             "type": "process",
             "command": "python",
             "args": [
-                "${workspaceFolder}/main.py"
+                "${workspaceFolder}/main.py",
+                "--part",
+                "1"
             ],
             "options": {
                 "cwd": "${workspaceFolder}",
@@ -19,6 +21,28 @@
                 "kind": "build",
                 "isDefault": true
             },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "clear": true
+            }
+        },
+        {
+            "label": "Part II: Run Neon Rift Arena (shell-safe)",
+            "type": "process",
+            "command": "python",
+            "args": [
+                "${workspaceFolder}/main.py",
+                "--part",
+                "2"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}",
+                "env": {
+                    "PYGAME_HIDE_SUPPORT_PROMPT": "1"
+                }
+            },
+            "problemMatcher": [],
             "presentation": {
                 "reveal": "always",
                 "panel": "dedicated",

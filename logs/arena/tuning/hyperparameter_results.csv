@@ -1,0 +1,7 @@
+control_style,profile,timesteps,learning_rate,exploration_fraction,network,mean_reward,reward_std,mean_phase,phase_progression_rate,survival_rate,mean_enemies_destroyed,mean_spawners_destroyed,mean_player_level,max_player_level,mean_xp_earned
+direct,fast_exploration,35000,0.0005,0.2,128x128,219.815851,321.162443,3.5,0.833333,0.0,32.6667,7.8333,4.0,10,688.0
+direct,balanced,35000,0.00025,0.3,256x256,251.932185,277.981128,4.0,1.0,0.0,34.0,8.6667,4.6667,10,770.3333
+direct,long_exploration,35000,0.00015,0.55,256x256,766.296569,869.625859,7.5,1.0,0.166667,115.6667,21.5,8.1667,17,2235.3333
+rotation,fast_exploration,35000,0.0005,0.2,128x128,47.116668,75.199892,1.6667,0.5,0.166667,17.0,2.3333,2.3333,4,234.3333
+rotation,balanced,35000,0.0002,0.5,256x256,95.95736,275.473731,2.1667,0.166667,0.0,21.5,3.6667,2.6667,9,409.5
+rotation,long_exploration,35000,0.00015,0.55,256x256,-0.288752,27.577707,1.3333,0.333333,0.0,3.1667,1.5,1.6667,2,86.1667

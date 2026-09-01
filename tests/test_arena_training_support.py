@@ -1,0 +1,94 @@
+"""Tests for Part II reward diagnostics and training wrappers."""
+
+import sys
+import unittest
+from unittest.mock import patch
+
+import arena.evaluate_direct as evaluate_direct
+import arena.evaluate_rotation as evaluate_rotation
+from arena.environment import ArenaEnv, ROTATION_ACTIONS
+from arena.settings import training_settings
+from arena.wrappers import ActionRepeatWrapper, BossCurriculumWrapper
+
+
+class ArenaTrainingSupportTests(unittest.TestCase):
+    def test_boss_curriculum_only_changes_training_reset_phase(self) -> None:
+        base = ArenaEnv(control_style="direct")
+        env = BossCurriculumWrapper(base, probability=1.0, phases=(3,), seed=7)
+        try:
+            observation, info = env.reset(seed=12)
+            self.assertEqual(base.phase, 3)
+            self.assertTrue(base.is_boss_phase)
+            self.assertEqual(info["curriculum_start_phase"], 3)
+            self.assertEqual(observation.shape, base.observation_space.shape)
+        finally:
+            env.close()
+
+    def test_standard_reset_still_starts_at_phase_one(self) -> None:
+        env = ArenaEnv(control_style="direct")
+        try:
+            env.reset(seed=12)
+            self.assertEqual(env.phase, 1)
+        finally:
+            env.close()
+
+    def test_action_repeat_accumulates_rewards_events_and_simulation_frames(self) -> None:
+        base = ArenaEnv(
+            control_style="rotation",
+            config_override={"simulation": {"max_steps": 20}},
+        )
+        env = ActionRepeatWrapper(base, repeat=4)
+        try:
+            env.reset(seed=3)
+            _, reward, terminated, truncated, info = env.step(
+                ROTATION_ACTIONS["ROTATE_RIGHT"]
+            )
+            self.assertFalse(terminated)
+            self.assertFalse(truncated)
+            self.assertEqual(base.step_count, 4)
+            self.assertEqual(info["action_repeat_frames"], 4)
+            self.assertAlmostEqual(reward, sum(info["reward_breakdown"].values()))
+            self.assertNotEqual(info["aim_improvement"], 0.0)
+        finally:
+            env.close()
+
+    def test_action_repeat_stops_immediately_at_episode_boundary(self) -> None:
+        base = ArenaEnv(config_override={"simulation": {"max_steps": 2}})
+        env = ActionRepeatWrapper(base, repeat=4)
+        try:
+            env.reset(seed=4)
+            _, _, terminated, truncated, info = env.step(0)
+            self.assertFalse(terminated)
+            self.assertTrue(truncated)
+            self.assertEqual(info["action_repeat_frames"], 2)
+            self.assertEqual(base.step_count, 2)
+        finally:
+            env.close()
+
+    def test_named_profiles_and_style_overrides_are_non_default_tuning(self) -> None:
+        direct = training_settings("direct", "balanced")
+        rotation = training_settings("rotation", "balanced")
+        fast = training_settings("direct", "fast_exploration")
+
+        self.assertEqual(direct["algorithm"], "DQN")
+        self.assertEqual(direct["net_arch"], [256, 256])
+        self.assertGreater(rotation["exploration_fraction"], direct["exploration_fraction"])
+        self.assertNotEqual(fast["learning_rate"], direct["learning_rate"])
+        self.assertNotEqual(fast["net_arch"], direct["net_arch"])
+
+    def test_dedicated_evaluators_forward_cli_options_and_lock_control_style(self) -> None:
+        options = ["--headless", "--episodes", "2", "--seed", "91"]
+        cases = ((evaluate_direct, "direct"), (evaluate_rotation, "rotation"))
+
+        for module, control_style in cases:
+            with self.subTest(control_style=control_style):
+                with patch.object(module, "evaluate_main") as evaluator:
+                    with patch.object(sys, "argv", [module.__name__, *options]):
+                        module.main()
+                evaluator.assert_called_once_with(
+                    options, forced_control_style=control_style
+                )
+
+
+if __name__ == "__main__":
+    unittest.main()

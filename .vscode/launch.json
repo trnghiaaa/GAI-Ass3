@@ -6,6 +6,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
+            "args": ["--part", "1"],
             "cwd": "${workspaceFolder}",
             "console": "internalConsole",
             "python": "python",
@@ -16,18 +17,15 @@
             }
         },
         {
-            "name": "Part I: Debug Gridworld",
+            "name": "Part II: Run Neon Rift Arena",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/main.py",
+            "args": ["--part", "2"],
             "cwd": "${workspaceFolder}",
-            "console": "internalConsole",
+            "console": "integratedTerminal",
             "python": "python",
-            "justMyCode": true,
-            "redirectOutput": true,
-            "env": {
-                "PYGAME_HIDE_SUPPORT_PROMPT": "1"
-            }
+            "justMyCode": true
         }
     ]
 }

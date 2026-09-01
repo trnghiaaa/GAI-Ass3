@@ -1,0 +1,705 @@
+"""Focused tests for the Part II arena mechanics."""
+
+import math
+import unittest
+
+from arena.entities import DangerZone, Enemy, Spawner
+from arena.environment import (
+    ArenaEnv,
+    DIRECT_ACTIONS,
+    ROTATION_ACTIONS,
+    ObservationIndex,
+)
+
+
+class ArenaEnvironmentTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.env = ArenaEnv(control_style="direct")
+        self.env.reset(seed=7)
+
+    def tearDown(self) -> None:
+        self.env.close()
+
+    def test_reset_creates_player_spawners_and_valid_observation(self) -> None:
+        observation, info = self.env.reset(seed=7)
+
+        self.assertTrue(self.env.observation_space.contains(observation))
+        self.assertEqual(observation.shape, self.env.observation_space.shape)
+        self.assertEqual(self.env.player.health, self.env.player.max_health)
+        self.assertEqual(info["phase"], 1)
+        self.assertEqual(len(self.env.spawners), 2)
+
+    def test_direct_movement_uses_continuous_coordinates(self) -> None:
+        start_x = self.env.player.x
+
+        self.env.step(DIRECT_ACTIONS["RIGHT"])
+
+        self.assertGreater(self.env.player.x, start_x)
+        self.assertAlmostEqual(
+            self.env.player.x - start_x,
+            float(self.env.player_cfg["direct_speed"]) / self.env.fps,
+        )
+
+    def test_rotation_controls_turn_and_thrust(self) -> None:
+        env = ArenaEnv(control_style="rotation")
+        try:
+            env.reset(seed=7)
+            initial_angle = env.player.angle
+            env.step(ROTATION_ACTIONS["ROTATE_RIGHT"])
+            self.assertGreater(env.player.angle % math.tau, initial_angle % math.tau)
+            env.step(ROTATION_ACTIONS["THRUST"])
+            self.assertGreater(math.hypot(env.player.vx, env.player.vy), 0.0)
+        finally:
+            env.close()
+
+    def test_spawner_periodically_creates_an_enemy(self) -> None:
+        self.env.spawners[0].spawn_cooldown_steps = 1
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+
+        self.assertEqual(info["enemies_spawned"], 1)
+        self.assertEqual(len(self.env.enemies), 1)
+
+    def test_enemy_navigates_toward_player(self) -> None:
+        enemy = Enemy(
+            x=100.0,
+            y=100.0,
+            radius=15.0,
+            entity_id=500,
+            max_health=50.0,
+            health=50.0,
+            speed=72.0,
+        )
+        self.env.enemies = [enemy]
+        before = math.hypot(enemy.x - self.env.player.x, enemy.y - self.env.player.y)
+
+        self.env.step(DIRECT_ACTIONS["NOOP"])
+
+        after = math.hypot(enemy.x - self.env.player.x, enemy.y - self.env.player.y)
+        self.assertLess(after, before)
+
+    def test_projectile_damages_and_destroys_enemy(self) -> None:
+        enemy = Enemy(
+            x=self.env.player.x + 80.0,
+            y=self.env.player.y,
+            radius=15.0,
+            entity_id=501,
+            max_health=25.0,
+            health=25.0,
+            speed=0.0,
+        )
+        self.env.enemies = [enemy]
+        self.env.player.angle = 0.0
+        self.env.step(DIRECT_ACTIONS["SHOOT"])
+
+        destroyed = 0
+        damage_reward_seen = False
+        for _ in range(12):
+            _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+            destroyed += info["enemies_destroyed"]
+            damage_reward_seen = damage_reward_seen or (
+                info["reward_breakdown"]["enemy_damage"] > 0
+            )
+            if destroyed:
+                break
+
+        self.assertEqual(destroyed, 1)
+        self.assertTrue(damage_reward_seen)
+        self.assertEqual(self.env.enemies, [])
+        self.assertEqual(self.env.episode_stats["enemies_destroyed"], 1)
+        self.assertEqual(self.env.episode_stats["projectile_hits"], 1)
+
+    def test_direct_shooting_uses_nearest_target_assist(self) -> None:
+        self.env.enemies = [
+            Enemy(
+                # A useful assist must reach beyond the old 160px radius.
+                x=self.env.player.x + 200.0,
+                y=self.env.player.y,
+                radius=15.0,
+                entity_id=991,
+                max_health=50.0,
+                health=50.0,
+                speed=0.0,
+            )
+        ]
+        self.env.player.angle = -math.pi / 2.0
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["SHOOT"])
+
+        self.assertTrue(info["shot_fired"])
+        self.assertAlmostEqual(self.env.player.angle, 0.0)
+        self.assertGreater(self.env.projectiles[0].vx, 0.0)
+        self.assertAlmostEqual(self.env.projectiles[0].vy, 0.0)
+
+    def test_destroying_last_spawner_advances_phase(self) -> None:
+        spawner = Spawner(
+            x=self.env.player.x + 80.0,
+            y=self.env.player.y,
+            radius=28.0,
+            entity_id=502,
+            max_health=25.0,
+            health=25.0,
+            spawn_cooldown_steps=999,
+        )
+        self.env.enemies = []
+        self.env.spawners = [spawner]
+        self.env.player.angle = 0.0
+        self.env.step(DIRECT_ACTIONS["SHOOT"])
+
+        phase_advanced = False
+        for _ in range(12):
+            _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+            phase_advanced = phase_advanced or info["phase_advanced"]
+            if phase_advanced:
+                break
+
+        self.assertTrue(phase_advanced)
+        self.assertEqual(self.env.phase, 2)
+        self.assertEqual(self.env.spawners, [])
+        self.assertGreater(self.env.phase_transition_steps, 0)
+
+    def test_enemy_contact_can_end_episode(self) -> None:
+        self.env.player.health = 10.0
+        self.env.enemies = [
+            Enemy(
+                x=self.env.player.x,
+                y=self.env.player.y,
+                radius=15.0,
+                entity_id=503,
+                max_health=50.0,
+                health=50.0,
+                speed=0.0,
+            )
+        ]
+
+        _, _, terminated, truncated, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+
+        self.assertTrue(terminated)
+        self.assertFalse(truncated)
+        self.assertEqual(info["episode_end"], "player_destroyed")
+        self.assertEqual(self.env.player.health, 0.0)
+
+    def test_maximum_step_count_truncates_episode(self) -> None:
+        env = ArenaEnv(
+            control_style="direct",
+            config_override={"simulation": {"max_steps": 2}},
+        )
+        try:
+            env.reset(seed=1)
+            _, _, terminated, truncated, _ = env.step(DIRECT_ACTIONS["NOOP"])
+            self.assertFalse(terminated)
+            self.assertFalse(truncated)
+            _, _, terminated, truncated, info = env.step(DIRECT_ACTIONS["NOOP"])
+            self.assertFalse(terminated)
+            self.assertTrue(truncated)
+            self.assertEqual(info["episode_end"], "safety_limit")
+        finally:
+            env.close()
+
+    def test_each_phase_has_its_own_deadline(self) -> None:
+        env = ArenaEnv(
+            control_style="direct",
+            config_override={
+                "simulation": {
+                    "phase_time_limit_seconds": 2 / 60,
+                    "max_steps": 20,
+                }
+            },
+        )
+        try:
+            env.reset(seed=2)
+            env.step(DIRECT_ACTIONS["NOOP"])
+            _, _, terminated, truncated, info = env.step(DIRECT_ACTIONS["NOOP"])
+            self.assertFalse(terminated)
+            self.assertTrue(truncated)
+            self.assertEqual(info["episode_end"], "phase_timeout")
+            self.assertEqual(info["phase_step"], 2)
+            self.assertEqual(info["phase_time_remaining"], 0.0)
+        finally:
+            env.close()
+
+    def test_phase_clear_resets_timer_and_removes_leftover_combatants(self) -> None:
+        enemy = Enemy(
+            x=100.0,
+            y=100.0,
+            radius=15.0,
+            entity_id=992,
+            max_health=50.0,
+            health=50.0,
+            speed=0.0,
+        )
+        self.env.enemies = [enemy]
+        self.env.spawners = []
+        self.env._fire_projectile(auto_aim=False)
+        self.env.phase_step_count = 120
+        xp_before = self.env.player.xp
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+
+        self.assertTrue(info["phase_advanced"])
+        self.assertEqual(info["enemies_dispersed"], 1)
+        self.assertGreaterEqual(info["projectiles_cleared"], 1)
+        self.assertEqual(self.env.enemies, [])
+        self.assertEqual(self.env.projectiles, [])
+        self.assertEqual(self.env.phase_step_count, 0)
+        self.assertEqual(
+            self.env.player.xp,
+            xp_before + float(self.env.progression_cfg["phase_xp"]),
+        )
+        self.assertEqual(self.env.episode_stats["enemies_destroyed"], 0)
+
+        transition_before = self.env.phase_transition_steps
+        self.env.step(DIRECT_ACTIONS["NOOP"])
+        self.assertEqual(self.env.phase_step_count, 0)
+        self.assertEqual(self.env.phase_transition_steps, transition_before - 1)
+
+    def test_selected_upgrades_compose_a_diverse_weapon_build(self) -> None:
+        self.env.upgrade_stacks.update(
+            {"multishot": 3, "laser": 1, "damage": 2, "range": 2,
+             "piercing": 1, "splash": 2, "fire_rate": 2}
+        )
+        profile = self.env.weapon_profile()
+        fired = self.env._fire_projectile(auto_aim=False)
+
+        self.assertEqual(profile["name"], "Prism Laser")
+        self.assertEqual(profile["kind"], "laser")
+        self.assertEqual(fired, 4)
+        self.assertGreater(profile["damage_multiplier"], 1.0)
+        self.assertGreater(profile["lifetime_multiplier"], 1.0)
+        self.assertEqual(profile["pierces"], 1)
+        self.assertGreater(profile["splash_radius"], 0.0)
+        self.assertTrue(all(item.weapon_kind == "laser" for item in self.env.projectiles))
+
+    def test_rotation_aim_assist_only_corrects_a_nearly_aligned_shot(self) -> None:
+        env = ArenaEnv(control_style="rotation")
+        try:
+            env.reset(seed=92)
+            target = env.spawners[0]
+            desired = math.atan2(target.y - env.player.y, target.x - env.player.x)
+            env.player.angle = desired + math.radians(6)
+            env._fire_projectile(auto_aim=False)
+            assisted = math.atan2(env.projectiles[-1].vy, env.projectiles[-1].vx)
+            self.assertAlmostEqual(assisted, desired, places=5)
+
+            env.projectiles.clear()
+            env.player.fire_cooldown_steps = 0
+            original = desired + math.radians(12)
+            env.player.angle = original
+            env._fire_projectile(auto_aim=False)
+            unassisted = math.atan2(env.projectiles[-1].vy, env.projectiles[-1].vx)
+            difference = (unassisted - original + math.pi) % math.tau - math.pi
+            self.assertAlmostEqual(difference, 0.0, places=5)
+        finally:
+            env.close()
+
+    def test_combat_xp_levels_up_without_changing_environment_reward(self) -> None:
+        events = {
+            "enemies_destroyed": 10,
+            "spawners_destroyed": 0,
+            "phase_advanced": False,
+        }
+        self.env._apply_combat_progression(events)
+        self.env._prepare_next_choice(events)
+
+        self.assertEqual(
+            events["xp_gained"],
+            10.0 * float(self.env.progression_cfg["enemy_xp"]),
+        )
+        self.assertEqual(events["levels_gained"], 1)
+        self.assertIsNotNone(events["upgrade_unlocked"])
+        self.assertIsNotNone(events["choice_selected"])
+        self.assertEqual(self.env.player.level, 2)
+        self.assertEqual(self.env.player.xp, events["xp_gained"])
+
+        reward_events = {
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
+            "enemies_destroyed": 0,
+            "spawners_destroyed": 0,
+            "phase_advanced": False,
+            "damage_taken": 0.0,
+            "spawner_progress": 0.0,
+            "aim_improvement": 0.0,
+            "shot_fired": False,
+            "shot_alignment": 0.0,
+            "xp_gained": 999.0,
+        }
+        _, breakdown = self.env._calculate_reward(reward_events, terminated=False)
+        self.assertNotIn("xp", breakdown)
+
+    def test_manual_level_up_pauses_until_one_of_three_cards_is_chosen(self) -> None:
+        env = ArenaEnv(control_style="direct", manual_choices=True)
+        try:
+            env.reset(seed=8)
+            events = {"choice_offered": None, "choice_selected": None, "upgrade_unlocked": None}
+            env._queue_choice("level_up")
+            env._prepare_next_choice(events)
+            self.assertEqual(env.pending_choice_kind, "level_up")
+            self.assertEqual(len(env.pending_choices), 3)
+            with self.assertRaises(RuntimeError):
+                env.step(DIRECT_ACTIONS["NOOP"])
+            selected = env.choose_pending_choice(0)
+            self.assertEqual(env.pending_choice_kind, None)
+            self.assertEqual(env.last_upgrade_name, selected["name"])
+        finally:
+            env.close()
+
+    def test_phase_reward_can_repair_arm_bomb_or_activate_wingman(self) -> None:
+        env = ArenaEnv(control_style="direct", manual_choices=True)
+        try:
+            env.reset(seed=9)
+            env.player.health = 20.0
+            catalog = {
+                item["id"]: item for item in env.progression_cfg["phase_reward_catalog"]
+            }
+            env.pending_choice_kind = "phase_reward"
+            env.pending_choices = [catalog["repair_cache"]]
+            env.choose_pending_choice(0)
+            self.assertGreater(env.player.health, 20.0)
+
+            env.pending_choice_kind = "phase_reward"
+            env.pending_choices = [catalog["nova_bomb"]]
+            env.choose_pending_choice(0)
+            self.assertTrue(env.nova_bomb_armed)
+
+            env.pending_choice_kind = "phase_reward"
+            env.pending_choices = [catalog["wingman"]]
+            env.choose_pending_choice(0)
+            self.assertTrue(env.support_drone_active)
+            self.assertEqual(env.drone_level, 1)
+        finally:
+            env.close()
+
+    def test_upgrade_cards_explain_current_and_next_tier_effects(self) -> None:
+        env = ArenaEnv(control_style="direct", manual_choices=True)
+        try:
+            env.reset(seed=91)
+            env.upgrade_stacks["multishot"] = 2
+            multishot = next(
+                item
+                for item in env.progression_cfg["upgrade_catalog"]
+                if item["id"] == "multishot"
+            )
+            env.pending_choice_kind = "level_up"
+            details = env.choice_card_details(multishot)
+            self.assertEqual(details["status"], "TIER 2 -> 3 / 6")
+            self.assertEqual(details["current"], "3 beams per volley")
+            self.assertEqual(details["after"], "4 beams per volley")
+
+            env.upgrade_stacks["drone"] = 3
+            wingman = next(
+                item
+                for item in env.progression_cfg["phase_reward_catalog"]
+                if item["id"] == "wingman"
+            )
+            env.pending_choice_kind = "phase_reward"
+            env.pending_choices = [wingman]
+            details = env.choice_card_details(wingman)
+            self.assertEqual(details["name"], "Wingman Core")
+            self.assertIn("Core T3", details["current"])
+            self.assertIn("1 drone(s)", details["current"])
+            self.assertIn("Core T4", details["after"])
+            self.assertIn("2 drone(s)", details["after"])
+
+            env.choose_pending_choice(0)
+            self.assertEqual(env.upgrade_stacks["drone"], 4)
+            self.assertIn("Core T4", env.last_upgrade_detail)
+        finally:
+            env.close()
+
+    def test_manual_phase_clear_opens_support_draft_before_next_assault(self) -> None:
+        env = ArenaEnv(control_style="direct", manual_choices=True)
+        try:
+            env.reset(seed=10)
+            env.spawners = []
+            _, _, _, _, info = env.step(DIRECT_ACTIONS["NOOP"])
+            self.assertTrue(info["phase_advanced"])
+            self.assertEqual(env.phase, 2)
+            self.assertEqual(env.pending_choice_kind, "phase_reward")
+            self.assertEqual(len(env.pending_choices), 3)
+            transition_before = env.phase_transition_steps
+            with self.assertRaises(RuntimeError):
+                env.step(DIRECT_ACTIONS["NOOP"])
+            self.assertEqual(env.phase_transition_steps, transition_before)
+        finally:
+            env.close()
+
+    def test_every_third_phase_spawns_a_boss_rift_and_elite_minions(self) -> None:
+        self.env.phase = 3
+        self.env.spawners = []
+        self.env._spawn_phase_spawners()
+        self.assertEqual(len(self.env.spawners), 1)
+        boss = self.env.spawners[0]
+        self.assertTrue(boss.is_boss)
+        self.assertGreater(boss.radius, float(self.env.spawner_cfg["radius"]))
+        self.env._spawn_enemy(boss)
+        self.assertTrue(self.env.enemies[-1].is_elite)
+
+    def test_hull_shield_and_engine_choices_have_real_gameplay_effects(self) -> None:
+        base_speed = float(self.env.player_cfg["direct_speed"])
+        self.env.upgrade_stacks["engine"] = 2
+        before_x = self.env.player.x
+        self.env.step(DIRECT_ACTIONS["RIGHT"])
+        self.assertAlmostEqual(
+            self.env.player.x - before_x, base_speed * 1.15 / self.env.fps
+        )
+
+        self.env.upgrade_stacks["shield"] = 2
+        self.env.player.health = self.env.player.max_health
+        self.env.enemies = [
+            Enemy(
+                x=self.env.player.x,
+                y=self.env.player.y,
+                radius=15,
+                entity_id=990,
+                max_health=50,
+                health=50,
+                speed=0,
+            )
+        ]
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["NOOP"])
+        unshielded = float(self.env.enemy_cfg["contact_damage"])
+        self.assertAlmostEqual(info["damage_taken"], unshielded * 0.8)
+
+    def test_combat_levels_continue_beyond_observation_normalization_cap(self) -> None:
+        events = {
+            "enemies_destroyed": 10000,
+            "spawners_destroyed": 0,
+            "phase_advanced": False,
+        }
+        self.env._apply_combat_progression(events)
+        self.assertGreater(self.env.player.level, self.env.maximum_player_level)
+        self.assertGreater(self.env.xp_to_next_level(), 0.0)
+        observation = self.env._get_observation()
+        self.assertEqual(observation[ObservationIndex.PLAYER_LEVEL], 1.0)
+
+    def test_boss_barrage_uses_multiple_lanes_but_hits_only_once(self) -> None:
+        events = {
+            "boss_skills_cast": 0,
+            "boss_skills_dodged": 0,
+            "boss_skill_hits": 0,
+            "barrier_blocks": 0,
+            "damage_taken": 0.0,
+            "player_hit": False,
+        }
+        self.env.spawners = []
+        self.env.danger_zones = [
+            DangerZone(
+                kind="circle",
+                x=self.env.player.x,
+                y=self.env.player.y,
+                radius=90,
+                telegraph_steps=1,
+                active_steps=2,
+                maximum_telegraph_steps=1,
+                damage=18,
+                attack_id=77,
+                attack_name="NOVA CAGE",
+            ),
+            DangerZone(
+                kind="line",
+                x=self.env.player.x,
+                y=self.env.player.y,
+                angle=0.0,
+                half_width=40,
+                half_length=500,
+                telegraph_steps=1,
+                active_steps=2,
+                maximum_telegraph_steps=1,
+                damage=18,
+                attack_id=77,
+                attack_name="NOVA CAGE",
+            ),
+        ]
+        health_before = self.env.player.health
+
+        self.env._update_boss_skills(events)
+
+        self.assertAlmostEqual(health_before - self.env.player.health, 18.0)
+        self.assertEqual(events["boss_skill_hits"], 1)
+        self.assertTrue(all(zone.hit_player for zone in self.env.danger_zones))
+
+    def test_boss_cast_creates_a_named_multi_zone_positioning_problem(self) -> None:
+        self.env.phase = 3
+        self.env.spawners = []
+        self.env._spawn_phase_spawners()
+        events = {"boss_skills_cast": 0}
+
+        self.env._cast_boss_skill(events)
+
+        self.assertEqual(events["boss_skills_cast"], 1)
+        self.assertGreaterEqual(len(self.env.danger_zones), 2)
+        self.assertEqual(len({zone.attack_id for zone in self.env.danger_zones}), 1)
+        self.assertTrue(all(zone.attack_name for zone in self.env.danger_zones))
+
+    def test_critical_leech_and_riftbreaker_upgrades_affect_combat(self) -> None:
+        self.env.upgrade_stacks.update({"critical": 5, "leech": 2, "riftbreaker": 3})
+        self.assertAlmostEqual(self.env.weapon_profile()["critical_chance"], 0.40)
+
+        self.env.player.health = 40.0
+        progression_events = {
+            "enemies_destroyed": 1,
+            "spawners_destroyed": 0,
+            "phase_advanced": False,
+            "minibosses_destroyed": 0,
+            "boss_phase_cleared": False,
+            "sustain_healed": 0.0,
+        }
+        self.env._apply_combat_progression(progression_events)
+        self.assertAlmostEqual(progression_events["sustain_healed"], 4.0)
+
+        target = Spawner(
+            x=100,
+            y=100,
+            radius=28,
+            entity_id=882,
+            max_health=500,
+            health=500,
+            spawn_cooldown_steps=999,
+        )
+        damage_events = {
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
+            "projectile_hits": 0,
+            "drone_hits": 0,
+            "impacts": [],
+        }
+        self.env._damage_target(
+            target,
+            100.0,
+            damage_events,
+            set(),
+            set(),
+            source="player",
+            count_hit=True,
+        )
+        self.assertAlmostEqual(target.health, 364.0)
+
+    def test_auto_draft_prioritizes_survival_and_boss_preparation(self) -> None:
+        catalog = {
+            item["id"]: item for item in self.env.progression_cfg["upgrade_catalog"]
+        }
+        self.env.pending_choice_kind = "level_up"
+        self.env.player.health = self.env.player.max_health * 0.2
+        self.env.pending_choices = [
+            catalog["repair"],
+            catalog["damage"],
+            catalog["riftbreaker"],
+        ]
+        self.assertEqual(self.env._auto_choice_index(), 0)
+
+        self.env.phase = 3
+        self.env.player.health = self.env.player.max_health
+        self.env.pending_choices = [
+            catalog["range"],
+            catalog["riftbreaker"],
+            catalog["hull_mastery"],
+        ]
+        self.assertEqual(self.env._auto_choice_index(), 1)
+
+    def test_manual_rotation_can_turn_and_fire_in_the_same_frame(self) -> None:
+        env = ArenaEnv(control_style="rotation", manual_choices=True)
+        try:
+            env.reset(seed=17)
+            initial_angle = env.player.angle
+            env.request_manual_fire()
+            _, _, _, _, info = env.step(ROTATION_ACTIONS["ROTATE_RIGHT"])
+            self.assertNotEqual(env.player.angle, initial_angle)
+            self.assertTrue(info["shot_fired"])
+            self.assertGreater(len(env.projectiles), 0)
+        finally:
+            env.close()
+
+    def test_miniboss_spawn_and_destroy_events_are_distinct(self) -> None:
+        self.env.phase = 2
+        self.env.spawners = []
+        events = {"minibosses_spawned": 0}
+        self.env.phase_cfg["miniboss_chance"] = 1.0
+        self.env._spawn_phase_spawners(events)
+        minibosses = [enemy for enemy in self.env.enemies if enemy.is_miniboss]
+        self.assertEqual(events["minibosses_spawned"], 1)
+        self.assertEqual(len(minibosses), 1)
+        self.assertGreater(minibosses[0].max_health, float(self.env.enemy_cfg["max_health"]))
+
+    def test_boss_telegraph_can_be_dodged_and_aegis_blocks_damage(self) -> None:
+        events = {
+            "boss_skills_cast": 0,
+            "boss_skills_dodged": 0,
+            "boss_skill_hits": 0,
+            "barrier_blocks": 0,
+            "damage_taken": 0.0,
+            "player_hit": False,
+        }
+        self.env.barrier_charges = 1
+        self.env.danger_zones = [
+            DangerZone(
+                kind="circle",
+                x=self.env.player.x,
+                y=self.env.player.y,
+                radius=80,
+                telegraph_steps=1,
+                active_steps=1,
+                maximum_telegraph_steps=1,
+                damage=50,
+            )
+        ]
+        health = self.env.player.health
+        self.env._update_boss_skills(events)
+        self.assertEqual(self.env.player.health, health)
+        self.assertEqual(events["barrier_blocks"], 1)
+        self.assertEqual(self.env.barrier_charges, 0)
+
+    def test_boss_channel_shield_keeps_special_attack_in_the_encounter(self) -> None:
+        self.env.phase = 3
+        self.env.spawners = []
+        self.env._spawn_phase_spawners()
+        boss = self.env.spawners[0]
+        skill_events = {"boss_skills_cast": 0}
+        self.env._cast_boss_skill(skill_events)
+        self.assertEqual(skill_events["boss_skills_cast"], 1)
+        self.assertGreater(self.env.danger_zones[0].telegraph_steps, 0)
+
+        damage_events = {
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
+            "projectile_hits": 0,
+            "drone_hits": 0,
+            "impacts": [],
+        }
+        health_before = boss.health + boss.shield
+        self.env._damage_target(
+            boss,
+            100.0,
+            damage_events,
+            set(),
+            set(),
+            source="player",
+            count_hit=True,
+        )
+        expected = 100.0 * float(self.env.phase_cfg["boss_channel_damage_multiplier"])
+        self.assertAlmostEqual(health_before - boss.health - boss.shield, expected)
+
+    def test_nova_bomb_damages_a_new_phase_without_changing_phase_rule(self) -> None:
+        events = {
+            "damage_dealt_enemy": 0.0,
+            "damage_dealt_spawner": 0.0,
+            "projectile_hits": 0,
+            "drone_hits": 0,
+            "impacts": [],
+            "enemies_destroyed": 0,
+            "spawners_destroyed": 0,
+            "nova_bomb_detonated": False,
+        }
+        self.env.phase = 2
+        self.env.spawners = []
+        self.env.nova_bomb_armed = True
+        self.env._spawn_phase_spawners(events)
+
+        self.assertTrue(events["nova_bomb_detonated"])
+        self.assertFalse(self.env.nova_bomb_armed)
+        self.assertEqual(len(self.env.spawners), 2)
+        self.assertTrue(all(item.health < item.max_health for item in self.env.spawners))
+
+
+if __name__ == "__main__":
+    unittest.main()

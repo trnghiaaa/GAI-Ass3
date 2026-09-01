@@ -1,15 +1,17 @@
-# Python bytecode & cache
+# Python cache and build artifacts
 __pycache__/
 *.py[cod]
-*$py.class
+*.egg-info/
+build/
+dist/
 
-# Environments
+# Virtual environments
 .venv/
-env/
 venv/
+env/
 ENV/
 
-# OS / Editor files
+# IDE and OS metadata
 .DS_Store
 Thumbs.db
 .vscode/*
@@ -17,3 +19,7 @@ Thumbs.db
 !.vscode/settings.json
 !.vscode/tasks.json
 .idea/
+
+# Local recovery area for superseded training artifacts. It is intentionally
+# excluded from the submission tree; use Git history or retraining as needed.
+.archive/
