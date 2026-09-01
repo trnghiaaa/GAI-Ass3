@@ -107,6 +107,30 @@ class ArenaApiTests(unittest.TestCase):
             renderer.close()
             env.close()
 
+    def test_episode_summary_has_replay_next_and_menu_click_targets(self) -> None:
+        env = ArenaEnv(render_mode=None)
+        env.reset(seed=45)
+        renderer = ArenaRenderer(env, mode="rgb_array")
+        try:
+            renderer.episode_end_has_next = True
+            rects = renderer.episode_end_button_rects()
+            self.assertEqual(set(rects), {"replay", "next", "menu"})
+            for action, rect in rects.items():
+                self.assertEqual(renderer.episode_end_action_at_position(rect.center), action)
+            self.assertIsNone(renderer.episode_end_action_at_position((0, 0)))
+
+            renderer.episode_end_has_next = False
+            self.assertEqual(
+                set(renderer.episode_end_button_rects()), {"replay", "menu"}
+            )
+            env.done = True
+            env.last_end_reason = "phase_timeout"
+            summary = renderer.render(process_events=False)
+            self.assertEqual(summary.shape, (env.height, env.width, 3))
+        finally:
+            renderer.close()
+            env.close()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -35,6 +35,17 @@ and 10% faster spawning. It returns to zero below 55% hull or 35% remaining
 time, is deterministically derived from already-observed health/time features,
 and is disabled for every boss. The HUD labels active pressure as `SURGE`.
 
+Bosses instead use a separate visible threat tier, not a fixed difficulty.
+Measured effective health rises from about 639 at Phase 3/Tier 1 to 894 at
+Phase 6/Tier 2, 1,122 at Phase 9/Tier 3, 1,357 at Phase 12/Tier 4, 3,786 at
+Phase 30/Tier 10, and 15,110 at Phase 99/Tier 33. The first four encounter
+steps are regression-tested to remain between 1.10x and 1.50x for both boss
+effective health and minion health.
+Minion health/speed, shield, finite summon budget, Aegis sentry count, attack
+damage, and cast cadence also scale; mechanic counts/cadence eventually cap for
+fairness while health continues rising. This preserves late-game challenge
+without applying an opaque adaptive modifier during an already complex boss.
+
 Creative presentation/gameplay additions are intentionally renderer and
 progression layers around the required arena: pause/single-step controls,
 phase/boss/level-up VFX, readable target/health telemetry, XP-based three-card
@@ -87,18 +98,18 @@ weights, not training returns.
 
 | Policy / evaluation | Episodes | Mean reward | Mean phase | Progress | Bosses | Sentries | Dodges | Boss hits | Missile hits |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Direct, normal (seed 241000) | 24 | 1027.25 | 9.79 | 100% | 2.42 | 8.50 | 12.17 | 1.42 | 3.08 |
-| Direct, Phase-3 start (seed 242000) | 24 | 578.37 | 7.46 | 75% | 1.62 | 6.25 | 11.00 | 1.12 | 2.71 |
-| Rotation, normal (seed 243000) | 24 | 68.49 | 2.88 | 100% | 0.04 | 0.54 | 1.25 | 1.79 | 0.29 |
-| Rotation, Phase-3 start (seed 244000) | 24 | -59.87 | 3.00 | 0% | 0.00 | 0.00 | 2.25 | 2.17 | 0.00 |
+| Direct, normal (seed 251000) | 24 | 985.83 | 9.71 | 100% | 2.50 | 8.75 | 10.92 | 1.04 | 3.71 |
+| Direct, Phase-3 start (seed 252000) | 24 | 541.28 | 7.29 | 79% | 1.71 | 5.46 | 9.62 | 0.83 | 2.71 |
+| Rotation, normal (seed 263000) | 24 | 72.08 | 2.96 | 100% | 0.04 | 0.54 | 1.92 | 2.00 | 0.50 |
+| Rotation, Phase-3 start (seed 264000) | 24 | -55.11 | 3.00 | 0% | 0.00 | 0.00 | 1.33 | 1.67 | 0.00 |
 
 The direct policy is the demonstration-ready intermission-aware policy: the
-focused holdout records 11.00 complete dodges, 6.25 destroyed sentries, and 2.71
-missile hits per episode, with 75% phase progression. Rotation is deliberately
-reported as the harder coupled-control problem. Its selected input-preserving
-refinement cut ordinary-play missile hits to 0.12 per episode and preserved
-100% ordinary phase progression, but did not clear the no-upgrade immediate-boss
-stress test. This is defensible model selection and transparent limitation
+focused holdout records 9.62 complete dodges, 5.46 destroyed sentries, only 0.83
+boss-skill hits, and 2.71 missile hits per episode, with 79% phase progression.
+Rotation is deliberately reported as the harder coupled-control problem. Its
+independently reselected 350k checkpoint reached Phase 5 and preserved 100%
+ordinary phase progression, but did not clear the no-upgrade immediate-boss
+stress test. This is defensible checkpoint selection and transparent limitation
 reporting, not a hidden difficulty change.
 
 ## Encounter-design references
@@ -117,12 +128,11 @@ before damage. Cite these external design references in the report:
 
 Exact machine-readable evidence:
 
-- `logs/arena/evidence/direct_schema10_director_final.json`
-- `logs/arena/evidence/direct_schema10_director_boss.json`
-- `logs/arena/evidence/rotation_schema10_director_final.json`
-- `logs/arena/evidence/rotation_schema10_director_boss.json`
-- `logs/arena/evidence/selection/dodgeable_missile_direct_schema10_sweep.json`
-- `logs/arena/evidence/selection/dodgeable_missile_rotation_schema10_sweep.json`
+- `logs/arena/evidence/direct_schema10_tiered_final.json`
+- `logs/arena/evidence/direct_schema10_tiered_boss.json`
+- `logs/arena/evidence/rotation_schema10_tiered_selected_final.json`
+- `logs/arena/evidence/rotation_schema10_tiered_selected_boss.json`
+- `logs/arena/evidence/selection/tiered_rotation_schema10_sweep.json`
 
 ## Reproducibility and project structure
 
@@ -138,6 +148,10 @@ logs/arena/
   tensorboard/    final-policy and tuning event files
   tuning/         compact hyperparameter comparison
 ```
+
+Learned-policy playback ends on an interactive results modal showing phase,
+ship level, kills, rifts, bosses, and reward. Replay, optional Next Run, and
+Main Menu remain available until selected; there is no timed auto-return.
 
 Use `python -m arena.build_evidence` after retraining to rebuild/verify the
 manifest. TensorBoard logs record actual SB3 learning; the screenshot/CSV/JSON

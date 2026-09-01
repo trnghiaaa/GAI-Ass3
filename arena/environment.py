@@ -887,6 +887,12 @@ class ArenaEnv(gym.Env):
             return 0
         return max(1, self.phase // max(1, int(self.phase_cfg["boss_interval"])))
 
+    @property
+    def boss_threat_tier(self) -> int:
+        """Public UI/diagnostic name for the progressively stronger boss tier."""
+
+        return self.boss_encounter_number
+
     def boss_summon_limit_for_phase(self) -> int:
         """Scale a finite reinforcement budget gradually across boss encounters."""
 
@@ -3289,6 +3295,7 @@ class ArenaEnv(gym.Env):
             "pending_choice_kind": self.pending_choice_kind,
             "pending_choices": [dict(item) for item in self.pending_choices],
             "boss_phase": self.is_boss_phase,
+            "boss_threat_tier": self.boss_threat_tier,
             "support_drone_active": self.support_drone_active,
             "drone_level": self.drone_level,
             "drone_count": self.drone_count,

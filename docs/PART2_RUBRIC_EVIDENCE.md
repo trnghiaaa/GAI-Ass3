@@ -20,6 +20,11 @@ softens compound boss/minion health and cadence without removing progression.
 Its visible `SURGE` director adds at most two enemies and 10% cadence only while
 hull/time are comfortable; it is identical for humans and agents and disabled
 during bosses.
+Bosses use their own numbered tier curve: health/shields, minions, summons,
+sentries, skill damage and cadence grow with encounter depth under fairness
+caps. Early boss/minion health steps are regression-tested between 1.10x and
+1.50x so the rise is noticeable but adaptable. `boss_threat_tier` is exposed
+in `info` and the HUD.
 
 ## H — Gym-style API and observation
 
@@ -62,12 +67,13 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 
 ## Report-ready artifacts
 
-- `logs/arena/evidence/direct_schema10_director_final.{csv,json}`
-- `logs/arena/evidence/direct_schema10_director_boss.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_director_final.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_director_boss.{csv,json}`
-- `logs/arena/evidence/selection/*_checkpoint_sweep.json`
+- `logs/arena/evidence/direct_schema10_tiered_final.{csv,json}`
+- `logs/arena/evidence/direct_schema10_tiered_boss.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_tiered_selected_final.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_tiered_selected_boss.{csv,json}`
+- `logs/arena/evidence/selection/tiered_rotation_schema10_sweep.json`
 - `logs/arena/evidence/*_showcase.png`
+- `logs/arena/evidence/ai_mission_summary_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`
 - `logs/arena/training/final_direct/training_curve.png`
 - `logs/arena/training/final_rotation/training_curve.png`

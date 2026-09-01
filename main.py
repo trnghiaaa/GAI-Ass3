@@ -1,7 +1,7 @@
 """Canonical one-click launcher for Assignment 3 Part II.
 
 Run this file with the VS Code Run button or with ``python main.py``.
-The older ``part2.py`` and ``python -m arena`` entry points remain available.
+The ``python -m arena`` module entry point remains equivalent.
 """
 
 from __future__ import annotations
@@ -25,4 +25,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

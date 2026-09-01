@@ -173,6 +173,55 @@ class ThreatTests(unittest.TestCase):
         self.assertEqual(self.env.boss_summon_limit_for_phase(), 4)
         self.assertEqual(self.env.boss_active_summon_limit_for_phase(), 2)
 
+    def test_late_boss_tiers_remain_stronger_than_the_first_boss(self):
+        snapshots = []
+        for phase in (3, 6, 30):
+            self.env.phase = phase
+            self.env.spawners.clear()
+            self.env.enemies.clear()
+            self.env._spawn_phase_spawners()
+            boss = self.env.spawners[0]
+            self.env._spawn_enemy(boss)
+            minion = self.env.enemies[-1]
+            snapshots.append(
+                (
+                    boss.health + boss.shield,
+                    minion.max_health,
+                    minion.speed,
+                    self.env.boss_summon_limit_for_phase(),
+                    self.env.boss_defender_count_for_phase(),
+                    self.env.boss_threat_tier,
+                )
+            )
+
+        first, second, late = snapshots
+        self.assertGreater(second[0], first[0])
+        self.assertGreater(late[0], second[0])
+        self.assertGreater(second[1], first[1])
+        self.assertGreater(late[1], second[1])
+        self.assertGreater(second[2], first[2])
+        self.assertGreaterEqual(late[2], second[2])
+        self.assertEqual((first[3], second[3], late[3]), (1, 2, 4))
+        self.assertEqual((first[4], second[4], late[4]), (2, 3, 4))
+        self.assertEqual((first[5], second[5], late[5]), (1, 2, 10))
+
+    def test_early_boss_power_rises_in_gradual_adaptable_steps(self):
+        effective_health = []
+        minion_health = []
+        for phase in (3, 6, 9, 12):
+            self.env.phase = phase
+            self.env.spawners.clear()
+            self.env.enemies.clear()
+            self.env._spawn_phase_spawners()
+            boss = self.env.spawners[0]
+            self.env._spawn_enemy(boss)
+            effective_health.append(boss.health + boss.shield)
+            minion_health.append(self.env.enemies[-1].max_health)
+
+        for values in (effective_health, minion_health):
+            ratios = [later / earlier for earlier, later in zip(values, values[1:])]
+            self.assertTrue(all(1.10 <= ratio <= 1.50 for ratio in ratios))
+
     def test_miniboss_frequency_rises_after_phase_five_with_a_cap(self):
         self.env.phase = 4
         early = self.env.miniboss_chance_for_phase()

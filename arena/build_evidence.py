@@ -485,6 +485,21 @@ def _capture_environment_preview() -> None:
             footer_text="BOSS RELIC DRAFT  •  lasting rewards match the encounter risk"
         )
         pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "boss_reward_showcase.png")
+        env.pending_choice_kind = None
+        env.pending_choices = []
+        env.done = True
+        env.last_end_reason = "phase_timeout"
+        env.episode_stats["reward"] = 684.2
+        env.episode_stats["enemies_destroyed"] = 73
+        env.episode_stats["spawners_destroyed"] = 15
+        env.episode_stats["bosses_destroyed"] = 2
+        renderer.episode_end_has_next = False
+        renderer.render(
+            footer_text="MISSION SUMMARY  •  replay or return when you are ready"
+        )
+        pygame.image.save(
+            renderer.surface, ARENA_EVIDENCE_DIR / "ai_mission_summary_showcase.png"
+        )
     finally:
         renderer.close()
         env.close()
@@ -507,7 +522,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "Final schema-10 evidence includes revalidated models, a measured gradual difficulty curve with a transparent state-derived pressure director, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
+        "note": "Final schema-10 evidence includes revalidated models, a measured gradual normal-phase pressure director, independent visible boss tiers, a persistent AI mission summary, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events
@@ -527,6 +542,7 @@ def build() -> None:
             "boss_intermission_showcase.png",
             "miniboss_showcase.png",
             "boss_reward_showcase.png",
+            "ai_mission_summary_showcase.png",
             "random_baseline_direct.csv",
             "random_baseline_direct.json",
             "random_baseline_rotation.csv",

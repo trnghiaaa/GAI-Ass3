@@ -5,7 +5,6 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-import time
 from collections.abc import Sequence
 
 import numpy as np
@@ -102,7 +101,19 @@ def watch_policy(
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                    if env.done:
+                        if event.key in (pygame.K_ESCAPE, pygame.K_q, pygame.K_m):
+                            running = False
+                        elif event.key in (pygame.K_r, pygame.K_RETURN):
+                            observation, _ = env.reset(seed=seed + episode - 1)
+                            frames_left = 0
+                            paused = False
+                        elif event.key == pygame.K_n and episode < episodes:
+                            episode += 1
+                            observation, _ = env.reset(seed=seed + episode - 1)
+                            frames_left = 0
+                            paused = False
+                    elif event.key in (pygame.K_ESCAPE, pygame.K_q):
                         running = False
                     elif event.key == pygame.K_p:
                         paused = not paused
@@ -118,12 +129,22 @@ def watch_policy(
                         paused = False
                     elif event.key == pygame.K_TAB:
                         renderer.show_build_panel = not renderer.show_build_panel
-                elif (
-                    event.type == pygame.MOUSEBUTTONDOWN
-                    and event.button == 1
-                    and renderer.pause_at_position(event.pos)
-                ):
-                    paused = not paused
+                elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if env.done:
+                        summary_action = renderer.episode_end_action_at_position(event.pos)
+                        if summary_action == "replay":
+                            observation, _ = env.reset(seed=seed + episode - 1)
+                            frames_left = 0
+                            paused = False
+                        elif summary_action == "next" and episode < episodes:
+                            episode += 1
+                            observation, _ = env.reset(seed=seed + episode - 1)
+                            frames_left = 0
+                            paused = False
+                        elif summary_action == "menu":
+                            running = False
+                    elif renderer.pause_at_position(event.pos):
+                        paused = not paused
 
             if (
                 running
@@ -148,6 +169,7 @@ def watch_policy(
                     "+/- speed  TAB build  R replay  Esc exit"
                 )
             )
+            renderer.episode_end_has_next = episode < episodes
             renderer.render(
                 process_events=False,
                 footer_text=(
@@ -157,25 +179,6 @@ def watch_policy(
                 ),
                 paused=paused,
             )
-
-            if env.done:
-                pygame.display.flip()
-                deadline = time.monotonic() + 1.4 / speed_options[speed_index]
-                while running and time.monotonic() < deadline:
-                    for event in pygame.event.get():
-                        if event.type == pygame.QUIT or (
-                            event.type == pygame.KEYDOWN
-                            and event.key in (pygame.K_ESCAPE, pygame.K_q)
-                        ):
-                            running = False
-                    renderer.clock.tick(env.fps)
-                if running:
-                    episode += 1
-                    if episode > episodes:
-                        running = False
-                    else:
-                        observation, _ = env.reset(seed=seed + episode - 1)
-                        frames_left = 0
 
             renderer.clock.tick(
                 max(1, round(env.fps * speed_options[speed_index]))

@@ -79,6 +79,7 @@ class ArenaRenderer:
         self.last_effect_step = -1
         self.show_build_panel = False
         self.pause_button_rect = pygame.Rect(env.width - 108, env.height - 29, 92, 24)
+        self.episode_end_has_next = False
 
         star_rng = random.Random(8071)
         self.stars = [
@@ -151,6 +152,34 @@ class ArenaRenderer:
         """Return whether a click targets the always-visible pause control."""
 
         return self.pause_button_rect.collidepoint(position)
+
+    def episode_end_button_rects(self) -> dict[str, pygame.Rect]:
+        """Return stable click targets for the mission-summary actions."""
+
+        if self.episode_end_has_next:
+            return {
+                "replay": pygame.Rect(151, 402, 150, 46),
+                "next": pygame.Rect(325, 402, 150, 46),
+                "menu": pygame.Rect(499, 402, 150, 46),
+            }
+        return {
+            "replay": pygame.Rect(238, 402, 150, 46),
+            "menu": pygame.Rect(412, 402, 150, 46),
+        }
+
+    def episode_end_action_at_position(
+        self, position: tuple[int, int]
+    ) -> str | None:
+        """Resolve a mission-summary mouse click without consuming events."""
+
+        return next(
+            (
+                action
+                for action, rect in self.episode_end_button_rects().items()
+                if rect.collidepoint(position)
+            ),
+            None,
+        )
 
     def _draw_pause_button(self, paused: bool) -> None:
         """Draw a compact mouse-accessible PAUSE / RESUME control."""
@@ -643,7 +672,11 @@ class ArenaRenderer:
         panel.fill((*COLORS["hud"], 225))
         self.surface.blit(panel, (0, 0))
 
-        phase_label = f"BOSS {self.env.phase}" if self.env.is_boss_phase else f"PHASE {self.env.phase}"
+        phase_label = (
+            f"BOSS T{self.env.boss_threat_tier} / P{self.env.phase}"
+            if self.env.is_boss_phase
+            else f"PHASE {self.env.phase}"
+        )
         phase_color = COLORS["boss"] if self.env.is_boss_phase else COLORS["accent"]
         self._text(phase_label, 16, 10, self.font_medium, phase_color)
         time_remaining = max(
@@ -750,7 +783,7 @@ class ArenaRenderer:
         accent = COLORS["boss"] if self.env.is_boss_phase else COLORS["spawner"]
         pygame.draw.rect(banner, accent, banner.get_rect(), 2, border_radius=14)
         eyebrow_text = (
-            "BOSS RIFT DETECTED  •  HIGH THREAT"
+            f"BOSS TIER {self.env.boss_threat_tier}  •  HIGH THREAT"
             if self.env.is_boss_phase
             else "RIFT NETWORK RECONFIGURING"
         )
@@ -796,6 +829,9 @@ class ArenaRenderer:
         overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
         overlay.fill((4, 6, 16, 185))
         self.surface.blit(overlay, (0, 0))
+        panel = pygame.Rect(70, 168, 660, 306)
+        pygame.draw.rect(self.surface, (15, 24, 48), panel, border_radius=20)
+        pygame.draw.rect(self.surface, COLORS["accent"], panel, 2, border_radius=20)
         title_text = {
             "player_destroyed": "SHIP DESTROYED",
             "phase_timeout": "PHASE TIME EXPIRED",
@@ -803,31 +839,72 @@ class ArenaRenderer:
         }.get(self.env.last_end_reason, "MISSION COMPLETE")
         title = self.font_large.render(title_text, True, COLORS["text"])
         subtitle = self.font_medium.render(
-            f"Reached phase {self.env.phase}  •  Press R to restart",
+            f"Reached Phase {self.env.phase}  •  Ship Level {self.env.player.level}",
             True,
             COLORS["accent"],
         )
         self.surface.blit(
             title,
-            ((self.env.width - title.get_width()) // 2, self.env.height // 2 - 45),
+            (panel.centerx - title.get_width() // 2, panel.y + 28),
         )
         self.surface.blit(
             subtitle,
-            ((self.env.width - subtitle.get_width()) // 2, self.env.height // 2 + 10),
+            (panel.centerx - subtitle.get_width() // 2, panel.y + 82),
         )
         stats = self.env.episode_stats
-        detail = self.font_small.render(
+        detail = self._fit_text(
             f"Enemies {int(stats.get('enemies_destroyed', 0))}  •  "
             f"Rifts {int(stats.get('spawners_destroyed', 0))}  •  "
-            f"Level {self.env.player.level}  •  "
+            f"Bosses {int(stats.get('bosses_destroyed', 0))}  •  "
             f"Reward {float(stats.get('reward', 0.0)):.1f}",
-            True,
+            self.font_small,
+            panel.width - 56,
             COLORS["muted"],
         )
         self.surface.blit(
             detail,
-            ((self.env.width - detail.get_width()) // 2, self.env.height // 2 + 45),
+            (panel.centerx - detail.get_width() // 2, panel.y + 126),
         )
+        hint_text = (
+            "Review this run, replay it, continue to the next seed, or return to the launcher."
+            if self.episode_end_has_next
+            else "Review this run, then replay it or return to the launcher."
+        )
+        hint = self._fit_text(
+            hint_text, self.font_small, panel.width - 56, COLORS["muted"]
+        )
+        self.surface.blit(hint, (panel.centerx - hint.get_width() // 2, panel.y + 164))
+
+        mouse = pygame.mouse.get_pos()
+        labels = {
+            "replay": ("REPLAY", "R"),
+            "next": ("NEXT RUN", "N"),
+            "menu": ("MAIN MENU", "ESC"),
+        }
+        for action, rect in self.episode_end_button_rects().items():
+            hovered = self.mode == "human" and rect.collidepoint(mouse)
+            accent = COLORS["xp"] if action != "menu" else COLORS["accent"]
+            pygame.draw.rect(
+                self.surface,
+                (28, 43, 75) if hovered else COLORS["hud"],
+                rect,
+                border_radius=10,
+            )
+            pygame.draw.rect(self.surface, accent, rect, 2, border_radius=10)
+            label, shortcut = labels[action]
+            label_surface = self.font_small.render(label, True, COLORS["text"])
+            shortcut_surface = self.font_tiny.render(shortcut, True, accent)
+            label_area = pygame.Rect(
+                rect.x + 8, rect.y, rect.width - shortcut_surface.get_width() - 30, rect.height
+            )
+            self.surface.blit(
+                label_surface,
+                label_surface.get_rect(center=label_area.center),
+            )
+            self.surface.blit(
+                shortcut_surface,
+                (rect.right - shortcut_surface.get_width() - 9, rect.centery - 7),
+            )
 
     def _draw_upgrade_banner(self) -> None:
         """Show a readable unlock notification without pausing the simulation."""

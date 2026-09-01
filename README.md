@@ -30,7 +30,7 @@ python -m gridworld.play --level 0
 
 ## 3. Part II Action Arena
 
-> Schema-9 boss-intermission learning, pause/UI, upgrade clarity, and tidy final
+> Schema-10 boss-intermission learning, pause/UI, upgrade clarity, and tidy final
 > evidence are complete. See `docs/PART2_REPORT_NOTES.md` for current metrics
 > and `docs/PART2_RUBRIC_EVIDENCE.md` for the marking-evidence map.
 
@@ -39,7 +39,7 @@ The Part II environment is a continuous-coordinate Pygame combat arena named
 
 ```bash
 python main.py
-# equivalent aliases: python part2.py or python -m arena
+# equivalent module entry point: python -m arena
 ```
 
 You can also open `main.py` and press the VS Code **Run Python File** button.
@@ -214,12 +214,19 @@ Normal encounters begin with two rifts and add one only every two phases, up to
 five, avoiding the old jump to five immediately after the first boss. Active
 hostiles begin at 16 and cap at 28; spawn intervals never fall below 0.75 seconds.
 Later boss health, minion multipliers, and sentry health are deliberately softer
-than their original compound curve while still increasing each encounter.
+than their original compound curve while still increasing each encounter. The
+first four encounters are regression-tested to grow in adaptable 10–50% steps,
+rather than receiving one fixed jump after Boss 1.
 Normal phases also use a visible performance director derived entirely from the
 already-observed hull and timer state. While both are comfortable it can add at
 most two hostiles and 10% spawn cadence (`SURGE` in the HUD); pressure smoothly
 returns to baseline as hull or time becomes scarce. Boss phases never receive
-this adjustment, and manual and learned play use the identical rule.
+this normal-wave adjustment because they have an independent tier curve, and
+manual and learned play use the identical rules. The HUD exposes both the boss
+tier and phase (`BOSS T2 / P6`): effective boss health, shield fraction, minion health,
+minion speed, summon budget, sentry count, skill damage, and cast cadence grow
+across tiers. Summons/sentries and attack speed use fairness caps, while boss
+and minion health continue scaling into late phases.
 Optional Rift Hunter probability begins at 24% and rises by six percentage
 points per phase after Phase 5, capped at 66%.
 Ordinary kills grant 7 XP and cumulative thresholds follow
@@ -285,15 +292,15 @@ Default models are saved separately as `models/arena/dqn_direct.zip` and
 `logs/arena/evidence/` (screenshots and held-outs), `training/` (final monitor,
 curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
-On the current director-balanced schema-10 24-episode holdouts, direct achieved
-1027.25 mean reward, mean Phase 9.79, 2.42 boss clears, 12.17 boss-skill dodges,
-and 1.42 boss-skill hits. Its fixed-Phase-3 test achieved 75% phase progression,
-1.62 boss clears, 6.25 sentry kills, 11.00 dodges, 1.12 boss-skill hits, and 2.71
-missile hits per episode. Rotation achieved 68.49 mean reward, mean Phase 2.88,
-100% normal phase progression, and only 0.29 missile hits per episode, but did
-not clear the deliberately harsh no-upgrade Phase-3 stress start. The stronger
-direct boss result is expected because direct movement is the easier action
-set; both models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
+On the current tier-balanced schema-10 24-episode holdouts, direct achieved
+985.83 mean reward, mean Phase 9.71, 2.50 boss clears, 10.92 boss-skill dodges,
+and 1.04 boss-skill hits. Its fixed-Phase-3 test achieved 79% phase progression,
+1.71 boss clears, 5.46 sentry kills, 9.62 dodges, 0.83 boss-skill hits, and 2.71
+missile hits per episode. Rotation achieved 72.08 mean reward, mean Phase 2.96,
+100% normal phase progression, reached Phase 5, and averaged 0.50 missile hits,
+but did not clear the deliberately harsh no-upgrade Phase-3 stress start. The
+stronger direct boss result is expected because direct movement is the easier
+action set; both models are reported honestly in `docs/PART2_REPORT_NOTES.md`.
 
 ### Visual Evaluation
 
@@ -307,6 +314,9 @@ python -m arena.evaluate_rotation
 ```
 
 Playback is deterministic (`model.predict(..., deterministic=True)`) and shows
+an interactive mission summary on death or timeout. It remains open until the
+viewer chooses Replay, Next Run (multi-episode evaluation), or Main Menu; it no
+longer auto-closes after a short delay. Playback also shows
 the saved model controlling the actual submitted environment. Use `P` to pause,
 `.` to single-step, `+/-` to change speed, `Tab` to inspect the current build,
 `R` to replay, and `Esc` to exit. Launcher playback runs one episode by default.

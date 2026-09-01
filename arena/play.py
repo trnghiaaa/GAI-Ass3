@@ -63,7 +63,12 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                if env.done and event.key in (pygame.K_r, pygame.K_RETURN):
+                    env.reset(seed=seed)
+                    paused = False
+                elif env.done and event.key in (pygame.K_ESCAPE, pygame.K_q, pygame.K_m):
+                    running = False
+                elif event.key in (pygame.K_ESCAPE, pygame.K_q):
                     running = False
                 elif event.key == pygame.K_r:
                     env.reset(seed=seed)
@@ -81,7 +86,14 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                     if index < len(env.pending_choices):
                         env.choose_pending_choice(index)
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if (
+                if env.done:
+                    summary_action = renderer.episode_end_action_at_position(event.pos)
+                    if summary_action == "replay":
+                        env.reset(seed=seed)
+                        paused = False
+                    elif summary_action == "menu":
+                        running = False
+                elif (
                     env.pending_choice_kind is None
                     and renderer.pause_at_position(event.pos)
                 ):
@@ -122,6 +134,7 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                 )
             )
         )
+        renderer.episode_end_has_next = False
         renderer.render(
             process_events=False,
             footer_text=active_footer,
