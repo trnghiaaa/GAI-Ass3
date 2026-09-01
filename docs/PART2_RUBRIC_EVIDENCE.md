@@ -17,6 +17,9 @@ finite-guidance missiles, minibosses, XP/drafts, wingmen, support drops, VFX and
 UI) do not replace any required action, health, collision, or phase mechanic.
 The balanced curve adds rifts every two phases, caps active enemies at 28, and
 softens compound boss/minion health and cadence without removing progression.
+Its visible `SURGE` director adds at most two enemies and 10% cadence only while
+hull/time are comfortable; it is identical for humans and agents and disabled
+during bosses.
 
 ## H — Gym-style API and observation
 
@@ -59,10 +62,10 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 
 ## Report-ready artifacts
 
-- `logs/arena/evidence/direct_schema10_balanced_v2_final.{csv,json}`
-- `logs/arena/evidence/direct_schema10_balanced_v2_boss.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_balanced_v2_final.{csv,json}`
-- `logs/arena/evidence/rotation_schema10_balanced_v2_boss.{csv,json}`
+- `logs/arena/evidence/direct_schema10_director_final.{csv,json}`
+- `logs/arena/evidence/direct_schema10_director_boss.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_director_final.{csv,json}`
+- `logs/arena/evidence/rotation_schema10_director_boss.{csv,json}`
 - `logs/arena/evidence/selection/*_checkpoint_sweep.json`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`

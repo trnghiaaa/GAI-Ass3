@@ -28,6 +28,13 @@ bosses, their minions, minibosses, and Aegis sentries still scale, but use softe
 multipliers than the original curve. The 60-second normal phase clock and boss
 bonuses remain unchanged.
 
+A transparent performance director makes strong normal-phase play less trivial
+without a hidden human/AI difficulty split. When hull and remaining time are
+both comfortable, it continuously scales up to two additional active enemies
+and 10% faster spawning. It returns to zero below 55% hull or 35% remaining
+time, is deterministically derived from already-observed health/time features,
+and is disabled for every boss. The HUD labels active pressure as `SURGE`.
+
 Creative presentation/gameplay additions are intentionally renderer and
 progression layers around the required arena: pause/single-step controls,
 phase/boss/level-up VFX, readable target/health telemetry, XP-based three-card
@@ -80,14 +87,14 @@ weights, not training returns.
 
 | Policy / evaluation | Episodes | Mean reward | Mean phase | Progress | Bosses | Sentries | Dodges | Boss hits | Missile hits |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Direct, normal (seed 231000) | 24 | 1433.58 | 11.33 | 100% | 2.92 | 10.88 | 14.29 | 1.25 | 2.83 |
-| Direct, Phase-3 start (seed 232000) | 24 | 834.62 | 8.79 | 79.2% | 2.04 | 7.92 | 14.54 | 1.38 | 2.83 |
-| Rotation, normal (seed 233000) | 24 | 85.11 | 3.08 | 100% | 0.08 | 0.58 | 2.54 | 1.96 | 0.29 |
-| Rotation, Phase-3 start (seed 234000) | 24 | -60.78 | 3.00 | 0% | 0.00 | 0.00 | 1.79 | 2.25 | 0.00 |
+| Direct, normal (seed 241000) | 24 | 1027.25 | 9.79 | 100% | 2.42 | 8.50 | 12.17 | 1.42 | 3.08 |
+| Direct, Phase-3 start (seed 242000) | 24 | 578.37 | 7.46 | 75% | 1.62 | 6.25 | 11.00 | 1.12 | 2.71 |
+| Rotation, normal (seed 243000) | 24 | 68.49 | 2.88 | 100% | 0.04 | 0.54 | 1.25 | 1.79 | 0.29 |
+| Rotation, Phase-3 start (seed 244000) | 24 | -59.87 | 3.00 | 0% | 0.00 | 0.00 | 2.25 | 2.17 | 0.00 |
 
 The direct policy is the demonstration-ready intermission-aware policy: the
-focused holdout records 14.54 complete dodges, 7.92 destroyed sentries, and 2.83
-missile hits per episode, with 79.2% phase progression. Rotation is deliberately
+focused holdout records 11.00 complete dodges, 6.25 destroyed sentries, and 2.71
+missile hits per episode, with 75% phase progression. Rotation is deliberately
 reported as the harder coupled-control problem. Its selected input-preserving
 refinement cut ordinary-play missile hits to 0.12 per episode and preserved
 100% ordinary phase progression, but did not clear the no-upgrade immediate-boss
@@ -110,10 +117,10 @@ before damage. Cite these external design references in the report:
 
 Exact machine-readable evidence:
 
-- `logs/arena/evidence/direct_schema10_balanced_v2_final.json`
-- `logs/arena/evidence/direct_schema10_balanced_v2_boss.json`
-- `logs/arena/evidence/rotation_schema10_balanced_v2_final.json`
-- `logs/arena/evidence/rotation_schema10_balanced_v2_boss.json`
+- `logs/arena/evidence/direct_schema10_director_final.json`
+- `logs/arena/evidence/direct_schema10_director_boss.json`
+- `logs/arena/evidence/rotation_schema10_director_final.json`
+- `logs/arena/evidence/rotation_schema10_director_boss.json`
 - `logs/arena/evidence/selection/dodgeable_missile_direct_schema10_sweep.json`
 - `logs/arena/evidence/selection/dodgeable_missile_rotation_schema10_sweep.json`
 

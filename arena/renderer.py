@@ -693,13 +693,16 @@ class ArenaRenderer:
 
         miniboss_count = sum(enemy.is_miniboss for enemy in self.env.enemies)
         stats = f"RIFTS {len(self.env.spawners)}   HOSTILES {len(self.env.enemies)}"
+        pressure = self.env.adaptive_pressure()
         if miniboss_count:
             stats += f"   HUNTER {miniboss_count}"
+        if pressure >= 0.15:
+            stats += f"   SURGE {round(pressure * 100)}%"
         stats_surface = self._fit_text(
             stats,
-            self.font_tiny if miniboss_count else self.font_small,
+            self.font_tiny if miniboss_count or pressure >= 0.15 else self.font_small,
             244,
-            COLORS["text"],
+            COLORS["xp"] if pressure >= 0.15 else COLORS["text"],
         )
         self.surface.blit(stats_surface, (self.env.width - stats_surface.get_width() - 16, 11))
         destroyed = int(self.env.episode_stats.get("enemies_destroyed", 0))

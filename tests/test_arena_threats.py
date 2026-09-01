@@ -83,6 +83,36 @@ class ThreatTests(unittest.TestCase):
             previous_interval = interval
         self.assertLess(previous_health, base_health * 3.3)
 
+    def test_adaptive_pressure_adds_activity_then_releases_cleanly(self):
+        self.env.phase = 2
+        self.env.phase_transition_steps = 0
+        self.env.phase_step_count = 0
+        self.env.phase_max_steps = self.env._phase_step_budget()
+        self.env.player.health = self.env.player.max_health
+
+        pressure = self.env.adaptive_pressure()
+        surged_limit = self.env.maximum_active_enemies()
+        surged_interval = self.env._spawn_interval_steps(self.env.spawners[0])
+        self.assertEqual(pressure, 1.0)
+        self.assertEqual(surged_limit, 19)
+
+        self.env.player.health = self.env.player.max_health * 0.5
+        self.assertEqual(self.env.adaptive_pressure(), 0.0)
+        self.assertEqual(self.env.maximum_active_enemies(), 17)
+        self.assertGreater(self.env._spawn_interval_steps(self.env.spawners[0]), surged_interval)
+
+        self.env.player.health = self.env.player.max_health
+        self.env.phase_step_count = round(self.env.phase_max_steps * 0.8)
+        self.assertEqual(self.env.adaptive_pressure(), 0.0)
+
+    def test_adaptive_pressure_never_changes_boss_encounters(self):
+        self.boss(3)
+        self.env.phase_transition_steps = 0
+        self.env.phase_step_count = 0
+        self.env.player.health = self.env.player.max_health
+        self.assertEqual(self.env.adaptive_pressure(), 0.0)
+        self.assertEqual(self.env.maximum_active_enemies(), 7)
+
     def test_shield_absorbs_then_overflows_without_regeneration(self):
         boss = self.boss()
         shield = boss.shield

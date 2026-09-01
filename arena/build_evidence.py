@@ -381,6 +381,23 @@ def _capture_environment_preview() -> None:
         )
         pygame.image.save(renderer.surface, ARENA_EVIDENCE_DIR / "upgrade_showcase.png")
         env.upgrade_banner_steps = 0
+        env.phase = 2
+        env.phase_step_count = 0
+        env.phase_max_steps = env._phase_step_budget()
+        env.phase_transition_steps = 0
+        env.player.health = env.player.max_health
+        env.spawners = []
+        env.enemies = []
+        env.projectiles = []
+        env._spawn_phase_spawners()
+        for spawner in env.spawners:
+            env._spawn_enemy(spawner)
+        renderer.render(
+            footer_text="THREAT SURGE  •  modest pressure while hull and time are comfortable"
+        )
+        pygame.image.save(
+            renderer.surface, ARENA_EVIDENCE_DIR / "adaptive_pressure_showcase.png"
+        )
         env.phase = 3
         env.spawners = []
         env.enemies = []
@@ -490,7 +507,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "Final schema-10 evidence includes revalidated models, a measured gradual difficulty curve, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
+        "note": "Final schema-10 evidence includes revalidated models, a measured gradual difficulty curve with a transparent state-derived pressure director, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events
@@ -503,6 +520,7 @@ def build() -> None:
             "environment_showcase.png",
             "pause_showcase.png",
             "upgrade_showcase.png",
+            "adaptive_pressure_showcase.png",
             "boss_transition_showcase.png",
             "choice_showcase.png",
             "boss_showcase.png",

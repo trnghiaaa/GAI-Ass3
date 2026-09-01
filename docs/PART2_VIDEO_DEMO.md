@@ -18,7 +18,7 @@ Aim for 3–4 minutes of the ten-minute group video.
    harder coupled thrust/turn/forward-shoot action set and keep the comparison
    honest: it is a trained policy but is weaker against an immediate boss than
    direct control.
-5. Show `logs/arena/evidence/direct_schema10_balanced_v2_boss.json` and the
+5. Show `logs/arena/evidence/direct_schema10_director_boss.json` and the
    TensorBoard scalar page. Quote final values only from the JSON files.
 
 Checklist:

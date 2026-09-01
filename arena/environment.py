@@ -942,9 +942,53 @@ class ArenaEnv(gym.Env):
             + growth_steps * float(self.phase_cfg["miniboss_chance_growth_per_phase"]),
         )
 
+    def adaptive_pressure(self) -> float:
+        """Return a transparent, state-derived normal-phase pressure level.
+
+        The director adds a little activity only while the player has both
+        healthy hull and comfortable time remaining. It uses values already
+        present in the observation, so human and learned play follow the same
+        deterministic rules without hiding state from the policy.
+        """
+
+        if (
+            self.is_boss_phase
+            or self.phase < int(self.phase_cfg["adaptive_pressure_start_phase"])
+            or self.phase_transition_steps > 0
+        ):
+            return 0.0
+        health_ratio = self.player.health / max(1.0, self.player.max_health)
+        time_ratio = float(
+            np.clip(
+                (self.phase_max_steps - self.phase_step_count)
+                / max(1, self.phase_max_steps),
+                0.0,
+                1.0,
+            )
+        )
+
+        def ramp(value: float, floor_key: str, full_key: str) -> float:
+            floor = float(self.phase_cfg[floor_key])
+            full = max(floor + 1e-6, float(self.phase_cfg[full_key]))
+            return float(np.clip((value - floor) / (full - floor), 0.0, 1.0))
+
+        return min(
+            ramp(
+                health_ratio,
+                "adaptive_pressure_health_floor",
+                "adaptive_pressure_health_full",
+            ),
+            ramp(
+                time_ratio,
+                "adaptive_pressure_time_floor",
+                "adaptive_pressure_time_full",
+            ),
+        )
+
     def maximum_active_enemies(self) -> int:
+        absolute_limit = int(self.phase_cfg["maximum_enemy_absolute"])
         normal_limit = min(
-            int(self.phase_cfg["maximum_enemy_absolute"]),
+            absolute_limit,
             int(self.enemy_cfg["maximum_active"])
             + (self.phase - 1)
             * int(self.phase_cfg["maximum_enemy_growth_per_phase"]),
@@ -954,7 +998,13 @@ class ArenaEnv(gym.Env):
                 normal_limit,
                 int(self.phase_cfg["first_boss_maximum_active_enemies"]),
             )
-        return normal_limit
+        if self.is_boss_phase:
+            return normal_limit
+        pressure_bonus = round(
+            self.adaptive_pressure()
+            * int(self.phase_cfg["adaptive_pressure_maximum_enemy_bonus"])
+        )
+        return min(absolute_limit, normal_limit + pressure_bonus)
 
     def _phase_step_budget(self) -> int:
         seconds = float(self.sim_cfg["phase_time_limit_seconds"])
@@ -2583,6 +2633,14 @@ class ArenaEnv(gym.Env):
             float(self.phase_cfg["minimum_spawn_interval_seconds"]),
             base_seconds / speedup,
         )
+        if not (is_boss or (spawner is not None and spawner.is_boss)):
+            acceleration = float(
+                self.phase_cfg["adaptive_pressure_spawn_acceleration"]
+            )
+            seconds = max(
+                float(self.phase_cfg["minimum_spawn_interval_seconds"]),
+                seconds * (1.0 - acceleration * self.adaptive_pressure()),
+            )
         return max(1, int(seconds * self.fps))
 
     def _new_id(self) -> int:
@@ -3253,6 +3311,7 @@ class ArenaEnv(gym.Env):
             "active_enemies": len(self.enemies),
             "active_spawners": len(self.spawners),
             "active_projectiles": len(self.projectiles),
+            "adaptive_pressure": self.adaptive_pressure(),
             "episode_enemies_destroyed": int(
                 self.episode_stats["enemies_destroyed"]
             ),
