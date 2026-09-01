@@ -615,6 +615,20 @@ python -m arena.evaluate --control-style rotation
 # Equivalent dedicated entry points required for an easy video demo
 python -m arena.evaluate_direct
 python -m arena.evaluate_rotation
+
+# Visually run a newly trained direct-control agent
+python -m arena.evaluate_direct --model models/arena/retrain_direct_v1.zip
+
+# Visually run the newly trained rotation agent
+python -m arena.evaluate_rotation --model models/arena/retrain_rotation_v1.zip
+
+# Reusable patterns for other named runs
+python -m arena.evaluate_direct --model models/arena/<run_name>.zip --episodes 5
+python -m arena.evaluate_rotation --model models/arena/<run_name>.zip --episodes 5
+
+# Evaluate new models without opening a Pygame window
+python -m arena.evaluate_direct --model models/arena/retrain_direct_v1.zip --episodes 20 --headless
+python -m arena.evaluate_rotation --model models/arena/retrain_rotation_v1.zip --episodes 20 --headless
 ```
 
 Playback is deterministic (`model.predict(..., deterministic=True)`) and shows
