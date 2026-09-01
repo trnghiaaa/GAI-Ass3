@@ -18,7 +18,7 @@ currently selected Python does not have Pygame. This hand-off does not pass the
 virtual-environment path through PowerShell, so it remains safe when a parent
 folder contains `&`, as in `A3_Game&AI`.
 
-On Windows, the easiest option is to double-click **`run_part1.bat`**. It automatically uses the project `.venv` when present, so nobody needs to type the interpreter path. The package-style command `python -m gridworld` remains an equivalent alternative.
+On Windows, the easiest option is to double-click **`scripts/part1/run_part1.bat`**. It automatically uses the project `.venv` when present, so nobody needs to type the interpreter path. The package-style command `python -m gridworld` remains an equivalent alternative.
 
 ### VS Code run button
 
@@ -33,7 +33,7 @@ path as PowerShell source:
 Both launch `main.py` without constructing the unsafe `& D:\A3_Game&AI...`
 command. The second route uses a VS Code `process` task rather than a shell task.
 
-After cloning or pulling these settings, run **Developer: Reload Window** once (or close all existing VS Code terminals) before using the configured run option. Existing terminals keep their previous environment. The folder name `A3_Game&AI` contains PowerShell's `&` operator, so the old unquoted absolute command cannot execute safely; `run_part1.bat` remains an unaffected alternative.
+After cloning or pulling these settings, run **Developer: Reload Window** once (or close all existing VS Code terminals) before using the configured run option. Existing terminals keep their previous environment. The folder name `A3_Game&AI` contains PowerShell's `&` operator, so the old unquoted absolute command cannot execute safely; `scripts/part1/run_part1.bat` remains an unaffected alternative.
 
 If the top-right triangle still prints a command beginning with an absolute
 `.venv\\Scripts\\python.exe` path, VS Code is retaining its old workspace choice.
