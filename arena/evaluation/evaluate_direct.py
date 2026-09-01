@@ -1,4 +1,4 @@
-"""Compatibility command for :mod:`arena.evaluation.evaluate_direct`."""
+"""Convenience entry point for the trained direct-control agent."""
 
 import sys
 
@@ -6,6 +6,8 @@ from arena.evaluation.evaluate import main as evaluate_main
 
 
 def main() -> None:
+    """Forward all evaluation options while locking direct controls."""
+
     evaluate_main(sys.argv[1:], forced_control_style="direct")
 
 

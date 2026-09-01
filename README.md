@@ -36,7 +36,14 @@ when present, so nobody needs to type the interpreter path.
 ### Repository layout
 
 ```text
-arena/                 Part II environment, DQN training, and evaluation
+arena/
+  core/                Part II simulation, entities, and API adapter
+  presentation/        Pygame launcher, rendering, and manual play
+  learning/            DQN training, wrappers, cooldown handling, and tuning
+  evaluation/          Policy evaluation and deterministic benchmarks
+  tools/               Evidence, comparison, selection, and promotion utilities
+  config.json          Arena mechanics and training configuration
+  settings.py          Shared model, log, and configuration paths
 gridworld/             Part I environment and tabular agents
 tests/
   part1_gridworld/     Part I tests and fixtures
@@ -53,8 +60,9 @@ logs/                  Training and evaluation evidence grouped by part
 main.py                Shared visual launcher
 ```
 
-Package-specific maps are available in `gridworld/README.md` and
-`arena/README.md`.
+Thin compatibility modules preserve established `arena.*` imports and commands
+after this physical package reorganization. VS Code hides those wrappers so the
+Explorer shows the implementation folders above.
 
 ### VS Code run button
 
@@ -553,8 +561,11 @@ every RL reward term auditable.
 
 ### Stable-Baselines3 Training
 
-Use a unique `--run-name` for new runs; training refuses to overwrite existing
-models or run directories. The `boss_intermission` profile can use a training-only
+Use a unique `--run-name` for every new run. The submitted
+`models/arena/dqn_direct.zip` and `dqn_rotation.zip` already exist, so the bare
+`python -m arena.train` command intentionally stops instead of overwriting
+them. Train direct and rotation separately with new names, incrementing the
+suffix for later attempts. The `boss_intermission` profile can use a training-only
 boss curriculum: it samples a genuine Phase-3 reset for a configured fraction
 of training episodes. It never selects actions for the policy or makes the
 boss easier. A changed game still requires training and fresh evaluation.
@@ -564,6 +575,10 @@ network, epsilon schedule, checkpoints, held-out evaluation, TensorBoard, and
 model metadata:
 
 ```bash
+# Recommended safe retraining commands (300,000 decisions by default)
+python -m arena.train --control-style direct --run-name retrain_direct_v1
+python -m arena.train --control-style rotation --run-name retrain_rotation_v1
+
 # Boss/missile-aware refinements used by the submitted policies
 python -m arena.train --control-style direct --timesteps 350000 --profile boss_intermission --benchmark-episodes 20 --seed 46100 --run-name dodgeable_missile_direct_350k_s46100 --init-model models/arena/dqn_direct.zip --boss-curriculum 0.78 --curriculum-phases 3
 python -m arena.train --control-style rotation --timesteps 400000 --profile boss_intermission --benchmark-episodes 20 --seed 47100 --run-name dodgeable_missile_rotation_400k_s47100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --boss-curriculum 0.76 --curriculum-phases 3
@@ -571,9 +586,6 @@ python -m arena.train --control-style rotation --timesteps 400000 --profile boss
 # Generic from-scratch runs
 python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
 python -m arena.train --control-style rotation --timesteps 300000 --profile balanced --run-name new_rotation
-
-# Generic training is also supported (300,000 decisions by default)
-python -m arena.train --control-style both
 
 # Reproduce the three-profile hyperparameter comparison
 python -m arena.tune --control-style both --timesteps 35000 --benchmark-episodes 6 --seed 5100

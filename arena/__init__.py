@@ -1,6 +1,6 @@
 """Part II: continuous Pygame action arena and deep-RL environment."""
 
-from arena.environment import (
+from arena.core.environment import (
     ArenaEnv,
     DIRECT_ACTIONS,
     ENVIRONMENT_SCHEMA_VERSION,
@@ -8,7 +8,7 @@ from arena.environment import (
     ROTATION_ACTIONS,
     ObservationIndex,
 )
-from arena.legacy_api import LegacyArenaEnv
+from arena.core.legacy_api import LegacyArenaEnv
 
 __all__ = [
     "ArenaEnv",
