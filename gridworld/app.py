@@ -17,6 +17,7 @@ import argparse
 import json
 import math
 import os
+import random
 import sys
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -276,6 +277,8 @@ class GridworldApp:
         self.dragging_volume = False
         self.volume_panel_rect = pygame.Rect(VIRTUAL_WIDTH - 320, 20, 300, 130)
         self.volume_slider_track_rect = pygame.Rect(VIRTUAL_WIDTH - 300, 68, 260, 10)
+        self.victory_flash_alpha = 0.0
+        self.victory_confetti_timer = 0.0
 
         self.level_select_context = "free"
         self.selected_level = min(LEVELS)
@@ -959,13 +962,16 @@ class GridworldApp:
         self.paused = True
         if result_kind == "victory":
             self.audio.play("victory")
+            self.victory_flash_alpha = 150.0
+            self._spawn_victory_confetti(120)
         elif result_kind == "death":
             self.audio.play("death")
+            if self.env is not None:
+                self._spawn_particles(tuple(self.env.agent_pos), COLORS["red"], 32)
         elif result_kind in ("timeout", "error"):
             self.audio.play("timeout")
-        color = COLORS["green"] if result_kind == "victory" else COLORS["red"]
-        if self.env is not None:
-            self._spawn_particles(tuple(self.env.agent_pos), color, 32)
+            if self.env is not None:
+                self._spawn_particles(tuple(self.env.agent_pos), COLORS["orange"], 24)
 
     def _change_speed(self, direction: int) -> None:
         self.speed_index = int(
@@ -990,9 +996,16 @@ class GridworldApp:
     def _update(self, dt: float) -> None:
         self.notice_time = max(0.0, self.notice_time - dt)
         self.event_time = max(0.0, self.event_time - dt)
+        self.victory_flash_alpha = max(0.0, self.victory_flash_alpha - 110.0 * dt)
         self.move_anim = min(
             1.0, self.move_anim + dt / max(self.move_anim_duration, 0.001)
         )
+
+        if self.run_done and self.result_kind == "victory":
+            self.victory_confetti_timer += dt
+            if self.victory_confetti_timer >= 0.16:
+                self.victory_confetti_timer = 0.0
+                self._spawn_ambient_confetti(4)
 
         alive_particles: List[Particle] = []
         for particle in self.particles:
@@ -1001,7 +1014,8 @@ class GridworldApp:
                 continue
             particle.x += particle.vx * dt
             particle.y += particle.vy * dt
-            particle.vy += 70.0 * dt
+            particle.vy += 120.0 * dt
+            particle.vx *= max(0.0, 1.0 - 0.2 * dt)
             alive_particles.append(particle)
         self.particles = alive_particles
 
@@ -1847,6 +1861,13 @@ class GridworldApp:
         self._draw_board(board_rect, cell_size, origin)
         self._draw_sidebar()
 
+        if self.victory_flash_alpha > 0.5:
+            flash = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT), pygame.SRCALPHA)
+            alpha = int(self.victory_flash_alpha)
+            flash.fill((*COLORS["green"], int(alpha * 0.30)))
+            pygame.draw.rect(flash, (*COLORS["green"], int(alpha * 0.80)), flash.get_rect(), width=16)
+            self.canvas.blit(flash, (0, 0))
+
         for particle in self.particles:
             alpha = int(255 * particle.life / particle.max_life)
             radius = max(1, int(particle.radius * particle.life / particle.max_life))
@@ -1857,6 +1878,13 @@ class GridworldApp:
                 (radius * 2, radius * 2),
                 radius,
             )
+            if radius >= 3:
+                pygame.draw.circle(
+                    surface,
+                    (255, 255, 255, alpha),
+                    (radius * 2, radius * 2),
+                    1,
+                )
             self.canvas.blit(surface, (particle.x - radius * 2, particle.y - radius * 2))
 
         if self.event_time > 0 and self.event_text:
@@ -1871,6 +1899,18 @@ class GridworldApp:
             # Only result controls should be clickable through the overlay.
             self.buttons = []
             self._draw_result_overlay()
+            if self.result_kind == "victory":
+                for particle in self.particles:
+                    alpha = int(220 * particle.life / particle.max_life)
+                    radius = max(1, int(particle.radius * particle.life / particle.max_life))
+                    surface = pygame.Surface((radius * 4, radius * 4), pygame.SRCALPHA)
+                    pygame.draw.circle(
+                        surface,
+                        (*particle.color, alpha),
+                        (radius * 2, radius * 2),
+                        radius,
+                    )
+                    self.canvas.blit(surface, (particle.x - radius * 2, particle.y - radius * 2))
 
     def _draw_game_topbar(self) -> None:
         meta = self._level_meta(self.current_level)
@@ -2615,6 +2655,79 @@ class GridworldApp:
                     life,
                     life,
                     3.0 + index % 3,
+                    color,
+                )
+            )
+
+    def _spawn_victory_confetti(self, count: int = 120) -> None:
+        """Erupt a multi-colored fountain of celebratory confetti particles across the screen."""
+        palette: Sequence[Tuple[int, int, int]] = (
+            COLORS["green"],
+            COLORS["yellow"],
+            COLORS["cyan"],
+            COLORS["orange"],
+            COLORS["blue"],
+            (255, 105, 180),  # Hot pink
+            (186, 85, 211),   # Medium orchid
+            (255, 215, 0),    # Pure gold
+            (0, 255, 170),    # Neon mint
+        )
+        if self.env is not None:
+            _, cell_size, origin = self._grid_geometry()
+            agent_center = self._cell_center(tuple(self.env.agent_pos), cell_size, origin)
+        else:
+            agent_center = (VIRTUAL_WIDTH // 2, VIRTUAL_HEIGHT // 2)
+
+        rng = random.Random(pygame.time.get_ticks())
+        for index in range(count):
+            color = palette[index % len(palette)]
+            if index % 5 < 3:
+                start_x = float(agent_center[0] + rng.uniform(-15, 15))
+                start_y = float(agent_center[1] + rng.uniform(-15, 15))
+            else:
+                start_x = float(rng.uniform(VIRTUAL_WIDTH * 0.25, VIRTUAL_WIDTH * 0.75))
+                start_y = float(rng.uniform(VIRTUAL_HEIGHT * 0.35, VIRTUAL_HEIGHT * 0.65))
+
+            angle = rng.uniform(-math.pi * 0.85, -math.pi * 0.15)
+            speed = rng.uniform(140.0, 350.0)
+            life = rng.uniform(1.4, 2.8)
+            self.particles.append(
+                Particle(
+                    start_x,
+                    start_y,
+                    math.cos(angle) * speed,
+                    math.sin(angle) * speed,
+                    life,
+                    life,
+                    rng.uniform(3.0, 6.0),
+                    color,
+                )
+            )
+
+    def _spawn_ambient_confetti(self, count: int = 4) -> None:
+        """Gently drop ambient confetti while celebrating victory."""
+        palette: Sequence[Tuple[int, int, int]] = (
+            COLORS["green"],
+            COLORS["yellow"],
+            COLORS["cyan"],
+            (255, 105, 180),
+            (255, 215, 0),
+        )
+        rng = random.Random()
+        for _ in range(count):
+            color = palette[rng.randrange(len(palette))]
+            start_x = float(rng.uniform(40, VIRTUAL_WIDTH - 40))
+            start_y = float(rng.uniform(-20, -5))
+            life = rng.uniform(2.0, 3.5)
+            self.particles.append(
+                Particle(
+                    start_x,
+                    start_y,
+                    rng.uniform(-35.0, 35.0),
+                    rng.uniform(45.0, 110.0),
+                    life,
+                    life,
+                    rng.uniform(3.0, 5.0),
                     color,
                 )
             )

@@ -71,11 +71,21 @@ class ArenaRenderer:
         pygame.font.init()
 
         size = (env.width, env.height)
+        self.world_surface = pygame.Surface(size)
+        self.composite_surface = pygame.Surface(size)
         if mode == "human":
-            self.surface = pygame.display.set_mode(size)
+            self.window_surface: pygame.Surface | None = pygame.display.set_mode(size)
             pygame.display.set_caption(f"Neon Rift Arena — {env.control_style.title()} Controls")
+            self.surface = self.composite_surface
         else:
-            self.surface = pygame.Surface(size)
+            self.window_surface = None
+            self.surface = self.composite_surface
+
+        self.screen_shake_enabled = True
+        self.shake_intensity = 0.0
+        self.shake_x = 0.0
+        self.shake_y = 0.0
+        self.damage_flash_alpha = 0.0
 
         self.clock = pygame.time.Clock()
         # Bahnschrift has clean, wide counters at game-HUD sizes. Pygame falls
@@ -119,6 +129,9 @@ class ArenaRenderer:
                     self.close_requested = True
 
         self._sync_effects()
+
+        # 1. Render gameplay world onto world_surface
+        self.surface = self.world_surface
         self._draw_background()
         self._draw_danger_zones()
         self._draw_spawners()
@@ -130,6 +143,20 @@ class ArenaRenderer:
         self._draw_particles()
         self._draw_progression_fx()
         self._draw_vignette()
+
+        # 2. Update screen shake displacement
+        shake_x, shake_y = self._update_shake()
+
+        # 3. Composite world onto composite_surface with shake
+        self.surface = self.composite_surface
+        self.surface.fill(COLORS["space"])
+        self.surface.blit(self.world_surface, (round(shake_x), round(shake_y)))
+
+        # 4. Damage flash pulse
+        if self.damage_flash_alpha > 0.5:
+            self._draw_damage_flash()
+
+        # 5. Stationary HUD, banners, and overlays
         self._draw_hud(footer_text)
         self._draw_projectile_legend()
         self._draw_pause_button(paused)
@@ -158,11 +185,12 @@ class ArenaRenderer:
         if self.show_volume_slider:
             self._draw_volume_slider()
 
-        if self.mode == "human":
+        if self.mode == "human" and self.window_surface is not None:
+            self.window_surface.blit(self.composite_surface, (0, 0))
             pygame.display.flip()
             return None
 
-        frame = pygame.surfarray.array3d(self.surface)
+        frame = pygame.surfarray.array3d(self.composite_surface)
         return np.transpose(frame, (1, 0, 2)).copy()
 
     def pause_at_position(self, position: tuple[int, int]) -> bool:
@@ -1345,6 +1373,32 @@ class ArenaRenderer:
             return
         self.last_effect_step = self.env.step_count
         events = self.env.last_events
+
+        if events.get("nova_bomb_detonated"):
+            self.add_screen_shake(9.0)
+            self._burst(
+                self.env.width / 2,
+                self.env.height / 2,
+                COLORS["nova"],
+                110,
+            )
+
+        if events.get("spawners_destroyed"):
+            self.add_screen_shake(7.0)
+
+        if events.get("player_hit"):
+            self.add_screen_shake(5.5)
+            self.damage_flash_alpha = min(110.0, self.damage_flash_alpha + 70.0)
+            self._burst(
+                self.env.player.x,
+                self.env.player.y,
+                COLORS["player"],
+                18,
+            )
+
+        if events.get("boss_skills_cast"):
+            self.add_screen_shake(2.5)
+
         for impact in events.get("impacts", []):
             color = (
                 COLORS["spawner_core"]
@@ -1352,14 +1406,10 @@ class ArenaRenderer:
                 else COLORS["enemy"]
             )
             count = 24 if impact.get("destroyed") else 10
+            if impact.get("destroyed"):
+                self.add_screen_shake(1.8)
             self._burst(float(impact["x"]), float(impact["y"]), color, count)
-        if events.get("player_hit"):
-            self._burst(
-                self.env.player.x,
-                self.env.player.y,
-                COLORS["player"],
-                18,
-            )
+
         if events.get("levels_gained"):
             self._burst(
                 self.env.player.x,
@@ -1367,15 +1417,40 @@ class ArenaRenderer:
                 COLORS["xp"],
                 42,
             )
-        if events.get("nova_bomb_detonated"):
-            self._burst(
-                self.env.width / 2,
-                self.env.height / 2,
-                COLORS["nova"],
-                110,
-            )
+
         if self.audio:
             self.audio.sync_events(events, self.env.done)
+
+    def add_screen_shake(self, intensity: float) -> None:
+        """Accumulate screen shake intensity with a safe upper ceiling."""
+        if not self.screen_shake_enabled:
+            return
+        self.shake_intensity = min(14.0, self.shake_intensity + intensity)
+
+    def _update_shake(self) -> tuple[float, float]:
+        """Calculate dynamic shake displacement and decay intensity exponentially."""
+        if not self.screen_shake_enabled or self.shake_intensity < 0.1:
+            self.shake_intensity = 0.0
+            self.shake_x = 0.0
+            self.shake_y = 0.0
+            return (0.0, 0.0)
+
+        angle = self.effect_rng.uniform(0.0, math.tau)
+        self.shake_x = math.cos(angle) * self.shake_intensity
+        self.shake_y = math.sin(angle) * self.shake_intensity
+        self.shake_intensity *= 0.85
+        return (self.shake_x, self.shake_y)
+
+    def _draw_damage_flash(self) -> None:
+        """Draw a transient perimeter crimson warning glow when taking damage."""
+        if self.damage_flash_alpha <= 0.5:
+            return
+        flash_surf = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        alpha = int(min(255, self.damage_flash_alpha))
+        pygame.draw.rect(flash_surf, (244, 40, 60, int(alpha * 0.45)), flash_surf.get_rect(), width=16)
+        pygame.draw.rect(flash_surf, (255, 70, 90, int(alpha * 0.22)), flash_surf.get_rect())
+        self.surface.blit(flash_surf, (0, 0))
+        self.damage_flash_alpha = max(0.0, self.damage_flash_alpha - 6.5)
 
     def _burst(
         self, x: float, y: float, color: tuple[int, int, int], count: int

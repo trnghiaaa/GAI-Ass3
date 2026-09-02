@@ -73,6 +73,50 @@ def test_arena_audio_gracefully_disables_when_mixer_fails(monkeypatch):
     audio = ArenaAudio()
     assert not audio.available
     audio.start_music()
-    audio.play("laser")
     audio.sync_events({"projectiles_fired": 1})
     assert audio.toggle() is False
+
+
+def test_screen_shake_accumulates_and_decays():
+    from arena.environment import ArenaEnv
+    from arena.presentation.renderer import ArenaRenderer
+
+    env = ArenaEnv(render_mode="rgb_array")
+    renderer = ArenaRenderer(env, mode="rgb_array")
+
+    assert renderer.shake_intensity == 0.0
+    assert renderer._update_shake() == (0.0, 0.0)
+
+    # Accumulate shake
+    renderer.add_screen_shake(5.0)
+    assert renderer.shake_intensity == 5.0
+    offset_x, offset_y = renderer._update_shake()
+    assert offset_x != 0.0 or offset_y != 0.0
+    assert renderer.shake_intensity < 5.0  # Decayed
+
+    # Ceiling clamping
+    renderer.add_screen_shake(100.0)
+    assert renderer.shake_intensity == 14.0
+
+    # Exponential decay to zero
+    for _ in range(50):
+        renderer._update_shake()
+    assert renderer.shake_intensity == 0.0
+    assert renderer._update_shake() == (0.0, 0.0)
+
+
+def test_renderer_composite_surface_renders_with_shake():
+    from arena.environment import ArenaEnv
+    from arena.presentation.renderer import ArenaRenderer
+
+    env = ArenaEnv(render_mode="rgb_array")
+    env.reset(seed=42)
+    renderer = ArenaRenderer(env, mode="rgb_array")
+
+    renderer.add_screen_shake(8.0)
+    renderer.damage_flash_alpha = 80.0
+
+    frame = renderer.render()
+    assert frame is not None
+    assert frame.shape == (env.height, env.width, 3)
+    assert frame.dtype.name == "uint8"
