@@ -199,3 +199,30 @@ def test_legacy_renderer_does_not_consume_keyboard_events(monkeypatch):
         assert [event.key for event in events] == [pygame.K_RIGHT]
     finally:
         renderer.close()
+
+
+def test_gridworld_defeat_slowmo_and_vignette(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import GridworldApp
+
+    app = GridworldApp(max_steps=20)
+    try:
+        app._start_level(1, "manual", None, False, "free")
+        app._finish_run("death", "The agent was defeated by hazard.")
+        assert app.defeat_slowmo_timer == 0.75
+        assert app.defeat_flash_alpha == 140.0
+        assert app.defeat_vignette_alpha == 180.0
+        assert app.defeat_shockwave_origin is not None
+
+        # Draw during slowmo
+        app._draw()
+        assert app.scene == "play"
+
+        # Update decay
+        app._update(0.1)
+        assert app.defeat_slowmo_timer < 0.75
+        assert app.defeat_flash_alpha < 140.0
+    finally:
+        pygame.quit()

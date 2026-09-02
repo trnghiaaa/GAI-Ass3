@@ -161,7 +161,25 @@ class ArenaAudio:
     @classmethod
     def _build_effects(cls) -> dict[str, pygame.mixer.Sound]:
         """Build the full sci-fi combat sound palette."""
-        laser = cls._sweep(1200.0, 260.0, 0.055, 0.22)
+        # 5 distinct laser signatures for each customizable ship skin
+        laser_cyber = cls._sweep(1250.0, 260.0, 0.055, 0.22)
+        laser_solar = cls._mix(
+            cls._sweep(850.0, 110.0, 0.065, 0.26),
+            cls._noise(0.035, 0.16, decay_rate=40.0),
+        )
+        laser_void = cls._mix(
+            cls._sweep(1650.0, 380.0, 0.060, 0.20),
+            cls._note(1400.0, 0.030, 0.14, overtone=0.5),
+        )
+        laser_emerald = cls._mix(
+            cls._sweep(1900.0, 520.0, 0.045, 0.22),
+            cls._note(2200.0, 0.015, 0.15),
+        )
+        laser_synth = cls._mix(
+            cls._sweep(1400.0, 220.0, 0.050, 0.24),
+            cls._sweep(700.0, 110.0, 0.050, 0.14),
+        )
+
         laser_heavy = cls._sweep(700.0, 140.0, 0.090, 0.28)
         drone = cls._sweep(1550.0, 650.0, 0.038, 0.16)
 
@@ -216,7 +234,12 @@ class ArenaAudio:
         ])
 
         return {
-            "laser": cls._make_sound(laser),
+            "laser": cls._make_sound(laser_cyber),
+            "laser_cyber_cyan": cls._make_sound(laser_cyber),
+            "laser_solar_flare": cls._make_sound(laser_solar),
+            "laser_void_phantom": cls._make_sound(laser_void),
+            "laser_emerald_aegis": cls._make_sound(laser_emerald),
+            "laser_synth_pink": cls._make_sound(laser_synth),
             "laser_heavy": cls._make_sound(laser_heavy),
             "drone": cls._make_sound(drone),
             "hit": cls._make_sound(hit),
@@ -251,13 +274,19 @@ class ArenaAudio:
         self._last_played[name] = now
         sound.play()
 
-    def sync_events(self, events: dict[str, Any], done: bool = False) -> None:
+    def sync_events(
+        self,
+        events: dict[str, Any],
+        done: bool = False,
+        theme: str | None = None,
+    ) -> None:
         """Trigger corresponding SFX for simulation events with rate-limiting."""
         if not self.available or not self.enabled or not events:
             return
 
         if events.get("projectiles_fired"):
-            self.play("laser", minimum_interval_ms=75)
+            laser_key = f"laser_{theme}" if theme and f"laser_{theme}" in self.effects else "laser"
+            self.play(laser_key, minimum_interval_ms=70)
         elif events.get("drone_shots"):
             self.play("drone", minimum_interval_ms=100)
 

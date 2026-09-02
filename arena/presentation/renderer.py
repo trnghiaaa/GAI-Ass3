@@ -48,6 +48,49 @@ COLORS = {
     "accent": (106, 173, 255),
 }
 
+SHIP_THEMES: dict[str, dict[str, Any]] = {
+    "cyber_cyan": {
+        "name": "Neon Cyber",
+        "player": (65, 210, 255),
+        "player_core": (224, 250, 255),
+        "thrust": (255, 154, 54),
+        "laser": (82, 242, 255),
+        "accent": (65, 210, 255),
+    },
+    "solar_flare": {
+        "name": "Solar Flare",
+        "player": (255, 175, 40),
+        "player_core": (255, 245, 210),
+        "thrust": (255, 65, 25),
+        "laser": (255, 205, 50),
+        "accent": (255, 175, 40),
+    },
+    "void_phantom": {
+        "name": "Void Phantom",
+        "player": (185, 95, 255),
+        "player_core": (245, 220, 255),
+        "thrust": (255, 75, 185),
+        "laser": (205, 120, 255),
+        "accent": (185, 95, 255),
+    },
+    "emerald_aegis": {
+        "name": "Emerald Aegis",
+        "player": (46, 220, 130),
+        "player_core": (220, 255, 235),
+        "thrust": (65, 210, 255),
+        "laser": (55, 240, 150),
+        "accent": (46, 220, 130),
+    },
+    "synth_pink": {
+        "name": "Synthwave Pink",
+        "player": (255, 85, 195),
+        "player_core": (255, 235, 250),
+        "thrust": (140, 75, 255),
+        "laser": (255, 115, 215),
+        "accent": (255, 85, 195),
+    },
+}
+
 
 class ArenaRenderer:
     """Draw the live environment in a window or an off-screen RGB surface."""
@@ -86,6 +129,19 @@ class ArenaRenderer:
         self.shake_x = 0.0
         self.shake_y = 0.0
         self.damage_flash_alpha = 0.0
+
+        # Ship Customization Themes
+        self.theme_keys = list(SHIP_THEMES.keys())
+        self.theme_index = 0
+        self.current_theme = self.theme_keys[self.theme_index]
+        self.theme_notice_timer = 0.0
+
+        # Defeat Slow-Mo & Vignette
+        self.defeat_slowmo_timer = 0.0
+        self.defeat_shockwave_origin: tuple[float, float] | None = None
+        self.defeat_shockwave_radius = 0.0
+        self.defeat_vignette_alpha = 0.0
+        self.was_done_previously = False
 
         self.clock = pygame.time.Clock()
         # Bahnschrift has clean, wide counters at game-HUD sizes. Pygame falls
@@ -152,9 +208,18 @@ class ArenaRenderer:
         self.surface.fill(COLORS["space"])
         self.surface.blit(self.world_surface, (round(shake_x), round(shake_y)))
 
-        # 4. Damage flash pulse
+        # 4. Damage flash pulse & Defeat Slow-Mo effects
         if self.damage_flash_alpha > 0.5:
             self._draw_damage_flash()
+        if self.defeat_slowmo_timer > 0.0:
+            dt = 1.0 / self.env.fps
+            self.defeat_slowmo_timer = max(0.0, self.defeat_slowmo_timer - dt)
+            self.defeat_shockwave_radius += 240.0 * dt
+            self.defeat_vignette_alpha = max(0.0, self.defeat_vignette_alpha - 40.0 * dt)
+            self._draw_defeat_shockwave()
+            self._draw_defeat_vignette()
+        elif self.env.done and self.defeat_vignette_alpha > 0.0:
+            self._draw_defeat_vignette()
 
         # 5. Stationary HUD, banners, and overlays
         self._draw_hud(footer_text)
@@ -179,11 +244,15 @@ class ArenaRenderer:
             self._draw_choice_overlay()
         elif paused and not self.env.done and not self.show_build_panel:
             self._draw_pause_overlay()
-        if self.env.done:
+        if self.env.done and self.defeat_slowmo_timer <= 0.0:
             self._draw_episode_end()
 
         if self.show_volume_slider:
             self._draw_volume_slider()
+
+        if self.theme_notice_timer > 0:
+            self.theme_notice_timer = max(0.0, self.theme_notice_timer - 1.0 / self.env.fps)
+            self._draw_theme_notice()
 
         if self.mode == "human" and self.window_surface is not None:
             self.window_surface.blit(self.composite_surface, (0, 0))
@@ -192,6 +261,44 @@ class ArenaRenderer:
 
         frame = pygame.surfarray.array3d(self.composite_surface)
         return np.transpose(frame, (1, 0, 2)).copy()
+
+    def get_color(self, key: str) -> tuple[int, int, int]:
+        """Return theme-customized color for player elements, or default COLORS."""
+        theme_dict = SHIP_THEMES.get(self.current_theme, {})
+        if key in theme_dict:
+            return theme_dict[key]
+        return COLORS.get(key, (255, 255, 255))
+
+    def cycle_theme(self, step: int = 1) -> str:
+        """Cycle ship palette theme, trigger visual notification and preview SFX."""
+        self.theme_index = (self.theme_index + step) % len(self.theme_keys)
+        self.current_theme = self.theme_keys[self.theme_index]
+        self.theme_notice_timer = 2.0
+        if self.audio:
+            laser_key = f"laser_{self.current_theme}"
+            self.audio.play(laser_key if laser_key in self.audio.effects else "click", minimum_interval_ms=50)
+        return self.current_theme
+
+    def set_theme(self, name: str) -> None:
+        """Set ship palette theme directly."""
+        if name in self.theme_keys:
+            self.theme_index = self.theme_keys.index(name)
+            self.current_theme = name
+
+    def _draw_theme_notice(self) -> None:
+        if self.theme_notice_timer <= 0:
+            return
+        theme_info = SHIP_THEMES[self.current_theme]
+        text = f"SHIP SKIN: {theme_info['name'].upper()}  •  PRESS C TO CYCLE"
+        color = theme_info["player"]
+        label = self.font_tiny.render(text, True, COLORS["text"])
+        pill_width = label.get_width() + 32
+        pill_rect = pygame.Rect((self.env.width - pill_width) // 2, 78, pill_width, 28)
+        pill = pygame.Surface((pill_width, 28), pygame.SRCALPHA)
+        pill.fill((10, 18, 38, 235))
+        pygame.draw.rect(pill, color, pill.get_rect(), 1, border_radius=14)
+        pill.blit(label, label.get_rect(center=(pill_width // 2, 14)))
+        self.surface.blit(pill, pill_rect.topleft)
 
     def pause_at_position(self, position: tuple[int, int]) -> bool:
         """Return whether a click targets the always-visible pause control."""
@@ -355,19 +462,28 @@ class ArenaRenderer:
         veil = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
         veil.fill((3, 7, 20, 182))
         self.surface.blit(veil, (0, 0))
-        panel = pygame.Rect(210, 205, 380, 170)
+        panel = pygame.Rect(190, 190, 420, 200)
         pygame.draw.rect(self.surface, (14, 22, 47), panel, border_radius=18)
         pygame.draw.rect(self.surface, COLORS["xp"], panel, width=2, border_radius=18)
         title = self.font_large.render("PAUSED", True, COLORS["text"])
-        self.surface.blit(title, title.get_rect(center=(panel.centerx, panel.y + 55)))
+        self.surface.blit(title, title.get_rect(center=(panel.centerx, panel.y + 45)))
         subtitle = self.font_small.render(
             "Press P or click RESUME when you are ready.", True, COLORS["muted"]
         )
-        self.surface.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.y + 108)))
+        self.surface.blit(subtitle, subtitle.get_rect(center=(panel.centerx, panel.y + 90)))
+        
+        theme_info = SHIP_THEMES[self.current_theme]
+        skin_label = self.font_tiny.render(
+            f"SHIP SKIN: {theme_info['name'].upper()}   •   PRESS C TO CYCLE",
+            True,
+            theme_info["player"],
+        )
+        self.surface.blit(skin_label, skin_label.get_rect(center=(panel.centerx, panel.y + 125)))
+
         hint = self.font_tiny.render(
             "The phase timer and every enemy are frozen.", True, COLORS["xp"]
         )
-        self.surface.blit(hint, hint.get_rect(center=(panel.centerx, panel.y + 137)))
+        self.surface.blit(hint, hint.get_rect(center=(panel.centerx, panel.y + 160)))
         # The veil covers the ordinary HUD, so redraw the active exit control
         # on top and keep the mouse path back to play visually obvious.
         self._draw_pause_button(True)
@@ -489,8 +605,12 @@ class ArenaRenderer:
             player.y + math.sin(angle - 2.45) * 18,
         )
 
+        player_color = self.get_color("player")
+        player_core = self.get_color("player_core")
+        thrust_color = self.get_color("thrust")
+
         glow = pygame.Surface((64, 64), pygame.SRCALPHA)
-        pygame.draw.circle(glow, (*COLORS["player"], 35), (32, 32), 29)
+        pygame.draw.circle(glow, (*player_color, 35), (32, 32), 29)
         self.surface.blit(glow, (int(player.x - 32), int(player.y - 32)))
 
         speed = math.hypot(player.vx, player.vy)
@@ -499,17 +619,17 @@ class ArenaRenderer:
                 player.x - math.cos(angle) * (23 + min(speed / 18, 12)),
                 player.y - math.sin(angle) * (23 + min(speed / 18, 12)),
             )
-            pygame.draw.line(self.surface, COLORS["thrust"], left, tail, 4)
-            pygame.draw.line(self.surface, COLORS["thrust"], right, tail, 4)
+            pygame.draw.line(self.surface, thrust_color, left, tail, 4)
+            pygame.draw.line(self.surface, thrust_color, right, tail, 4)
 
-        pygame.draw.polygon(self.surface, COLORS["player"], (nose, left, right))
-        pygame.draw.polygon(self.surface, COLORS["player_core"], (nose, left, right), 2)
+        pygame.draw.polygon(self.surface, player_color, (nose, left, right))
+        pygame.draw.polygon(self.surface, player_core, (nose, left, right), 2)
         pygame.draw.circle(
-            self.surface, COLORS["player_core"], (round(player.x), round(player.y)), 4
+            self.surface, player_core, (round(player.x), round(player.y)), 4
         )
         shield_alpha = 55 + int(20 * math.sin(self.env.step_count * 0.08))
         shield = pygame.Surface((52, 52), pygame.SRCALPHA)
-        pygame.draw.circle(shield, (*COLORS["player"], shield_alpha), (26, 26), 24, 1)
+        pygame.draw.circle(shield, (*player_color, shield_alpha), (26, 26), 24, 1)
         self.surface.blit(shield, (round(player.x) - 26, round(player.y) - 26))
         for charge in range(min(3, self.env.barrier_charges)):
             pygame.draw.circle(
@@ -735,17 +855,17 @@ class ArenaRenderer:
                 round(projectile.y - projectile.vy / speed * tail_length),
             )
             if projectile.weapon_kind == "drone":
-                outer, core = COLORS["drone"], COLORS["player_core"]
+                outer, core = COLORS["drone"], self.get_color("player_core")
             elif projectile.weapon_kind == "nova":
-                outer, core = COLORS["nova"], COLORS["player_core"]
+                outer, core = COLORS["nova"], self.get_color("player_core")
             elif projectile.weapon_kind == "laser":
-                outer, core = COLORS["laser"], COLORS["player_core"]
+                outer, core = self.get_color("laser"), self.get_color("player_core")
             elif projectile.weapon_kind == "rapid":
-                outer, core = (80, 170, 255), (235, 250, 255)
+                outer, core = self.get_color("laser"), self.get_color("player_core")
             elif projectile.weapon_kind == "twin":
-                outer, core = (80, 235, 224), (235, 250, 255)
+                outer, core = self.get_color("laser"), self.get_color("player_core")
             else:
-                outer, core = COLORS["allied_fire"], (235, 250, 255)
+                outer, core = self.get_color("laser"), self.get_color("player_core")
             if projectile.is_critical:
                 outer, core = (255, 198, 62), (255, 255, 255)
                 pulse = 10 + int(2 * math.sin(self.env.step_count * 0.4))
@@ -811,7 +931,7 @@ class ArenaRenderer:
         heading_x = self.env.player.x + math.cos(self.env.player.angle) * 44
         heading_y = self.env.player.y + math.sin(self.env.player.angle) * 44
         pygame.draw.circle(
-            self.surface, COLORS["player"], (round(heading_x), round(heading_y)), 3, 1
+            self.surface, self.get_color("player"), (round(heading_x), round(heading_y)), 3, 1
         )
 
     def _draw_hud(self, footer_text: str | None) -> None:
@@ -1292,6 +1412,11 @@ class ArenaRenderer:
         pygame.draw.rect(self.surface, COLORS["xp"], panel, 2, border_radius=18)
         title = self.font_large.render("SHIP BUILD", True, COLORS["text"])
         self.surface.blit(title, (panel.x + 28, panel.y + 22))
+        theme_info = SHIP_THEMES[self.current_theme]
+        skin_label = self.font_small.render(
+            f"SKIN: {theme_info['name'].upper()}  [ Press C ]", True, theme_info["player"]
+        )
+        self.surface.blit(skin_label, (panel.right - 28 - skin_label.get_width(), panel.y + 28))
         self._text("TAB to close  •  battle timer paused", panel.x + 30, panel.y + 68, self.font_small, COLORS["muted"])
 
         profile = self.env.weapon_profile()
@@ -1418,8 +1543,22 @@ class ArenaRenderer:
                 42,
             )
 
+        if self.env.done:
+            if not self.was_done_previously:
+                self.was_done_previously = True
+                if self.env.last_end_reason == "player_destroyed":
+                    self.defeat_slowmo_timer = 0.75
+                    self.defeat_shockwave_origin = (float(self.env.player.x), float(self.env.player.y))
+                    self.defeat_shockwave_radius = 12.0
+                    self.defeat_vignette_alpha = 180.0
+                    self.add_screen_shake(7.5)
+                    self._burst(self.env.player.x, self.env.player.y, COLORS["hazard"], 36)
+                    self._burst(self.env.player.x, self.env.player.y, self.get_color("player"), 24)
+        else:
+            self.was_done_previously = False
+
         if self.audio:
-            self.audio.sync_events(events, self.env.done)
+            self.audio.sync_events(events, self.env.done, theme=self.current_theme)
 
     def add_screen_shake(self, intensity: float) -> None:
         """Accumulate screen shake intensity with a safe upper ceiling."""
@@ -1451,6 +1590,42 @@ class ArenaRenderer:
         pygame.draw.rect(flash_surf, (255, 70, 90, int(alpha * 0.22)), flash_surf.get_rect())
         self.surface.blit(flash_surf, (0, 0))
         self.damage_flash_alpha = max(0.0, self.damage_flash_alpha - 6.5)
+
+    def _draw_defeat_shockwave(self) -> None:
+        """Draw expanding chromatic shockwave rings from point of destruction."""
+        if not self.defeat_shockwave_origin or self.defeat_slowmo_timer <= 0.0:
+            return
+        ox, oy = self.defeat_shockwave_origin
+        rad = int(self.defeat_shockwave_radius)
+        if rad <= 2:
+            return
+        progress = 1.0 - (self.defeat_slowmo_timer / 0.75)
+        alpha = int(max(0, (1.0 - progress) * 230))
+        if alpha <= 2:
+            return
+
+        box_size = rad * 2 + 16
+        shock_surf = pygame.Surface((box_size, box_size), pygame.SRCALPHA)
+        center = (box_size // 2, box_size // 2)
+        ring_width = max(2, int(6 * (1.0 - progress)))
+        pygame.draw.circle(shock_surf, (*COLORS["hazard"], alpha), center, rad, width=ring_width)
+        inner_rad = max(2, int(rad * 0.65))
+        pygame.draw.circle(shock_surf, (255, 240, 245, int(alpha * 0.75)), center, inner_rad, width=2)
+        self.surface.blit(shock_surf, (round(ox - box_size // 2), round(oy - box_size // 2)))
+
+    def _draw_defeat_vignette(self) -> None:
+        """Draw cinematic smoky charcoal and crimson radial edge vignette."""
+        if self.defeat_vignette_alpha <= 0.5:
+            return
+        vignette = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
+        w, h = self.env.width, self.env.height
+        border_thickness = 54
+        for i in range(border_thickness):
+            norm = 1.0 - (i / border_thickness)
+            alpha = int(self.defeat_vignette_alpha * (norm ** 2) * 0.7)
+            if alpha > 0:
+                pygame.draw.rect(vignette, (45, 8, 18, alpha), (i, i, w - 2 * i, h - 2 * i), width=1)
+        self.surface.blit(vignette, (0, 0))
 
     def _burst(
         self, x: float, y: float, color: tuple[int, int, int], count: int
