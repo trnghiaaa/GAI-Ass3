@@ -47,6 +47,16 @@ class MainLauncherTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             root_launcher.main(["--part", "invalid_option"])
 
+    def test_master_hub_help_overlay_toggle(self) -> None:
+        import os
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
+        launcher = root_launcher.MasterLauncher()
+        self.assertFalse(launcher.show_help_overlay)
+        launcher.show_help_overlay = True
+        self.assertTrue(launcher.show_help_overlay)
+        launcher._draw(hover_p1=False, hover_p2=False, hover_vol_btn=False, hover_help_btn=False)
+        launcher._cleanup_audio()
+
 
 if __name__ == "__main__":
     unittest.main()

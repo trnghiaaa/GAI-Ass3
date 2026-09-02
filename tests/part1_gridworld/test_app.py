@@ -226,3 +226,44 @@ def test_gridworld_defeat_slowmo_and_vignette(monkeypatch):
         assert app.defeat_flash_alpha < 140.0
     finally:
         pygame.quit()
+
+
+def test_gridworld_help_overlay_toggle(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import GridworldApp
+
+    app = GridworldApp(max_steps=20)
+    try:
+        assert app.show_help_overlay is False
+
+        # Toggle help on with H key
+        event_h = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_h)
+        app._handle_key(event_h)
+        assert app.show_help_overlay is True
+
+        # Draw frame while help is open
+        app._draw()
+        app._present()
+
+        # Dismiss help with ESC key - verify scene remains 'menu'
+        event_esc = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE)
+        app._handle_key(event_esc)
+        assert app.show_help_overlay is False
+        assert app.running is True
+        assert app.scene == "menu"
+
+        # Toggle help on again
+        app._handle_key(event_h)
+        assert app.show_help_overlay is True
+
+        # Dismiss help with mouse click
+        event_mouse = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(200, 200))
+        pygame.event.post(event_mouse)
+        app._poll_events()
+        assert app.show_help_overlay is False
+        assert app.running is True
+        assert app.scene == "menu"
+    finally:
+        pygame.quit()

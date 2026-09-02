@@ -324,8 +324,10 @@ class MasterLauncher:
         # Volume Controls & Audio
         self.volume = 0.8
         self.show_volume_slider = False
+        self.show_help_overlay = False
         self.dragging_volume = False
         self.volume_btn_rect = pygame.Rect(self.WIDTH - 120, self.HEIGHT - 38, 100, 28)
+        self.help_btn_rect = pygame.Rect(self.WIDTH - 230, self.HEIGHT - 38, 100, 28)
         self.volume_panel_rect = pygame.Rect(self.WIDTH - 300, self.HEIGHT - 175, 280, 130)
         self.volume_track_rect = pygame.Rect(self.WIDTH - 280, self.HEIGHT - 123, 240, 10)
 
@@ -340,6 +342,7 @@ class MasterLauncher:
             hover_p1 = self.card_p1.collidepoint(mouse_pos)
             hover_p2 = self.card_p2.collidepoint(mouse_pos)
             hover_vol_btn = self.volume_btn_rect.collidepoint(mouse_pos)
+            hover_help_btn = self.help_btn_rect.collidepoint(mouse_pos)
 
             current_hover = "p1" if hover_p1 else ("p2" if hover_p2 else None)
             if current_hover != self.last_hover and current_hover is not None:
@@ -347,7 +350,7 @@ class MasterLauncher:
                     self.audio.play("hover")
             self.last_hover = current_hover
 
-            if hover_p1 or hover_p2 or hover_vol_btn or self.show_volume_slider:
+            if hover_p1 or hover_p2 or hover_vol_btn or hover_help_btn or self.show_volume_slider or self.show_help_overlay:
                 pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
             else:
                 pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
@@ -359,7 +362,15 @@ class MasterLauncher:
                     return "quit"
 
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_1 or event.key == pygame.K_g:
+                    if self.show_help_overlay:
+                        if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
+                            self.show_help_overlay = False
+                            continue
+                    if event.key in (pygame.K_h, pygame.K_SLASH):
+                        self.show_help_overlay = not self.show_help_overlay
+                        if self.audio:
+                            self.audio.play("click")
+                    elif event.key == pygame.K_1 or event.key == pygame.K_g:
                         self._play_select_sound()
                         self._cleanup_audio()
                         return "1"
@@ -372,17 +383,28 @@ class MasterLauncher:
                     elif event.key == pygame.K_m and self.audio:
                         self.audio.toggle()
                     elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
-                        if self.show_volume_slider:
+                        if self.show_help_overlay:
+                            self.show_help_overlay = False
+                        elif self.show_volume_slider:
                             self.show_volume_slider = False
                         else:
                             self._cleanup_audio()
                             return "quit"
 
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.show_help_overlay:
+                        self.show_help_overlay = False
+                        if self.audio:
+                            self.audio.play("click")
+                        continue
                     if self.show_volume_slider and self.volume_panel_rect.collidepoint(event.pos):
                         self._handle_volume_click(event.pos)
                     elif self.volume_btn_rect.collidepoint(event.pos):
                         self.show_volume_slider = not self.show_volume_slider
+                    elif self.help_btn_rect.collidepoint(event.pos):
+                        self.show_help_overlay = not self.show_help_overlay
+                        if self.audio:
+                            self.audio.play("click")
                     elif hover_p1:
                         self._play_select_sound()
                         self._cleanup_audio()
@@ -400,7 +422,7 @@ class MasterLauncher:
                 elif event.type == pygame.MOUSEMOTION and self.dragging_volume:
                     self._update_volume_drag(event.pos[0])
 
-            self._draw(hover_p1, hover_p2, hover_vol_btn)
+            self._draw(hover_p1, hover_p2, hover_vol_btn, hover_help_btn)
             pygame.display.flip()
             self.clock.tick(60)
 
@@ -436,7 +458,13 @@ class MasterLauncher:
         if self.audio:
             self.audio.set_volume(vol)
 
-    def _draw(self, hover_p1: bool, hover_p2: bool, hover_vol_btn: bool) -> None:
+    def _draw(
+        self,
+        hover_p1: bool,
+        hover_p2: bool,
+        hover_vol_btn: bool,
+        hover_help_btn: bool = False,
+    ) -> None:
         self.screen.fill(self.COLORS["space"])
 
         # Starfield
@@ -464,9 +492,16 @@ class MasterLauncher:
         self._draw_part2_card(hover_p2)
 
         # Footer
-        footer_text = "Press [1] or [2] to Launch  •  [V] Volume Controls  •  [ESC] / [Q] Exit"
+        footer_text = "Press [1] or [2] to Launch  •  [H] Quick-Help  •  [V] Volume  •  [ESC] Exit"
         footer_surf = self.font_footer.render(footer_text, True, self.COLORS["faint"])
         self.screen.blit(footer_surf, (55, self.HEIGHT - 32))
+
+        # Help Button in bottom right
+        help_bg = self.COLORS["panel_hover"] if hover_help_btn else self.COLORS["panel"]
+        pygame.draw.rect(self.screen, help_bg, self.help_btn_rect, border_radius=6)
+        pygame.draw.rect(self.screen, self.COLORS["border"], self.help_btn_rect, 1, border_radius=6)
+        help_surf = self.font_footer.render("[?] HELP", True, self.COLORS["text"])
+        self.screen.blit(help_surf, help_surf.get_rect(center=self.help_btn_rect.center))
 
         # Volume Button in bottom right
         vol_bg = self.COLORS["panel_hover"] if hover_vol_btn else self.COLORS["panel"]
@@ -480,6 +515,10 @@ class MasterLauncher:
         # Volume Slider Modal
         if self.show_volume_slider:
             self._draw_volume_slider()
+
+        # Help Overlay Modal
+        if self.show_help_overlay:
+            self._draw_help_overlay()
 
     def _draw_part1_card(self, hover: bool) -> None:
         rect = self.card_p1
@@ -609,6 +648,67 @@ class MasterLauncher:
             pygame.draw.rect(self.screen, self.COLORS["border"], b_rect, 1, border_radius=4)
             t_surf = self.font_footer.render(text, True, self.COLORS["text"])
             self.screen.blit(t_surf, t_surf.get_rect(center=b_rect.center))
+
+    def _draw_help_overlay(self) -> None:
+        """Draw holographic quick-help and keyboard controls modal for the Master Hub."""
+        overlay = pygame.Surface((self.WIDTH, self.HEIGHT), pygame.SRCALPHA)
+        overlay.fill((4, 7, 18, 225))
+        self.screen.blit(overlay, (0, 0))
+
+        panel = pygame.Rect((self.WIDTH - 720) // 2, (self.HEIGHT - 480) // 2, 720, 480)
+        pygame.draw.rect(self.screen, (14, 22, 44), panel, border_radius=18)
+        pygame.draw.rect(self.screen, self.COLORS["p2_accent"], panel, 2, border_radius=18)
+
+        # Header
+        title = self.font_card_title.render("ASSIGNMENT 3 — QUICK-HELP & HOTKEYS", True, self.COLORS["text"])
+        self.screen.blit(title, (panel.x + 28, panel.y + 22))
+        sub = self.font_footer.render("Click anywhere or press [ H ] / [ ESC ] to return", True, self.COLORS["muted"])
+        self.screen.blit(sub, (panel.x + 30, panel.y + 54))
+
+        # Column 1: Projects & Navigation
+        col1_x = panel.x + 30
+        head1 = self.font_card_tag.render("PROJECT NAVIGATION", True, self.COLORS["p1_accent"])
+        self.screen.blit(head1, (col1_x, panel.y + 88))
+
+        nav_items = (
+            ("[ 1 ] or [ G ]", "Launch Part I: Gridworld AI Lab"),
+            ("[ 2 ] or [ A ]", "Launch Part II: Neon Rift Arena"),
+            ("[ H ] or [ ? ]", "Toggle this Quick-Help & Hotkeys Guide"),
+            ("[ V ]", "Master Hub Ambient Audio Volume Slider"),
+            ("[ M ]", "Mute / Unmute Ambient Soundtrack"),
+            ("[ ESC / Q ]", "Close Hub / Exit Application"),
+        )
+        for i, (key, desc) in enumerate(nav_items):
+            k_surf = self.font_footer.render(key, True, self.COLORS["p1_accent"])
+            d_surf = self.font_body.render(desc, True, self.COLORS["text"])
+            self.screen.blit(k_surf, (col1_x, panel.y + 118 + i * 44))
+            self.screen.blit(d_surf, (col1_x, panel.y + 134 + i * 44))
+
+        # Column 2: In-Game Quick Features
+        col2_x = panel.x + 380
+        head2 = self.font_card_tag.render("FEATURE HIGHLIGHTS", True, self.COLORS["p2_accent"])
+        self.screen.blit(head2, (col2_x, panel.y + 88))
+
+        game_items = (
+            ("Part 1: Tabular RL", "Q-Learning, SARSA, Curiosity Bonus (P key)"),
+            ("Part 2: Deep RL", "48-dim state, 21 weapons, boss rifts"),
+            ("Ship Customization", "Press [ C ] in Part 2 for 5 Neon skins & SFX"),
+            ("Audio Synthesizer", "Zero-asset algorithmic chiptune/synthwave"),
+            ("Visual Game Juice", "Screen shake, defeat slow-mo, victory confetti"),
+            ("Test Coverage", "150+ unit tests across the entire codebase"),
+        )
+        for i, (head, desc) in enumerate(game_items):
+            h_surf = self.font_footer.render(head, True, self.COLORS["p2_accent"])
+            d_surf = self.font_body.render(desc, True, self.COLORS["text"])
+            self.screen.blit(h_surf, (col2_x, panel.y + 118 + i * 44))
+            self.screen.blit(d_surf, (col2_x, panel.y + 134 + i * 44))
+
+        # Footer close button
+        hint = self.font_footer.render("CLICK ANYWHERE OR PRESS [ H ] / [ ESC ] TO CLOSE", True, self.COLORS["p2_accent"])
+        h_rect = pygame.Rect(panel.centerx - hint.get_width() // 2 - 16, panel.bottom - 42, hint.get_width() + 32, 28)
+        pygame.draw.rect(self.screen, (20, 36, 68), h_rect, border_radius=14)
+        pygame.draw.rect(self.screen, self.COLORS["p2_accent"], h_rect, 1, border_radius=14)
+        self.screen.blit(hint, (h_rect.centerx - hint.get_width() // 2, h_rect.y + 6))
 
 
 def build_parser() -> argparse.ArgumentParser:
