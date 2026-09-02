@@ -51,7 +51,7 @@ tests/
   integration/         Combined-launcher tests
 docs/
   part1/               Part I rubric evidence and screenshots
-  part2/               Part II report notes, rubric map, and video plan
+  part2/               Part II rubric evidence map and metrics
 scripts/
   part1/               Part I Windows launch/evidence helpers
   part2/               Part II Windows launcher
@@ -78,13 +78,7 @@ path as PowerShell source:
 These launch `main.py` without constructing the unsafe `& D:\A3_Game&AI...`
 command. The task route uses a VS Code `process` task rather than a shell task.
 
-After cloning or pulling these settings, run **Developer: Reload Window** once (or close all existing VS Code terminals) before using the configured run option. Existing terminals keep their previous environment. The folder name `A3_Game&AI` contains PowerShell's `&` operator, so the old unquoted absolute command cannot execute safely; `scripts/part1/run_part1.bat` remains an unaffected alternative.
-
-If the top-right triangle still prints a command beginning with an absolute
-`.venv\\Scripts\\python.exe` path, VS Code is retaining its old workspace choice.
-Open the Command Palette, run **Python: Clear Workspace Interpreter Setting**,
-then run **Developer: Reload Window**. The repository intentionally launches the
-plain `python` command and lets `main.py` perform the shell-safe `.venv` hand-off.
+After cloning or pulling these settings, run **Developer: Reload Window** once (or close all existing VS Code terminals) before using the configured run option. The repository intentionally launches the plain `python` command and lets `main.py` perform the shell-safe `.venv` hand-off.
 
 ## Part I: Gridworld AI Lab
 
@@ -328,8 +322,8 @@ See `docs/part1/RUBRIC_EVIDENCE.md` for the Part I code/artifact mapping.
 ## Part II: Neon Rift Action Arena
 
 > Schema-10 boss-intermission learning, pause/UI, upgrade clarity, and tidy final
-> evidence are complete. See `docs/part2/REPORT_NOTES.md` for current metrics
-> and `docs/part2/RUBRIC_EVIDENCE.md` for the marking-evidence map.
+> evidence are complete. See `docs/part2/RUBRIC_EVIDENCE.md` for the complete
+> marking-evidence map and metrics.
 
 The Part II environment is a continuous-coordinate Pygame combat arena named
 **Neon Rift Arena**. On Windows, launch it through the project environment so
@@ -604,7 +598,7 @@ boss-skill hits, and 2.75 missile hits per episode. Rotation achieved 72.08 mean
 100% normal phase progression, reached Phase 5, and averaged 0.50 missile hits,
 but did not clear the deliberately harsh no-upgrade Phase-3 stress start. The
 stronger direct boss result is expected because direct movement is the easier
-action set; both models are reported honestly in `docs/part2/REPORT_NOTES.md`.
+action set; both models are reported honestly in `docs/part2/RUBRIC_EVIDENCE.md`.
 
 ### Visual Evaluation
 
@@ -651,9 +645,7 @@ python -m arena.build_evidence
 Run the focused mechanics tests with:
 
 ```bash
-python -m unittest discover -s tests -v
+python -m pytest tests/part2_arena
 ```
 
-See `docs/part2/REPORT_NOTES.md` for final figures,
-`docs/part2/RUBRIC_EVIDENCE.md` for implementation/artifact mapping, and
-`docs/part2/VIDEO_DEMO.md` for the recommended recording sequence.
+See `docs/part1/RUBRIC_EVIDENCE.md` and `docs/part2/RUBRIC_EVIDENCE.md` for complete implementation, artifact mapping, and video demo guides.
