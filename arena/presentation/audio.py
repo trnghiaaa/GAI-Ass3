@@ -24,6 +24,7 @@ class ArenaAudio:
     def __init__(self) -> None:
         self.available = False
         self.enabled = True
+        self.volume: float = 0.8
         self.music_channel: pygame.mixer.Channel | None = None
         self.hazard_channel: pygame.mixer.Channel | None = None
         self.music: pygame.mixer.Sound | None = None
@@ -45,8 +46,10 @@ class ArenaAudio:
             self.music_channel = pygame.mixer.Channel(0)
             self.hazard_channel = pygame.mixer.Channel(1)
             self.music = self._make_sound(self._build_synthwave_music())
-            self.music.set_volume(0.20)
+            self.music.set_volume(self.volume * 0.20)
             self.effects = self._build_effects()
+            for sound in self.effects.values():
+                sound.set_volume(self.volume)
             self.available = True
         except (pygame.error, ValueError, TypeError):
             # Headless training, test runners, and machines without sound devices
@@ -286,15 +289,37 @@ class ArenaAudio:
         if done and events.get("damage_taken", 0) > 0:
             self.play("game_over", minimum_interval_ms=1000)
 
+    def set_volume(self, volume: float) -> float:
+        """Set normalized master volume [0.0, 1.0] and scale music and SFX."""
+        self.volume = max(0.0, min(1.0, float(volume)))
+        if self.volume <= 0.001:
+            self.enabled = False
+            if self.available:
+                pygame.mixer.stop()
+            return 0.0
+        self.enabled = True
+        if self.available:
+            if self.music is not None:
+                self.music.set_volume(self.volume * 0.20)
+            for sound in self.effects.values():
+                sound.set_volume(self.volume)
+            self.start_music()
+        return self.volume
+
+    def get_volume(self) -> float:
+        return self.volume if self.enabled else 0.0
+
     def toggle(self) -> bool:
         """Toggle all audio on/off and return the new state."""
-        self.enabled = not self.enabled
-        if not self.available:
-            return self.enabled
         if self.enabled:
-            self.start_music()
+            self.enabled = False
+            if self.available:
+                pygame.mixer.stop()
         else:
-            pygame.mixer.stop()
+            self.enabled = True
+            if self.volume <= 0.05:
+                self.volume = 0.8
+            self.set_volume(self.volume)
         return self.enabled
 
     def close(self) -> None:

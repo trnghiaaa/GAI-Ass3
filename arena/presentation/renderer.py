@@ -88,6 +88,10 @@ class ArenaRenderer:
         self.particles: list[dict[str, object]] = []
         self.last_effect_step = -1
         self.show_build_panel = False
+        self.show_volume_slider = False
+        self.dragging_volume = False
+        self.volume_panel_rect = pygame.Rect(env.width - 300, 48, 280, 130)
+        self.volume_track_rect = pygame.Rect(env.width - 280, 100, 240, 10)
         self.pause_button_rect = pygame.Rect(env.width - 108, env.height - 29, 92, 24)
         self.episode_end_has_next = False
 
@@ -151,6 +155,9 @@ class ArenaRenderer:
         if self.env.done:
             self._draw_episode_end()
 
+        if self.show_volume_slider:
+            self._draw_volume_slider()
+
         if self.mode == "human":
             pygame.display.flip()
             return None
@@ -190,6 +197,109 @@ class ArenaRenderer:
             ),
             None,
         )
+
+    def handle_volume_event(self, event: pygame.event.Event) -> bool:
+        """Process volume slider UI events and return whether the event was consumed."""
+        if not self.show_volume_slider or self.audio is None:
+            return False
+
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.volume_panel_rect.collidepoint(event.pos):
+                if self.volume_track_rect.inflate(0, 16).collidepoint(event.pos):
+                    self.dragging_volume = True
+                    rel_x = max(0, min(self.volume_track_rect.width, event.pos[0] - self.volume_track_rect.x))
+                    self.audio.set_volume(rel_x / self.volume_track_rect.width)
+                elif event.pos[1] >= self.volume_panel_rect.y + 88:
+                    btn_minus = pygame.Rect(self.volume_panel_rect.x + 16, self.volume_panel_rect.y + 88, 46, 26)
+                    btn_mute = pygame.Rect(self.volume_panel_rect.x + 70, self.volume_panel_rect.y + 88, 140, 26)
+                    btn_plus = pygame.Rect(self.volume_panel_rect.x + 218, self.volume_panel_rect.y + 88, 46, 26)
+                    if btn_minus.collidepoint(event.pos):
+                        self.audio.set_volume(self.audio.volume - 0.05)
+                        self.audio.play("click", minimum_interval_ms=50)
+                    elif btn_plus.collidepoint(event.pos):
+                        self.audio.set_volume(self.audio.volume + 0.05)
+                        self.audio.play("click", minimum_interval_ms=50)
+                    elif btn_mute.collidepoint(event.pos):
+                        self.audio.toggle()
+                return True
+            else:
+                self.show_volume_slider = False
+                self.dragging_volume = False
+                return False
+
+        if event.type == pygame.MOUSEMOTION and self.dragging_volume:
+            rel_x = max(0, min(self.volume_track_rect.width, event.pos[0] - self.volume_track_rect.x))
+            self.audio.set_volume(rel_x / self.volume_track_rect.width)
+            return True
+
+        if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.dragging_volume = False
+            if self.volume_panel_rect.collidepoint(event.pos):
+                return True
+
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
+                self.audio.set_volume(self.audio.volume - 0.05)
+                self.audio.play("click", minimum_interval_ms=50)
+                return True
+            if event.key in (pygame.K_RIGHT, pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
+                self.audio.set_volume(self.audio.volume + 0.05)
+                self.audio.play("click", minimum_interval_ms=50)
+                return True
+            if event.key == pygame.K_m:
+                self.audio.toggle()
+                return True
+            if event.key in (pygame.K_ESCAPE, pygame.K_v):
+                self.show_volume_slider = False
+                return True
+
+        return False
+
+    def _draw_volume_slider(self) -> None:
+        if self.audio is None:
+            return
+        rect = self.volume_panel_rect
+        shadow = rect.move(0, 4)
+        pygame.draw.rect(self.surface, (2, 5, 15), shadow, border_radius=12)
+        panel = pygame.Surface(rect.size, pygame.SRCALPHA)
+        panel.fill((14, 22, 44, 245))
+        self.surface.blit(panel, rect.topleft)
+        pygame.draw.rect(self.surface, COLORS["player"], rect, 2, border_radius=12)
+
+        vol_pct = int(self.audio.get_volume() * 100)
+        status_text = f"VOLUME: {vol_pct}%" if self.audio.enabled and vol_pct > 0 else "VOLUME: MUTED"
+        status_color = COLORS["player"] if self.audio.enabled and vol_pct > 0 else COLORS["hazard_safe"]
+        title_surf = self.font_small.render(status_text, True, status_color)
+        self.surface.blit(title_surf, (rect.x + 16, rect.y + 16))
+
+        hint_surf = self.font_tiny.render("V to close", True, (130, 155, 190))
+        self.surface.blit(hint_surf, (rect.right - 16 - hint_surf.get_width(), rect.y + 18))
+
+        track = self.volume_track_rect
+        fill_w = int(track.width * self.audio.get_volume())
+        fill_rect = pygame.Rect(track.x, track.y, fill_w, track.height)
+        pygame.draw.rect(self.surface, (7, 10, 25), track, border_radius=5)
+        if fill_w > 0:
+            pygame.draw.rect(self.surface, COLORS["player"], fill_rect, border_radius=5)
+
+        knob_x = track.x + fill_w
+        knob_y = track.centery
+        pygame.draw.circle(self.surface, (235, 243, 255), (knob_x, knob_y), 7)
+        pygame.draw.circle(self.surface, COLORS["player"], (knob_x, knob_y), 4)
+
+        mouse = pygame.mouse.get_pos()
+        btn_minus = pygame.Rect(rect.x + 16, rect.y + 88, 46, 26)
+        btn_mute = pygame.Rect(rect.x + 70, rect.y + 88, 140, 26)
+        btn_plus = pygame.Rect(rect.x + 218, rect.y + 88, 46, 26)
+
+        for b_rect, b_text in ((btn_minus, "-5%"), (btn_mute, "UNMUTE" if not self.audio.enabled else "MUTE"), (btn_plus, "+5%")):
+            hover = b_rect.collidepoint(mouse)
+            bg = (28, 43, 75) if hover else (19, 29, 55)
+            border = COLORS["player"] if hover else (51, 72, 112)
+            pygame.draw.rect(self.surface, bg, b_rect, border_radius=4)
+            pygame.draw.rect(self.surface, border, b_rect, 1, border_radius=4)
+            t_surf = self.font_tiny.render(b_text, True, (235, 243, 255) if hover else (184, 199, 222))
+            self.surface.blit(t_surf, t_surf.get_rect(center=b_rect.center))
 
     def _draw_pause_button(self, paused: bool) -> None:
         """Draw a compact mouse-accessible PAUSE / RESUME control."""

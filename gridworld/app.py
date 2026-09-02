@@ -269,6 +269,10 @@ class GridworldApp:
         self.elapsed = 0.0
         self.notice = ""
         self.notice_time = 0.0
+        self.show_volume_slider = False
+        self.dragging_volume = False
+        self.volume_panel_rect = pygame.Rect(VIRTUAL_WIDTH - 320, 20, 300, 130)
+        self.volume_slider_track_rect = pygame.Rect(VIRTUAL_WIDTH - 300, 68, 260, 10)
 
         self.level_select_context = "free"
         self.selected_level = min(LEVELS)
@@ -376,9 +380,40 @@ class GridworldApp:
 
             if event.type == pygame.MOUSEMOTION:
                 self.mouse_virtual = self._screen_to_virtual(event.pos)
+                if self.show_volume_slider and self.dragging_volume:
+                    rel_x = max(0, min(self.volume_slider_track_rect.width, self.mouse_virtual[0] - self.volume_slider_track_rect.x))
+                    self.audio.set_volume(rel_x / self.volume_slider_track_rect.width)
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                virtual_pos = self._screen_to_virtual(event.pos)
+                if self.show_volume_slider:
+                    if self.volume_panel_rect.collidepoint(virtual_pos):
+                        if self.volume_slider_track_rect.inflate(0, 16).collidepoint(virtual_pos):
+                            self.dragging_volume = True
+                            rel_x = max(0, min(self.volume_slider_track_rect.width, virtual_pos[0] - self.volume_slider_track_rect.x))
+                            self.audio.set_volume(rel_x / self.volume_slider_track_rect.width)
+                        elif virtual_pos[1] >= self.volume_panel_rect.y + 88:
+                            btn_minus = pygame.Rect(self.volume_panel_rect.x + 20, self.volume_panel_rect.y + 88, 48, 26)
+                            btn_mute = pygame.Rect(self.volume_panel_rect.x + 76, self.volume_panel_rect.y + 88, 148, 26)
+                            btn_plus = pygame.Rect(self.volume_panel_rect.x + 232, self.volume_panel_rect.y + 88, 48, 26)
+                            if btn_minus.collidepoint(virtual_pos):
+                                self.audio.set_volume(self.audio.volume - 0.05)
+                                self.audio.play("click", minimum_interval_ms=50)
+                            elif btn_plus.collidepoint(virtual_pos):
+                                self.audio.set_volume(self.audio.volume + 0.05)
+                                self.audio.play("click", minimum_interval_ms=50)
+                            elif btn_mute.collidepoint(virtual_pos):
+                                self.audio.toggle()
+                        continue
+                    else:
+                        self.show_volume_slider = False
+                        self.dragging_volume = False
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                self.dragging_volume = False
                 virtual_pos = self._screen_to_virtual(event.pos)
+                if self.show_volume_slider and self.volume_panel_rect.collidepoint(virtual_pos):
+                    continue
                 for button in reversed(self.buttons):
                     if button.enabled and button.rect.collidepoint(virtual_pos):
                         self._handle_action(button.action)
@@ -396,12 +431,26 @@ class GridworldApp:
 
     def _handle_key(self, event: pygame.event.Event) -> None:
         if event.key == pygame.K_v:
-            enabled = self.audio.toggle()
-            status = "Audio on" if enabled and self.audio.available else "Audio muted"
-            if enabled and not self.audio.available:
-                status = "Audio device unavailable"
-            self._set_notice(status)
+            self.show_volume_slider = not self.show_volume_slider
+            if self.show_volume_slider:
+                self.audio.play("click", minimum_interval_ms=50)
             return
+
+        if self.show_volume_slider:
+            if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
+                self.audio.set_volume(self.audio.volume - 0.05)
+                self.audio.play("click", minimum_interval_ms=50)
+                return
+            if event.key in (pygame.K_RIGHT, pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
+                self.audio.set_volume(self.audio.volume + 0.05)
+                self.audio.play("click", minimum_interval_ms=50)
+                return
+            if event.key == pygame.K_m:
+                self.audio.toggle()
+                return
+            if event.key == pygame.K_ESCAPE:
+                self.show_volume_slider = False
+                return
 
         if event.key == pygame.K_ESCAPE:
             if self.scene == "menu":
@@ -987,6 +1036,9 @@ class GridworldApp:
 
         if self.notice_time > 0 and self.notice:
             self._draw_toast(self.notice)
+
+        if self.show_volume_slider:
+            self._draw_volume_slider()
 
     def _draw_background(self) -> None:
         self.canvas.fill(COLORS["night"])
@@ -2486,6 +2538,45 @@ class GridworldApp:
             )
         elif self.control_mode == "ai":
             self._text("Choose a replay speed above, then select Replay.", (card.centerx, card.bottom - 27), "tiny", COLORS["faint"], "center")
+
+    def _draw_volume_slider(self) -> None:
+        rect = self.volume_panel_rect
+        shadow = rect.move(0, 4)
+        pygame.draw.rect(self.canvas, (4, 8, 18), shadow, border_radius=12)
+        pygame.draw.rect(self.canvas, COLORS["panel_2"], rect, border_radius=12)
+        pygame.draw.rect(self.canvas, COLORS["line"], rect, 2, border_radius=12)
+
+        vol_pct = int(self.audio.get_volume() * 100)
+        status_text = f"VOLUME: {vol_pct}%" if self.audio.enabled and vol_pct > 0 else "VOLUME: MUTED"
+        status_color = COLORS["cyan"] if self.audio.enabled and vol_pct > 0 else COLORS["yellow"]
+        title_surf = self.fonts["card_title"].render(status_text, True, status_color)
+        self.canvas.blit(title_surf, (rect.x + 20, rect.y + 16))
+
+        hint_surf = self.fonts["tiny"].render("V to close", True, COLORS["faint"])
+        self.canvas.blit(hint_surf, (rect.right - 20 - hint_surf.get_width(), rect.y + 18))
+
+        track = self.volume_slider_track_rect
+        fill_w = int(track.width * self.audio.get_volume())
+        fill_rect = pygame.Rect(track.x, track.y, fill_w, track.height)
+        pygame.draw.rect(self.canvas, COLORS["night"], track, border_radius=5)
+        if fill_w > 0:
+            pygame.draw.rect(self.canvas, COLORS["cyan"], fill_rect, border_radius=5)
+
+        knob_x = track.x + fill_w
+        knob_y = track.centery
+        pygame.draw.circle(self.canvas, COLORS["ink"], (knob_x, knob_y), 8)
+        pygame.draw.circle(self.canvas, COLORS["blue"], (knob_x, knob_y), 4)
+
+        btn_minus = pygame.Rect(rect.x + 20, rect.y + 88, 48, 26)
+        btn_mute = pygame.Rect(rect.x + 76, rect.y + 88, 148, 26)
+        btn_plus = pygame.Rect(rect.x + 232, rect.y + 88, 48, 26)
+
+        for b_rect, b_text in ((btn_minus, "-5%"), (btn_mute, "UNMUTE" if not self.audio.enabled else "MUTE"), (btn_plus, "+5%")):
+            hover = b_rect.collidepoint(self.mouse_virtual)
+            pygame.draw.rect(self.canvas, COLORS["panel"] if hover else COLORS["night_2"], b_rect, border_radius=4)
+            pygame.draw.rect(self.canvas, COLORS["cyan"] if hover else COLORS["line"], b_rect, 1, border_radius=4)
+            t_surf = self.fonts["tiny"].render(b_text, True, COLORS["ink"] if hover else COLORS["muted"])
+            self.canvas.blit(t_surf, t_surf.get_rect(center=b_rect.center))
 
     def _draw_toast(self, text: str) -> None:
         width = min(620, self.fonts["small"].size(text)[0] + 50)

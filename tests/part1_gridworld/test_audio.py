@@ -18,6 +18,14 @@ def test_procedural_audio_initializes_and_toggles_with_dummy_driver(monkeypatch)
         audio.start_music()
         assert audio.music_channel is not None
         assert audio.music_channel.get_busy()
+
+        # Test volume control
+        assert abs(audio.set_volume(0.5) - 0.5) < 1e-5
+        assert abs(audio.get_volume() - 0.5) < 1e-5
+        assert audio.set_volume(1.5) == 1.0  # Clamped to 1.0
+        assert audio.set_volume(-0.5) == 0.0  # Clamped to 0.0
+        assert audio.set_volume(0.8) == 0.8
+
         assert audio.toggle() is False
         assert audio.toggle() is True
     finally:

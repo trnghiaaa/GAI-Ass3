@@ -98,6 +98,8 @@ def watch_policy(
         while running:
             single_step = False
             for event in pygame.event.get():
+                if renderer.handle_volume_event(event):
+                    continue
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
@@ -128,8 +130,9 @@ def watch_policy(
                         frames_left = 0
                         paused = False
                     elif event.key == pygame.K_v:
-                        if renderer.audio:
-                            renderer.audio.toggle()
+                        renderer.show_volume_slider = not renderer.show_volume_slider
+                        if renderer.audio and renderer.show_volume_slider:
+                            renderer.audio.play("click", minimum_interval_ms=50)
                     elif event.key == pygame.K_TAB:
                         renderer.show_build_panel = not renderer.show_build_panel
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:

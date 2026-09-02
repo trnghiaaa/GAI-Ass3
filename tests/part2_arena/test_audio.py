@@ -42,6 +42,13 @@ def test_arena_procedural_audio_initializes_and_toggles_with_dummy_driver(monkey
         audio.sync_events({"player_hit": True, "missiles_fired": 1})
         audio.sync_events({"damage_taken": 25}, done=True)
 
+        # Test volume control
+        assert abs(audio.set_volume(0.5) - 0.5) < 1e-5
+        assert abs(audio.get_volume() - 0.5) < 1e-5
+        assert audio.set_volume(1.5) == 1.0
+        assert audio.set_volume(-0.5) == 0.0
+        assert audio.set_volume(0.8) == 0.8
+
         assert audio.toggle() is False
         assert audio.toggle() is True
     finally:
