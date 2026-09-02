@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pygame
 
+from arena.presentation.audio import ArenaAudio
+
 if TYPE_CHECKING:
     from arena.environment import ArenaEnv
 
@@ -50,12 +52,20 @@ COLORS = {
 class ArenaRenderer:
     """Draw the live environment in a window or an off-screen RGB surface."""
 
-    def __init__(self, env: "ArenaEnv", mode: str = "human") -> None:
+    def __init__(
+        self,
+        env: "ArenaEnv",
+        mode: str = "human",
+        audio: ArenaAudio | None = None,
+    ) -> None:
         if mode not in ("human", "rgb_array"):
             raise ValueError("mode must be 'human' or 'rgb_array'")
 
         self.env = env
         self.mode = mode
+        self.audio = audio if audio is not None else (ArenaAudio() if mode == "human" else None)
+        if self.audio and self.audio.available:
+            self.audio.start_music()
         self.close_requested = False
         pygame.init()
         pygame.font.init()
@@ -1254,6 +1264,8 @@ class ArenaRenderer:
                 COLORS["nova"],
                 110,
             )
+        if self.audio:
+            self.audio.sync_events(events, self.env.done)
 
     def _burst(
         self, x: float, y: float, color: tuple[int, int, int], count: int
@@ -1341,6 +1353,8 @@ class ArenaRenderer:
         self.surface.blit(font.render(text, True, color), (x, y))
 
     def close(self) -> None:
+        if self.audio:
+            self.audio.close()
         pygame.quit()
 
 
