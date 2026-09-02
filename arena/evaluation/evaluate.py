@@ -127,6 +127,9 @@ def watch_policy(
                         observation, _ = env.reset(seed=seed + episode - 1)
                         frames_left = 0
                         paused = False
+                    elif event.key == pygame.K_v:
+                        if renderer.audio:
+                            renderer.audio.toggle()
                     elif event.key == pygame.K_TAB:
                         renderer.show_build_panel = not renderer.show_build_panel
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
