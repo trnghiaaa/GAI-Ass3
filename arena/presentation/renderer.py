@@ -141,6 +141,7 @@ class ArenaRenderer:
         self.defeat_shockwave_origin: tuple[float, float] | None = None
         self.defeat_shockwave_radius = 0.0
         self.defeat_vignette_alpha = 0.0
+        self._defeat_vignette_surface: pygame.Surface | None = None
         self.was_done_previously = False
 
         self.clock = pygame.time.Clock()
@@ -202,7 +203,8 @@ class ArenaRenderer:
         self._draw_vignette()
 
         # 2. Update screen shake displacement
-        shake_x, shake_y = self._update_shake()
+        dt = 1.0 / max(1, self.env.fps)
+        shake_x, shake_y = self._update_shake(dt)
 
         # 3. Composite world onto composite_surface with shake
         self.surface = self.composite_surface
@@ -213,7 +215,6 @@ class ArenaRenderer:
         if self.damage_flash_alpha > 0.5:
             self._draw_damage_flash()
         if self.defeat_slowmo_timer > 0.0:
-            dt = 1.0 / self.env.fps
             self.defeat_slowmo_timer = max(0.0, self.defeat_slowmo_timer - dt)
             self.defeat_shockwave_radius += 240.0 * dt
             self.defeat_vignette_alpha = max(0.0, self.defeat_vignette_alpha - 40.0 * dt)
@@ -352,10 +353,10 @@ class ArenaRenderer:
                     btn_mute = pygame.Rect(self.volume_panel_rect.x + 70, self.volume_panel_rect.y + 88, 140, 26)
                     btn_plus = pygame.Rect(self.volume_panel_rect.x + 218, self.volume_panel_rect.y + 88, 46, 26)
                     if btn_minus.collidepoint(event.pos):
-                        self.audio.set_volume(self.audio.volume - 0.05)
+                        self.audio.set_volume(self.audio.get_volume() - 0.05)
                         self.audio.play("click", minimum_interval_ms=50)
                     elif btn_plus.collidepoint(event.pos):
-                        self.audio.set_volume(self.audio.volume + 0.05)
+                        self.audio.set_volume(self.audio.get_volume() + 0.05)
                         self.audio.play("click", minimum_interval_ms=50)
                     elif btn_mute.collidepoint(event.pos):
                         self.audio.toggle()
@@ -377,11 +378,11 @@ class ArenaRenderer:
 
         if event.type == pygame.KEYDOWN:
             if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
-                self.audio.set_volume(self.audio.volume - 0.05)
+                self.audio.set_volume(self.audio.get_volume() - 0.05)
                 self.audio.play("click", minimum_interval_ms=50)
                 return True
             if event.key in (pygame.K_RIGHT, pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
-                self.audio.set_volume(self.audio.volume + 0.05)
+                self.audio.set_volume(self.audio.get_volume() + 0.05)
                 self.audio.play("click", minimum_interval_ms=50)
                 return True
             if event.key == pygame.K_m:
@@ -1634,8 +1635,8 @@ class ArenaRenderer:
             return
         self.shake_intensity = min(14.0, self.shake_intensity + intensity)
 
-    def _update_shake(self) -> tuple[float, float]:
-        """Calculate dynamic shake displacement and decay intensity exponentially."""
+    def _update_shake(self, dt: float = 1.0 / 60.0) -> tuple[float, float]:
+        """Calculate dynamic shake displacement and decay intensity exponentially with framerate scaling."""
         if not self.screen_shake_enabled or self.shake_intensity < 0.1:
             self.shake_intensity = 0.0
             self.shake_x = 0.0
@@ -1645,7 +1646,8 @@ class ArenaRenderer:
         angle = self.effect_rng.uniform(0.0, math.tau)
         self.shake_x = math.cos(angle) * self.shake_intensity
         self.shake_y = math.sin(angle) * self.shake_intensity
-        self.shake_intensity *= 0.85
+        # Framerate-independent exponential damping scaled to 60 FPS baseline
+        self.shake_intensity *= 0.85 ** (dt * 60.0)
         return (self.shake_x, self.shake_y)
 
     def _draw_damage_flash(self) -> None:
@@ -1681,18 +1683,27 @@ class ArenaRenderer:
         pygame.draw.circle(shock_surf, (255, 240, 245, int(alpha * 0.75)), center, inner_rad, width=2)
         self.surface.blit(shock_surf, (round(ox - box_size // 2), round(oy - box_size // 2)))
 
+    def _get_defeat_vignette_surface(self) -> pygame.Surface:
+        """Lazily pre-compute and cache the static radial defeat vignette geometry."""
+        if self._defeat_vignette_surface is None:
+            w, h = self.env.width, self.env.height
+            surf = pygame.Surface((w, h), pygame.SRCALPHA)
+            border_thickness = 54
+            for i in range(border_thickness):
+                norm = 1.0 - (i / border_thickness)
+                alpha = int(255 * (norm ** 2) * 0.7)
+                if alpha > 0:
+                    pygame.draw.rect(surf, (45, 8, 18, alpha), (i, i, w - 2 * i, h - 2 * i), width=1)
+            self._defeat_vignette_surface = surf
+        return self._defeat_vignette_surface
+
     def _draw_defeat_vignette(self) -> None:
         """Draw cinematic smoky charcoal and crimson radial edge vignette."""
         if self.defeat_vignette_alpha <= 0.5:
             return
-        vignette = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
-        w, h = self.env.width, self.env.height
-        border_thickness = 54
-        for i in range(border_thickness):
-            norm = 1.0 - (i / border_thickness)
-            alpha = int(self.defeat_vignette_alpha * (norm ** 2) * 0.7)
-            if alpha > 0:
-                pygame.draw.rect(vignette, (45, 8, 18, alpha), (i, i, w - 2 * i, h - 2 * i), width=1)
+        base_vignette = self._get_defeat_vignette_surface()
+        vignette = base_vignette.copy()
+        vignette.set_alpha(int(min(255, self.defeat_vignette_alpha)))
         self.surface.blit(vignette, (0, 0))
 
     def _burst(

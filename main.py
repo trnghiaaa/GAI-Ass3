@@ -51,6 +51,8 @@ class MasterAudio:
                     buffer=512,
                 )
             pygame.mixer.set_num_channels(max(12, pygame.mixer.get_num_channels()))
+            # Reserve Channel 0 strictly for ambient music
+            pygame.mixer.set_reserved(1)
             self.music_channel = pygame.mixer.Channel(0)
             self.music = self._make_sound(self._build_ambient_portal_music())
             self.music.set_volume(self.volume * 0.22)
@@ -365,7 +367,9 @@ class MasterLauncher:
                     if self.show_help_overlay:
                         if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
                             self.show_help_overlay = False
-                            continue
+                            if self.audio:
+                                self.audio.play("click")
+                        continue
                     if event.key in (pygame.K_h, pygame.K_SLASH):
                         self.show_help_overlay = not self.show_help_overlay
                         if self.audio:
@@ -383,9 +387,7 @@ class MasterLauncher:
                     elif event.key == pygame.K_m and self.audio:
                         self.audio.toggle()
                     elif event.key == pygame.K_ESCAPE or event.key == pygame.K_q:
-                        if self.show_help_overlay:
-                            self.show_help_overlay = False
-                        elif self.show_volume_slider:
+                        if self.show_volume_slider:
                             self.show_volume_slider = False
                         else:
                             self._cleanup_audio()
@@ -442,9 +444,9 @@ class MasterLauncher:
         btn_mute = pygame.Rect(rect.right - 80, rect.y + 88, 64, 26)
 
         if btn_m5.collidepoint(pos) and self.audio:
-            self.audio.set_volume(max(0.0, self.audio.volume - 0.05))
+            self.audio.set_volume(max(0.0, self.audio.get_volume() - 0.05))
         elif btn_p5.collidepoint(pos) and self.audio:
-            self.audio.set_volume(min(1.0, self.audio.volume + 0.05))
+            self.audio.set_volume(min(1.0, self.audio.get_volume() + 0.05))
         elif btn_mute.collidepoint(pos) and self.audio:
             self.audio.toggle()
         elif self.volume_track_rect.inflate(10, 16).collidepoint(pos):

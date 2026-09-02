@@ -220,3 +220,75 @@ def test_arena_help_overlay_toggle():
     status = renderer.toggle_help()
     assert status is False
     assert renderer.show_help_overlay is False
+
+
+def test_arena_volume_slider_events(monkeypatch):
+    monkeypatch.setenv("SDL_AUDIODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from arena.environment import ArenaEnv
+    from arena.presentation.audio import ArenaAudio
+    from arena.presentation.renderer import ArenaRenderer
+
+    env = ArenaEnv(render_mode="rgb_array")
+    audio = ArenaAudio()
+    renderer = ArenaRenderer(env, mode="rgb_array", audio=audio)
+
+    # Event ignored when slider is closed
+    assert renderer.show_volume_slider is False
+    ev_key = pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT)
+    assert renderer.handle_volume_event(ev_key) is False
+
+    # Open slider
+    renderer.show_volume_slider = True
+
+    # Adjust volume up via key
+    vol_start = audio.get_volume()
+    renderer.handle_volume_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT))
+    assert audio.get_volume() >= vol_start
+
+    # Adjust volume down via key
+    renderer.handle_volume_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+    renderer.handle_volume_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+    assert audio.get_volume() <= vol_start
+
+    # Toggle mute
+    renderer.handle_volume_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_m))
+    assert audio.get_volume() == 0.0 or not audio.enabled
+
+    # Click inside panel track to set volume
+    panel = renderer.volume_panel_rect
+    track = renderer.volume_track_rect
+    click_track = pygame.event.Event(
+        pygame.MOUSEBUTTONDOWN, button=1, pos=(track.centerx, track.centery)
+    )
+    assert renderer.handle_volume_event(click_track) is True
+    assert 0.0 < audio.get_volume() <= 1.0
+
+    # Click outside panel dismisses slider
+    click_outside = pygame.event.Event(
+        pygame.MOUSEBUTTONDOWN, button=1, pos=(10, 10)
+    )
+    assert renderer.handle_volume_event(click_outside) is False
+    assert renderer.show_volume_slider is False
+
+
+def test_arena_help_overlay_dismiss_isolation():
+    from arena.environment import ArenaEnv
+    from arena.presentation.renderer import ArenaRenderer
+
+    env = ArenaEnv(render_mode="rgb_array")
+    env.reset(seed=42)
+    renderer = ArenaRenderer(env, mode="rgb_array")
+
+    renderer.show_help_overlay = True
+    assert renderer.show_help_overlay is True
+
+    # Render while open
+    frame = renderer.render()
+    assert frame is not None
+
+    # Simulate ESC dismissal
+    renderer.show_help_overlay = False
+    assert renderer.show_help_overlay is False
+

@@ -7,10 +7,13 @@ import json
 from pathlib import Path
 from collections.abc import Sequence
 
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 import pygame
-from stable_baselines3 import DQN
-from arena.learning.cooldown import load_dqn
+
+if TYPE_CHECKING:
+    from stable_baselines3 import DQN
 
 from arena.evaluation.benchmark import evaluate_model, write_benchmark
 from arena.core.environment import ArenaEnv, ENVIRONMENT_SCHEMA_VERSION, OBSERVATION_NAMES
@@ -70,6 +73,8 @@ def load_policy(
             raise ValueError("Model was trained for an older arena version; retraining is required")
         if metadata.get("observation_names") != list(OBSERVATION_NAMES):
             raise ValueError("Model observation schema does not match the current arena")
+    from arena.learning.cooldown import load_dqn
+
     return load_dqn(str(path), device="auto"), metadata
 
 
@@ -118,12 +123,10 @@ def watch_policy(
                     if renderer.show_help_overlay:
                         if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
                             renderer.show_help_overlay = False
-                            continue
+                        continue
                     if event.key in (pygame.K_ESCAPE, pygame.K_q):
                         if renderer.show_build_panel:
                             renderer.show_build_panel = False
-                        elif renderer.show_help_overlay:
-                            renderer.show_help_overlay = False
                         else:
                             running = False
                     elif event.key == pygame.K_p:

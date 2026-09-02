@@ -259,10 +259,85 @@ def test_gridworld_help_overlay_toggle(monkeypatch):
         assert app.show_help_overlay is True
 
         # Dismiss help with mouse click
+        pygame.event.clear()
         event_mouse = pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(200, 200))
         pygame.event.post(event_mouse)
         app._poll_events()
         assert app.show_help_overlay is False
+        assert app.running is True
+        assert app.scene == "menu"
+
+        # Verify extraneous keys are swallowed while help overlay is active
+        app._handle_key(event_h)
+        assert app.show_help_overlay is True
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_c))
+        # Scene should remain "menu", not change to "campaign_select"
+        assert app.scene == "menu"
+        assert app.show_help_overlay is True
+        app._handle_key(event_esc)
+        assert app.show_help_overlay is False
+    finally:
+        pygame.quit()
+
+
+def test_gridworld_victory_celebration_effects(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import GridworldApp
+
+    app = GridworldApp(max_steps=20)
+    try:
+        app._start_level(0, "manual", None, False, "free")
+        app._finish_run("victory", "Goal reached!")
+        assert app.victory_flash_alpha == 150.0
+        assert app.run_done is True
+        assert app.result_kind == "victory"
+        # Verify celebratory confetti fountain spawned
+        assert len(app.particles) >= 120
+
+        # Draw frame during victory celebration
+        app._draw()
+        assert app.scene == "play"
+
+        # Update decay
+        app._update(0.1)
+        assert app.victory_flash_alpha < 150.0
+        # Ambient confetti generation
+        app._update(0.2)
+        assert len(app.particles) > 0
+    finally:
+        pygame.quit()
+
+
+def test_gridworld_volume_slider_interaction(monkeypatch):
+    monkeypatch.setenv("SDL_VIDEODRIVER", "dummy")
+    monkeypatch.setenv("PYGAME_HIDE_SUPPORT_PROMPT", "1")
+    import pygame
+    from gridworld.app import GridworldApp
+
+    app = GridworldApp(max_steps=20)
+    try:
+        # Toggle volume slider with V
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_v))
+        assert app.show_volume_slider is True
+
+        # Keyboard volume adjustments
+        vol_before = app.audio.get_volume()
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RIGHT))
+        assert app.audio.get_volume() >= vol_before
+
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_LEFT))
+        assert app.audio.get_volume() <= vol_before
+
+        # Mute toggle with M
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_m))
+        assert app.audio.get_volume() == 0.0 or not app.audio.enabled
+
+        # ESC dismisses volume slider without exiting scene
+        app._handle_key(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        assert app.show_volume_slider is False
         assert app.running is True
         assert app.scene == "menu"
     finally:

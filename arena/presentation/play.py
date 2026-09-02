@@ -68,7 +68,7 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                 if renderer.show_help_overlay:
                     if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
                         renderer.show_help_overlay = False
-                        continue
+                    continue
                 if env.done and event.key in (pygame.K_r, pygame.K_RETURN):
                     env.reset(seed=seed)
                     paused = False
@@ -77,8 +77,6 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                 elif event.key in (pygame.K_ESCAPE, pygame.K_q):
                     if renderer.show_build_panel:
                         renderer.show_build_panel = False
-                    elif renderer.show_help_overlay:
-                        renderer.show_help_overlay = False
                     else:
                         running = False
                 elif event.key == pygame.K_r:
