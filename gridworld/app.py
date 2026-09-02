@@ -281,6 +281,7 @@ class GridworldApp:
         self.defeat_shockwave_origin: Optional[Tuple[float, float]] = None
         self.defeat_shockwave_radius = 0.0
         self.defeat_vignette_alpha = 0.0
+        self.show_help_overlay = False
 
         self.level_select_context = "free"
         self.selected_level = min(LEVELS)
@@ -394,6 +395,10 @@ class GridworldApp:
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 virtual_pos = self._screen_to_virtual(event.pos)
+                if self.show_help_overlay:
+                    self.show_help_overlay = False
+                    self.audio.play("click", minimum_interval_ms=50)
+                    continue
                 if self.show_volume_slider:
                     if self.volume_panel_rect.collidepoint(virtual_pos):
                         if self.volume_slider_track_rect.inflate(0, 16).collidepoint(virtual_pos):
@@ -420,6 +425,9 @@ class GridworldApp:
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 self.dragging_volume = False
                 virtual_pos = self._screen_to_virtual(event.pos)
+                if self.show_help_overlay:
+                    self.show_help_overlay = False
+                    continue
                 if self.show_volume_slider and self.volume_panel_rect.collidepoint(virtual_pos):
                     continue
                 for button in reversed(self.buttons):
@@ -438,6 +446,18 @@ class GridworldApp:
         return (x, y)
 
     def _handle_key(self, event: pygame.event.Event) -> None:
+        if self.show_help_overlay:
+            if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
+                self.show_help_overlay = False
+                self.audio.play("click", minimum_interval_ms=50)
+                return
+
+        if event.key in (pygame.K_h, pygame.K_SLASH):
+            self.show_help_overlay = not self.show_help_overlay
+            if self.show_help_overlay:
+                self.audio.play("click", minimum_interval_ms=50)
+            return
+
         if event.key == pygame.K_v:
             self.show_volume_slider = not self.show_volume_slider
             if self.show_volume_slider:
@@ -1072,6 +1092,10 @@ class GridworldApp:
         if self.show_volume_slider:
             self._draw_volume_slider()
 
+        if self.show_help_overlay:
+            self._draw_help_overlay()
+            self.buttons = []
+
     def _draw_background(self) -> None:
         self.canvas.fill(COLORS["night"])
         for y in range(VIRTUAL_HEIGHT):
@@ -1405,7 +1429,7 @@ class GridworldApp:
             x += width + 10
 
         self._text(
-            "Mouse or keyboard: C Campaign  /  F Free Play  /  A AI Showcase  /  V Audio  /  ESC Exit",
+            "Mouse or keyboard: C Campaign  /  F Free Play  /  A AI Showcase  /  H Help  /  V Audio  /  ESC Exit",
             (VIRTUAL_WIDTH // 2, 764),
             "small",
             COLORS["faint"],
@@ -2664,6 +2688,64 @@ class GridworldApp:
             pygame.draw.rect(self.canvas, COLORS["cyan"] if hover else COLORS["line"], b_rect, 1, border_radius=4)
             t_surf = self.fonts["tiny"].render(b_text, True, COLORS["ink"] if hover else COLORS["muted"])
             self.canvas.blit(t_surf, t_surf.get_rect(center=b_rect.center))
+
+    def _draw_help_overlay(self) -> None:
+        """Draw a sleek quick-help and hotkeys cheat-sheet modal for Gridworld."""
+        overlay = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT), pygame.SRCALPHA)
+        overlay.fill((3, 7, 18, 225))
+        self.canvas.blit(overlay, (0, 0))
+
+        panel = pygame.Rect((VIRTUAL_WIDTH - 700) // 2, (VIRTUAL_HEIGHT - 480) // 2, 700, 480)
+        pygame.draw.rect(self.canvas, (16, 26, 48), panel, border_radius=18)
+        pygame.draw.rect(self.canvas, COLORS["green"], panel, 2, border_radius=18)
+
+        # Header
+        self._text("GRIDWORLD QUICK-HELP & HOTKEYS", (panel.x + 28, panel.y + 20), "h2", COLORS["ink"])
+        self._text("Click anywhere or press [ H ] / [ ESC ] to return", (panel.x + 30, panel.y + 58), "small", COLORS["muted"])
+
+        # Column 1: Movement & Exploration
+        col1_x = panel.x + 30
+        self._text("AGENT & EXPLORATION", (col1_x, panel.y + 92), "h3", COLORS["green"])
+
+        controls = (
+            ("Manual Movement", "W A S D / Arrow Keys to step"),
+            ("Single Step AI", "Space / Enter to advance 1 step"),
+            ("Policy Overlay", "P toggles learned Q-value arrows"),
+            ("Playback Speed", "[ / ] or + / - changes AI speed (0.5x - 8x)"),
+            ("Rewards: Apple", "+10 reward, collect all for victory"),
+            ("Rewards: Chest & Key", "Grab Key (+0) then unlock Chest (+100)"),
+            ("Hazards: Monster", "Lethal contact, dynamic or random patrol"),
+            ("Hazards: Fire", "Fatal hazard tile, terminates episode"),
+        )
+        for i, (heading, desc) in enumerate(controls):
+            self._text(heading, (col1_x, panel.y + 124 + i * 36), "tiny", COLORS["yellow"])
+            self._text(desc, (col1_x, panel.y + 140 + i * 36), "small", COLORS["ink"])
+
+        # Column 2: Hotkeys & Navigation
+        col2_x = panel.x + 370
+        self._text("UNIVERSAL HOTKEYS", (col2_x, panel.y + 92), "h3", COLORS["cyan"])
+
+        hotkeys = (
+            ("[ H / ? ]", "Toggle this Quick-Help & Hotkeys modal"),
+            ("[ V ]", "Audio Volume Slider HUD"),
+            ("[ M ]", "Mute / Unmute Chiptune Soundtrack"),
+            ("[ R ]", "Retry / Restart Current Level"),
+            ("[ C ]", "Menu: Enter Story Campaign Mode"),
+            ("[ F ]", "Menu: Enter Free Play Mode"),
+            ("[ A ]", "Menu: Enter AI Showcase Mode"),
+            ("[ ESC ]", "Return to Level Select / Main Menu"),
+        )
+        for i, (key, desc) in enumerate(hotkeys):
+            self._text(key, (col2_x, panel.y + 124 + i * 36), "tiny", COLORS["cyan"])
+            self._text(desc, (col2_x, panel.y + 140 + i * 36), "small", COLORS["ink"])
+
+        # Footer pill
+        hint_text = "CLICK ANYWHERE OR PRESS [ H ] / [ ESC ] TO CLOSE"
+        h_surf = self.fonts["small"].render(hint_text, True, COLORS["green"])
+        h_rect = pygame.Rect(panel.centerx - h_surf.get_width() // 2 - 16, panel.bottom - 42, h_surf.get_width() + 32, 28)
+        pygame.draw.rect(self.canvas, (24, 40, 68), h_rect, border_radius=14)
+        pygame.draw.rect(self.canvas, COLORS["green"], h_rect, 1, border_radius=14)
+        self.canvas.blit(h_surf, (h_rect.centerx - h_surf.get_width() // 2, h_rect.y + 5))
 
     def _draw_toast(self, text: str) -> None:
         width = min(620, self.fonts["small"].size(text)[0] + 50)

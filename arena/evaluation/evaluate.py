@@ -115,8 +115,17 @@ def watch_policy(
                             observation, _ = env.reset(seed=seed + episode - 1)
                             frames_left = 0
                             paused = False
-                    elif event.key in (pygame.K_ESCAPE, pygame.K_q):
-                        running = False
+                    if renderer.show_help_overlay:
+                        if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
+                            renderer.show_help_overlay = False
+                            continue
+                    if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                        if renderer.show_build_panel:
+                            renderer.show_build_panel = False
+                        elif renderer.show_help_overlay:
+                            renderer.show_help_overlay = False
+                        else:
+                            running = False
                     elif event.key == pygame.K_p:
                         paused = not paused
                     elif event.key == pygame.K_PERIOD:
@@ -131,6 +140,8 @@ def watch_policy(
                         paused = False
                     elif event.key == pygame.K_c:
                         renderer.cycle_theme()
+                    elif event.key in (pygame.K_h, pygame.K_SLASH):
+                        renderer.toggle_help()
                     elif event.key == pygame.K_v:
                         renderer.show_volume_slider = not renderer.show_volume_slider
                         if renderer.audio and renderer.show_volume_slider:
@@ -138,6 +149,9 @@ def watch_policy(
                     elif event.key == pygame.K_TAB:
                         renderer.show_build_panel = not renderer.show_build_panel
                 elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if renderer.show_help_overlay:
+                        renderer.show_help_overlay = False
+                        continue
                     if env.done:
                         summary_action = renderer.episode_end_action_at_position(event.pos)
                         if summary_action == "replay":

@@ -114,10 +114,70 @@ def _draw_menu(
     tags = "21 BUILD PATHS   •   RIFT HUNTERS   •   BOSS BARRAGES   •   DEEP-RL AGENTS"
     tag_surface = fonts["tiny"].render(tags, True, MUTED)
     screen.blit(tag_surface, tag_surface.get_rect(center=(WIDTH // 2, 535)))
-    footer = notice or "Click a card to launch  •  V audio  •  Esc exits"
+    footer = notice or "Click a card to launch  •  H help  •  V audio  •  Esc exits"
     footer_color = YELLOW if notice else MUTED
     footer_surface = _fit_text(footer, fonts["body"], WIDTH - 70, footer_color)
     screen.blit(footer_surface, footer_surface.get_rect(center=(WIDTH // 2, 570)))
+
+
+def _draw_menu_help_overlay(screen: pygame.Surface, fonts: dict[str, pygame.font.Font]) -> None:
+    overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+    overlay.fill((3, 6, 18, 225))
+    screen.blit(overlay, (0, 0))
+
+    panel = pygame.Rect(40, 50, 720, 500)
+    pygame.draw.rect(screen, (17, 27, 52), panel, border_radius=18)
+    pygame.draw.rect(screen, CYAN, panel, 2, border_radius=18)
+
+    title = fonts["hero"].render("NEON RIFT ARENA — GUIDE", True, TEXT)
+    screen.blit(title, (panel.x + 28, panel.y + 20))
+    sub = fonts["subtitle"].render("Click anywhere or press [ H ] / [ ESC ] to return", True, MUTED)
+    screen.blit(sub, (panel.x + 30, panel.y + 64))
+
+    # Col 1: Modes & Controls
+    col1_x = panel.x + 30
+    head1 = fonts["title"].render("FLIGHT & MODES", True, CYAN)
+    screen.blit(head1, (col1_x, panel.y + 98))
+
+    controls = (
+        ("Direct Control Scheme", "WASD to move, left-click / space to shoot"),
+        ("Rotation Control Scheme", "A / D to rotate, W to thrust, space to fire"),
+        ("Nova Bomb (Phase 6+)", "Vaporizes all regular hostile spawns"),
+        ("21 Weapon Builds", "Draft upgrade cards on level up (1 / 2 / 3)"),
+        ("Aegis & Drones", "Shield blocks damage; drones auto-fire"),
+    )
+    for i, (heading, desc) in enumerate(controls):
+        h_s = fonts["tiny"].render(heading, True, YELLOW)
+        d_s = fonts["body"].render(desc, True, TEXT)
+        screen.blit(h_s, (col1_x, panel.y + 130 + i * 50))
+        screen.blit(d_s, (col1_x, panel.y + 148 + i * 50))
+
+    # Col 2: In-Game Hotkeys
+    col2_x = panel.x + 380
+    head2 = fonts["title"].render("IN-GAME HOTKEYS", True, YELLOW)
+    screen.blit(head2, (col2_x, panel.y + 98))
+
+    hotkeys = (
+        ("[ C ]", "Cycle 5 Neon Ship Skins & Laser SFX"),
+        ("[ TAB ]", "Open 21-Tier Ship Build Panel"),
+        ("[ V ]", "Audio Volume Slider HUD"),
+        ("[ M ]", "Mute / Unmute Audio"),
+        ("[ P ]", "Pause / Resume Battle"),
+        ("[ R ]", "Instant Replay / Restart Current Seed"),
+        ("[ ESC / Q ]", "Return to Menu / Exit Mission"),
+    )
+    for i, (key, desc) in enumerate(hotkeys):
+        k_s = fonts["tiny"].render(key, True, CYAN)
+        d_s = fonts["body"].render(desc, True, TEXT)
+        screen.blit(k_s, (col2_x, panel.y + 130 + i * 40))
+        screen.blit(d_s, (col2_x, panel.y + 146 + i * 40))
+
+    hint_text = "CLICK ANYWHERE OR PRESS [ H ] / [ ESC ] TO CLOSE"
+    h_surf = fonts["tiny"].render(hint_text, True, CYAN)
+    h_rect = pygame.Rect(panel.centerx - h_surf.get_width() // 2 - 16, panel.bottom - 38, h_surf.get_width() + 32, 26)
+    pygame.draw.rect(screen, (28, 43, 75), h_rect, border_radius=13)
+    pygame.draw.rect(screen, CYAN, h_rect, 1, border_radius=13)
+    screen.blit(h_surf, (h_rect.centerx - h_surf.get_width() // 2, h_rect.y + 5))
 
 
 def _menu_selection(notice: str = "") -> tuple[str, str] | None:
@@ -149,6 +209,7 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
     elapsed = 0.0
     last_hovered_card: LaunchCard | None = None
     show_volume_slider = False
+    show_help_overlay = False
     dragging_volume = False
     vol_panel = pygame.Rect(WIDTH - 300, 15, 280, 130)
     vol_track = pygame.Rect(WIDTH - 280, 68, 240, 10)
@@ -157,7 +218,7 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
         elapsed += clock.tick(60) / 1000.0
         mouse = pygame.mouse.get_pos()
         hovered_card = next((c for c in cards if c.rect.collidepoint(mouse)), None)
-        if hovered_card is not None and hovered_card != last_hovered_card and not show_volume_slider:
+        if hovered_card is not None and hovered_card != last_hovered_card and not show_volume_slider and not show_help_overlay:
             audio.play("click", minimum_interval_ms=100)
         last_hovered_card = hovered_card
 
@@ -172,6 +233,11 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                 return None
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if show_help_overlay:
+                    show_help_overlay = False
+                    if audio.available:
+                        audio.play("click", minimum_interval_ms=50)
+                    continue
                 if show_volume_slider:
                     if vol_panel.collidepoint(event.pos):
                         if vol_track.inflate(0, 16).collidepoint(event.pos):
@@ -206,6 +272,17 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                 dragging_volume = False
 
             if event.type == pygame.KEYDOWN:
+                if show_help_overlay:
+                    if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
+                        show_help_overlay = False
+                        if audio.available:
+                            audio.play("click", minimum_interval_ms=50)
+                        continue
+                if event.key in (pygame.K_h, pygame.K_SLASH):
+                    show_help_overlay = not show_help_overlay
+                    if audio.available:
+                        audio.play("click", minimum_interval_ms=50)
+                    continue
                 if show_volume_slider:
                     if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
                         audio.set_volume(audio.volume - 0.05)
@@ -272,6 +349,9 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                 pygame.draw.rect(screen, border, b_rect, 1, border_radius=4)
                 t_surf = fonts["tiny"].render(b_text, True, TEXT if hover else MUTED)
                 screen.blit(t_surf, t_surf.get_rect(center=b_rect.center))
+
+        if show_help_overlay:
+            _draw_menu_help_overlay(screen, fonts)
 
         pygame.display.flip()
 
