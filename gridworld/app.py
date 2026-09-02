@@ -284,6 +284,7 @@ class GridworldApp:
         self.defeat_shockwave_origin: Optional[Tuple[float, float]] = None
         self.defeat_shockwave_radius = 0.0
         self.defeat_vignette_alpha = 0.0
+        self._defeat_vignette_surface: Optional[pygame.Surface] = None
         self.show_help_overlay = False
 
         self.level_select_context = "free"
@@ -413,10 +414,10 @@ class GridworldApp:
                             btn_mute = pygame.Rect(self.volume_panel_rect.x + 76, self.volume_panel_rect.y + 88, 148, 26)
                             btn_plus = pygame.Rect(self.volume_panel_rect.x + 232, self.volume_panel_rect.y + 88, 48, 26)
                             if btn_minus.collidepoint(virtual_pos):
-                                self.audio.set_volume(self.audio.volume - 0.05)
+                                self.audio.set_volume(self.audio.get_volume() - 0.05)
                                 self.audio.play("click", minimum_interval_ms=50)
                             elif btn_plus.collidepoint(virtual_pos):
-                                self.audio.set_volume(self.audio.volume + 0.05)
+                                self.audio.set_volume(self.audio.get_volume() + 0.05)
                                 self.audio.play("click", minimum_interval_ms=50)
                             elif btn_mute.collidepoint(virtual_pos):
                                 self.audio.toggle()
@@ -433,10 +434,11 @@ class GridworldApp:
                     continue
                 if self.show_volume_slider and self.volume_panel_rect.collidepoint(virtual_pos):
                     continue
-                for button in reversed(self.buttons):
-                    if button.enabled and button.rect.collidepoint(virtual_pos):
-                        self._handle_action(button.action)
-                        break
+                if not self.show_help_overlay and not self.show_volume_slider:
+                    for button in reversed(self.buttons):
+                        if button.enabled and button.rect.collidepoint(virtual_pos):
+                            self._handle_action(button.action)
+                            break
 
             if event.type == pygame.KEYDOWN:
                 self._handle_key(event)
@@ -453,7 +455,7 @@ class GridworldApp:
             if event.key in (pygame.K_h, pygame.K_SLASH, pygame.K_ESCAPE, pygame.K_SPACE, pygame.K_RETURN):
                 self.show_help_overlay = False
                 self.audio.play("click", minimum_interval_ms=50)
-                return
+            return
 
         if event.key in (pygame.K_h, pygame.K_SLASH):
             self.show_help_overlay = not self.show_help_overlay
@@ -469,11 +471,11 @@ class GridworldApp:
 
         if self.show_volume_slider:
             if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
-                self.audio.set_volume(self.audio.volume - 0.05)
+                self.audio.set_volume(self.audio.get_volume() - 0.05)
                 self.audio.play("click", minimum_interval_ms=50)
                 return
             if event.key in (pygame.K_RIGHT, pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
-                self.audio.set_volume(self.audio.volume + 0.05)
+                self.audio.set_volume(self.audio.get_volume() + 0.05)
                 self.audio.play("click", minimum_interval_ms=50)
                 return
             if event.key == pygame.K_m:
@@ -1098,7 +1100,6 @@ class GridworldApp:
 
         if self.show_help_overlay:
             self._draw_help_overlay()
-            self.buttons = []
 
     def _draw_background(self) -> None:
         self.canvas.fill(COLORS["night"])
@@ -1931,32 +1932,12 @@ class GridworldApp:
                 self.canvas.blit(shock_surf, (round(ox - rad - 5), round(oy - rad - 5)))
 
         if self.defeat_vignette_alpha > 0.5:
-            vignette = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT), pygame.SRCALPHA)
-            for i in range(45):
-                norm = 1.0 - (i / 45)
-                alpha = int(self.defeat_vignette_alpha * (norm ** 2) * 0.6)
-                if alpha > 0:
-                    pygame.draw.rect(vignette, (45, 8, 18, alpha), (i, i, VIRTUAL_WIDTH - 2 * i, VIRTUAL_HEIGHT - 2 * i), width=1)
+            base_vignette = self._get_defeat_vignette_surface()
+            vignette = base_vignette.copy()
+            vignette.set_alpha(int(min(255, self.defeat_vignette_alpha)))
             self.canvas.blit(vignette, (0, 0))
 
-        for particle in self.particles:
-            alpha = int(255 * particle.life / particle.max_life)
-            radius = max(1, int(particle.radius * particle.life / particle.max_life))
-            surface = pygame.Surface((radius * 4, radius * 4), pygame.SRCALPHA)
-            pygame.draw.circle(
-                surface,
-                (*particle.color, alpha),
-                (radius * 2, radius * 2),
-                radius,
-            )
-            if radius >= 3:
-                pygame.draw.circle(
-                    surface,
-                    (255, 255, 255, alpha),
-                    (radius * 2, radius * 2),
-                    1,
-                )
-            self.canvas.blit(surface, (particle.x - radius * 2, particle.y - radius * 2))
+        self._draw_particle_batch(max_alpha=255, draw_gleam=True)
 
         if self.event_time > 0 and self.event_text:
             alpha = int(220 * min(1.0, self.event_time))
@@ -1971,17 +1952,42 @@ class GridworldApp:
             self.buttons = []
             self._draw_result_overlay()
             if self.result_kind == "victory":
-                for particle in self.particles:
-                    alpha = int(220 * particle.life / particle.max_life)
-                    radius = max(1, int(particle.radius * particle.life / particle.max_life))
-                    surface = pygame.Surface((radius * 4, radius * 4), pygame.SRCALPHA)
-                    pygame.draw.circle(
-                        surface,
-                        (*particle.color, alpha),
-                        (radius * 2, radius * 2),
-                        radius,
+                self._draw_particle_batch(max_alpha=220, draw_gleam=False)
+
+    def _get_defeat_vignette_surface(self) -> pygame.Surface:
+        """Lazily pre-compute and cache the static radial defeat vignette geometry."""
+        if self._defeat_vignette_surface is None:
+            surf = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT), pygame.SRCALPHA)
+            for i in range(45):
+                norm = 1.0 - (i / 45)
+                alpha = int(255 * (norm ** 2) * 0.6)
+                if alpha > 0:
+                    pygame.draw.rect(
+                        surf, (45, 8, 18, alpha), (i, i, VIRTUAL_WIDTH - 2 * i, VIRTUAL_HEIGHT - 2 * i), width=1
                     )
-                    self.canvas.blit(surface, (particle.x - radius * 2, particle.y - radius * 2))
+            self._defeat_vignette_surface = surf
+        return self._defeat_vignette_surface
+
+    def _draw_particle_batch(self, max_alpha: int = 255, draw_gleam: bool = True) -> None:
+        """Render active physical particles with scale, alpha decay, and optional specular gleam."""
+        for particle in self.particles:
+            alpha = int(max_alpha * particle.life / particle.max_life)
+            radius = max(1, int(particle.radius * particle.life / particle.max_life))
+            surface = pygame.Surface((radius * 4, radius * 4), pygame.SRCALPHA)
+            pygame.draw.circle(
+                surface,
+                (*particle.color, alpha),
+                (radius * 2, radius * 2),
+                radius,
+            )
+            if draw_gleam and radius >= 3:
+                pygame.draw.circle(
+                    surface,
+                    (255, 255, 255, alpha),
+                    (radius * 2, radius * 2),
+                    1,
+                )
+            self.canvas.blit(surface, (particle.x - radius * 2, particle.y - radius * 2))
 
     def _draw_game_topbar(self) -> None:
         meta = self._level_meta(self.current_level)

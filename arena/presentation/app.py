@@ -7,7 +7,7 @@ import random
 
 import pygame
 
-from arena.evaluation.evaluate import load_policy, policy_readiness, watch_policy
+from arena.evaluation.evaluate import policy_readiness
 from arena.presentation.audio import ArenaAudio
 from arena.presentation.play import play_manual
 
@@ -249,10 +249,10 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                             btn_mute = pygame.Rect(vol_panel.x + 70, vol_panel.y + 88, 140, 26)
                             btn_plus = pygame.Rect(vol_panel.x + 218, vol_panel.y + 88, 46, 26)
                             if btn_minus.collidepoint(event.pos):
-                                audio.set_volume(audio.volume - 0.05)
+                                audio.set_volume(audio.get_volume() - 0.05)
                                 audio.play("click", minimum_interval_ms=50)
                             elif btn_plus.collidepoint(event.pos):
-                                audio.set_volume(audio.volume + 0.05)
+                                audio.set_volume(audio.get_volume() + 0.05)
                                 audio.play("click", minimum_interval_ms=50)
                             elif btn_mute.collidepoint(event.pos):
                                 audio.toggle()
@@ -277,7 +277,7 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                         show_help_overlay = False
                         if audio.available:
                             audio.play("click", minimum_interval_ms=50)
-                        continue
+                    continue
                 if event.key in (pygame.K_h, pygame.K_SLASH):
                     show_help_overlay = not show_help_overlay
                     if audio.available:
@@ -285,11 +285,11 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                     continue
                 if show_volume_slider:
                     if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
-                        audio.set_volume(audio.volume - 0.05)
+                        audio.set_volume(audio.get_volume() - 0.05)
                         audio.play("click", minimum_interval_ms=50)
                         continue
                     if event.key in (pygame.K_RIGHT, pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
-                        audio.set_volume(audio.volume + 0.05)
+                        audio.set_volume(audio.get_volume() + 0.05)
                         audio.play("click", minimum_interval_ms=50)
                         continue
                     if event.key == pygame.K_m:
@@ -369,6 +369,8 @@ def main() -> None:
         if mode == "manual":
             play_manual(control_style)
             continue
+        from arena.evaluation.evaluate import load_policy, watch_policy
+
         try:
             model, metadata = load_policy(control_style)
         except (FileNotFoundError, ValueError) as exc:

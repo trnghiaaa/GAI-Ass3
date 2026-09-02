@@ -42,6 +42,8 @@ class GridworldAudio:
                     buffer=512,
                 )
             pygame.mixer.set_num_channels(max(12, pygame.mixer.get_num_channels()))
+            # Reserve Channel 0 strictly for background music
+            pygame.mixer.set_reserved(1)
             self.music_channel = pygame.mixer.Channel(0)
             self.music = self._make_sound(self._build_music())
             self.music.set_volume(self.volume * 0.24)
@@ -135,12 +137,14 @@ class GridworldAudio:
         }
 
     def start_music(self) -> None:
+        """Start playing the procedural ambient arpeggio soundtrack in an endless loop."""
         if not self.available or not self.enabled or self.music_channel is None or self.music is None:
             return
         if not self.music_channel.get_busy():
             self.music_channel.play(self.music, loops=-1, fade_ms=500)
 
     def play(self, name: str, *, minimum_interval_ms: int = 0) -> None:
+        """Play a synthesized sound effect by name with optional interval throttling."""
         if not self.available or not self.enabled:
             return
         sound = self.effects.get(name)
@@ -170,6 +174,7 @@ class GridworldAudio:
         return self.volume
 
     def get_volume(self) -> float:
+        """Return the current audible volume (0.0 if muted, otherwise 0.0-1.0)."""
         return self.volume if self.enabled else 0.0
 
     def toggle(self) -> bool:
@@ -186,6 +191,7 @@ class GridworldAudio:
         return self.enabled
 
     def close(self) -> None:
+        """Stop all audio channels and release mixer resources."""
         if self.available:
             pygame.mixer.stop()
 

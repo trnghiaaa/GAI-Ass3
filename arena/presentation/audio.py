@@ -22,11 +22,11 @@ class ArenaAudio:
     """Device-safe procedural sci-fi soundtrack and sound-effect mixer."""
 
     def __init__(self) -> None:
+        """Initialize the procedural audio mixer and pre-synthesize all sounds."""
         self.available = False
         self.enabled = True
         self.volume: float = 0.8
         self.music_channel: pygame.mixer.Channel | None = None
-        self.hazard_channel: pygame.mixer.Channel | None = None
         self.music: pygame.mixer.Sound | None = None
         self.effects: dict[str, pygame.mixer.Sound] = {}
         self._last_played: dict[str, int] = {}
@@ -43,8 +43,9 @@ class ArenaAudio:
                     buffer=512,
                 )
             pygame.mixer.set_num_channels(max(16, pygame.mixer.get_num_channels()))
+            # Reserve Channel 0 strictly for background music to avoid SFX contention
+            pygame.mixer.set_reserved(1)
             self.music_channel = pygame.mixer.Channel(0)
-            self.hazard_channel = pygame.mixer.Channel(1)
             self.music = self._make_sound(self._build_synthwave_music())
             self.music.set_volume(self.volume * 0.20)
             self.effects = self._build_effects()
@@ -56,7 +57,6 @@ class ArenaAudio:
             # must continue executing smoothly without errors.
             self.available = False
             self.music_channel = None
-            self.hazard_channel = None
             self.music = None
             self.effects = {}
 
@@ -64,6 +64,7 @@ class ArenaAudio:
     def _note(
         frequency: float, duration: float, volume: float = 0.5, overtone: float = 0.25
     ) -> np.ndarray:
+        """Generate a single pitched note waveform with harmonic overtones and envelope."""
         count = max(1, int(SAMPLE_RATE * duration))
         if frequency <= 0:
             return np.zeros(count, dtype=np.float64)
@@ -83,6 +84,7 @@ class ArenaAudio:
     def _sweep(
         f_start: float, f_end: float, duration: float, volume: float = 0.5
     ) -> np.ndarray:
+        """Synthesize a continuous geometric frequency glide with exponential decay."""
         count = max(1, int(SAMPLE_RATE * duration))
         time = np.arange(count, dtype=np.float64) / SAMPLE_RATE
         freqs = np.geomspace(max(10.0, f_start), max(10.0, f_end), count)
@@ -94,6 +96,7 @@ class ArenaAudio:
 
     @staticmethod
     def _noise(duration: float, volume: float = 0.5, decay_rate: float = 8.0) -> np.ndarray:
+        """Synthesize uniform white noise shaped with an exponential decay envelope."""
         count = max(1, int(SAMPLE_RATE * duration))
         time = np.arange(count, dtype=np.float64) / SAMPLE_RATE
         raw = np.random.uniform(-1.0, 1.0, count)
@@ -102,18 +105,23 @@ class ArenaAudio:
 
     @staticmethod
     def _mix(*waves: np.ndarray) -> np.ndarray:
+        """Layer multiple waveforms together with musical soft-limiting protection."""
         if not waves:
             return np.zeros(0, dtype=np.float64)
         max_len = max(len(w) for w in waves)
         out = np.zeros(max_len, dtype=np.float64)
         for w in waves:
             out[: len(w)] += w
+        # Soft-limit peaks exceeding 1.0 using hyperbolic tangent to avoid harsh digital clipping
+        if len(out) > 0 and np.max(np.abs(out)) > 1.0:
+            out = np.tanh(out)
         return out
 
     @classmethod
     def _sequence(
         cls, notes: Iterable[tuple[float, float, float]]
     ) -> np.ndarray:
+        """Concatenate a series of notes into a continuous melodic phrase."""
         pieces = [cls._note(freq, dur, vol) for freq, dur, vol in notes]
         return np.concatenate(pieces) if pieces else np.zeros(1, dtype=np.float64)
 
@@ -257,12 +265,14 @@ class ArenaAudio:
         }
 
     def start_music(self) -> None:
+        """Start playing the procedural background synthwave soundtrack in an endless loop."""
         if not self.available or not self.enabled or self.music_channel is None or self.music is None:
             return
         if not self.music_channel.get_busy():
             self.music_channel.play(self.music, loops=-1, fade_ms=500)
 
     def play(self, name: str, *, minimum_interval_ms: int = 0) -> None:
+        """Play a synthesized sound effect by name with optional cooldown throttling."""
         if not self.available or not self.enabled:
             return
         sound = self.effects.get(name)
@@ -336,6 +346,7 @@ class ArenaAudio:
         return self.volume
 
     def get_volume(self) -> float:
+        """Return the current audible volume (0.0 if muted, otherwise 0.0-1.0)."""
         return self.volume if self.enabled else 0.0
 
     def toggle(self) -> bool:
@@ -352,6 +363,7 @@ class ArenaAudio:
         return self.enabled
 
     def close(self) -> None:
+        """Stop all audio channels and release mixer resources."""
         if self.available:
             pygame.mixer.stop()
 
