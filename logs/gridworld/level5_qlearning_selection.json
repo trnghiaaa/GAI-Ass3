@@ -2,68 +2,67 @@
   "algorithm": "qlearning",
   "candidates": [
     {
-      "episodes": 1000,
+      "blocked_action_rate": 0.057160818921547694,
+      "blocked_actions": 4819,
+      "blocked_episode_rate": 0.2205,
+      "episodes": 2000,
+      "episodes_with_blocked_actions": 441,
       "epsilon": 0.0,
       "fire_deaths": 0,
-      "mean_environment_reward": 2.962,
-      "mean_steps_on_victory": 43.43692307692308,
+      "mean_environment_reward": 2.9765,
+      "mean_steps_on_victory": 41.29325215626586,
+      "mean_unproductive_reversals": 6.855,
       "monster_deaths": 25,
       "score": [
-        0.975,
-        -0.0,
-        -25.0,
-        -43.43692307692308
-      ],
-      "seed": 1729,
-      "source": "trained_candidate",
-      "timeouts": 0,
-      "victories": 975,
-      "victory_rate": 0.975
-    },
-    {
-      "episodes": 1000,
-      "epsilon": 0.0,
-      "fire_deaths": 0,
-      "mean_environment_reward": 2.943,
-      "mean_steps_on_victory": 46.78251821019771,
-      "monster_deaths": 35,
-      "score": [
-        0.961,
+        0.9855,
         -4.0,
-        -35.0,
-        -46.78251821019771
+        -25.0,
+        -41.29325215626586,
+        -0.057160818921547694,
+        -6.855
       ],
-      "seed": 2718,
-      "source": "trained_candidate",
+      "seed": 8111,
+      "source": "current_saved_model",
       "timeouts": 4,
-      "victories": 961,
-      "victory_rate": 0.961
+      "total_actions": 84306,
+      "unproductive_reversals": 13710,
+      "victories": 1971,
+      "victory_rate": 0.9855
     },
     {
-      "episodes": 1000,
+      "blocked_action_rate": 0.051673936176432754,
+      "blocked_actions": 4419,
+      "blocked_episode_rate": 0.3045,
+      "episodes": 2000,
+      "episodes_with_blocked_actions": 609,
       "epsilon": 0.0,
       "fire_deaths": 0,
-      "mean_environment_reward": 2.966,
-      "mean_steps_on_victory": 43.41853360488798,
-      "monster_deaths": 18,
+      "mean_environment_reward": 2.987,
+      "mean_steps_on_victory": 42.48388721047331,
+      "mean_unproductive_reversals": 7.1365,
+      "monster_deaths": 13,
       "score": [
-        0.982,
-        -0.0,
-        -18.0,
-        -43.41853360488798
+        0.993,
+        -1.0,
+        -13.0,
+        -42.48388721047331,
+        -0.051673936176432754,
+        -7.1365
       ],
-      "seed": 3141,
+      "seed": 12555,
       "source": "trained_candidate",
-      "timeouts": 0,
-      "victories": 982,
-      "victory_rate": 0.982
+      "timeouts": 1,
+      "total_actions": 85517,
+      "unproductive_reversals": 14273,
+      "victories": 1986,
+      "victory_rate": 0.993
     }
   ],
   "intrinsic_enabled": false,
   "level_id": 5,
-  "selected_seed": 3141,
+  "selected_seed": 12555,
   "selected_source": "trained_candidate",
-  "selection_rule": "highest victory rate; then fewer timeouts, fewer monster deaths, and shorter successful paths",
-  "validation_episodes": 1000,
-  "validation_seed": 73000
+  "selection_rule": "highest victory rate; then fewer timeouts, fewer monster deaths, shorter successful paths, fewer blocked actions, and fewer unproductive reversals",
+  "validation_episodes": 2000,
+  "validation_seed": 573000
 }

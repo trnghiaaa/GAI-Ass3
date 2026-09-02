@@ -47,7 +47,7 @@ def parse_seeds(value: str | None, defaults: list[int]) -> list[int]:
 
 
 def candidate_score(evaluation: Mapping[str, Any]) -> tuple[float, ...]:
-    """Rank completion first, then timeouts, deaths, and successful path length."""
+    """Rank reliability first, then efficient, clean greedy movement."""
 
     mean_steps = evaluation.get("mean_steps_on_victory")
     return (
@@ -55,6 +55,8 @@ def candidate_score(evaluation: Mapping[str, Any]) -> tuple[float, ...]:
         -float(evaluation.get("timeouts", 0)),
         -float(evaluation.get("monster_deaths", 0)),
         -float(mean_steps if mean_steps is not None else float("inf")),
+        -float(evaluation.get("blocked_action_rate", 0.0)),
+        -float(evaluation.get("mean_unproductive_reversals", 0.0)),
     )
 
 
@@ -215,7 +217,8 @@ def optimize_model(
         "validation_episodes": validation_episodes,
         "selection_rule": (
             "highest victory rate; then fewer timeouts, fewer monster deaths, "
-            "and shorter successful paths"
+            "shorter successful paths, fewer blocked actions, and fewer "
+            "unproductive reversals"
         ),
         "selected_source": champion["source"],
         "selected_seed": champion["seed"],

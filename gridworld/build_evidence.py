@@ -85,8 +85,6 @@ def main() -> None:
         for level, agent, intrinsic in MODEL_RUNS:
             module = "gridworld.optimize" if level in (4, 5) else "gridworld.train"
             command = [module, "--level", str(level), "--agent", agent]
-            if level in (4, 5):
-                command.append("--exclude-current")
             if intrinsic:
                 command.append("--intrinsic")
             if args.quick:

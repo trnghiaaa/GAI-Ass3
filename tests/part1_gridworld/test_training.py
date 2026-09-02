@@ -29,6 +29,23 @@ def test_champion_selection_prioritizes_reliable_held_out_completion():
     assert parse_seeds("3, 3, 5", [1]) == [3, 5]
 
 
+def test_champion_selection_breaks_equal_performance_ties_with_cleaner_movement():
+    clean = {
+        "victory_rate": 1.0,
+        "timeouts": 0,
+        "monster_deaths": 0,
+        "mean_steps_on_victory": 30.0,
+        "blocked_action_rate": 0.0,
+        "mean_unproductive_reversals": 0.2,
+    }
+    wasteful = {
+        **clean,
+        "blocked_action_rate": 0.02,
+        "mean_unproductive_reversals": 1.5,
+    }
+    assert candidate_score(clean) > candidate_score(wasteful)
+
+
 def _trained(level_id, kind, seed, episodes=None, intrinsic=False, max_steps=None):
     config = load_config()
     profile = resolve_training_profile(

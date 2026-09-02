@@ -140,7 +140,10 @@ CAMPAIGN_AI_MODELS: Dict[int, Tuple[str, bool]] = {
     1: ("sarsa", False),
     2: ("qlearning", False),
     3: ("sarsa", False),
-    4: ("qlearning", False),
+    # SARSA is the stronger held-out monster policy on this map and gives the
+    # default campaign the cleanest stochastic demonstration. Q-learning stays
+    # available in AI Showcase for the required two-algorithm evidence.
+    4: ("sarsa", False),
     5: ("sarsa", False),
     6: ("qlearning", True),
 }
@@ -869,8 +872,9 @@ class GridworldApp:
             self._spawn_particles(tuple(self.env.agent_pos), particle_color, 18)
         elif self.info.get("blocked"):
             self.audio.play("blocked", minimum_interval_ms=80)
-            reason = str(self.info.get("blocked_reason") or "obstacle").capitalize()
-            self.event_text = f"{reason} blocked the move - action still counted"
+            reason = str(self.info.get("blocked_reason") or "obstacle")
+            obstacle = "Map edge" if reason == "boundary" else reason.capitalize()
+            self.event_text = f"{obstacle}: no movement - action still counted"
             self.event_time = 1.8
         elif before_agent != tuple(self.env.agent_pos):
             self.audio.play("move", minimum_interval_ms=45)
@@ -2223,7 +2227,7 @@ class GridworldApp:
             self._text(label, (954, row_y), "small", COLORS["muted"])
 
         self._text(
-            "Tip: a blocked move stays in place but still uses one action.",
+            "Blocked commands stay in place, count as actions, and still trigger the monsters' 40% move check.",
             (804, y + 137),
             "tiny",
             COLORS["faint"],

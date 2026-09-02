@@ -85,6 +85,9 @@ def greedy_rollout(
 
     path = [tuple(env.agent_pos)]
     actions: list[int] = []
+    blocked_actions = 0
+    unproductive_reversals = 0
+    collected_on_arrival = [False]
     total_reward = 0.0
     done = False
     info: dict[str, Any] = {}
@@ -93,7 +96,17 @@ def greedy_rollout(
             action = int(agent.choose_action(state))
             state, reward, done, info = step_environment(env, action)
             actions.append(action)
-            path.append(tuple(env.agent_pos))
+            position = tuple(env.agent_pos)
+            blocked_actions += int(bool(info.get("blocked")))
+            if (
+                len(path) >= 2
+                and position == path[-2]
+                and position != path[-1]
+                and not collected_on_arrival[-1]
+            ):
+                unproductive_reversals += 1
+            path.append(position)
+            collected_on_arrival.append(bool(info.get("picked_up")))
             total_reward += reward
             if done:
                 break
@@ -116,6 +129,9 @@ def greedy_rollout(
         "status": _status(done, info),
         "victory": int(bool(done and info.get("victory"))),
         "steps": len(actions),
+        "blocked_actions": blocked_actions,
+        "blocked_action_rate": blocked_actions / max(1, len(actions)),
+        "unproductive_reversals": unproductive_reversals,
         "environment_reward": float(total_reward),
         "hazard_adjacent_steps": sum(distance == 1 for distance in fire_distances),
         "minimum_fire_distance": min(fire_distances) if fire_distances else None,
@@ -142,6 +158,10 @@ def evaluate_policy(
     counts: Counter[str] = Counter()
     victory_steps: list[int] = []
     rewards: list[float] = []
+    total_actions = 0
+    blocked_actions = 0
+    episodes_with_blocked_actions = 0
+    unproductive_reversals = 0
     try:
         for episode in range(episodes):
             episode_seed = seed + 50_000 + episode
@@ -150,16 +170,36 @@ def evaluate_policy(
             if hasattr(agent, "begin_episode"):
                 agent.begin_episode(state)
             total_reward = 0.0
+            episode_blocked_actions = 0
+            episode_unproductive_reversals = 0
+            path = [tuple(env.agent_pos)]
+            collected_on_arrival = [False]
             done = False
             info: dict[str, Any] = {}
             for step in range(1, max_steps + 1):
                 action = int(agent.choose_action(state))
                 state, reward, done, info = step_environment(env, action)
+                position = tuple(env.agent_pos)
+                total_actions += 1
+                was_blocked = int(bool(info.get("blocked")))
+                blocked_actions += was_blocked
+                episode_blocked_actions += was_blocked
+                if (
+                    len(path) >= 2
+                    and position == path[-2]
+                    and position != path[-1]
+                    and not collected_on_arrival[-1]
+                ):
+                    episode_unproductive_reversals += 1
+                path.append(position)
+                collected_on_arrival.append(bool(info.get("picked_up")))
                 total_reward += reward
                 if done:
                     break
             result = _status(done, info)
             counts[result] += 1
+            episodes_with_blocked_actions += int(episode_blocked_actions > 0)
+            unproductive_reversals += episode_unproductive_reversals
             rewards.append(total_reward)
             if result == "victory":
                 victory_steps.append(step)
@@ -177,6 +217,13 @@ def evaluate_policy(
         "mean_steps_on_victory": (
             float(np.mean(victory_steps)) if victory_steps else None
         ),
+        "total_actions": total_actions,
+        "blocked_actions": blocked_actions,
+        "blocked_action_rate": blocked_actions / max(1, total_actions),
+        "episodes_with_blocked_actions": episodes_with_blocked_actions,
+        "blocked_episode_rate": episodes_with_blocked_actions / episodes,
+        "unproductive_reversals": unproductive_reversals,
+        "mean_unproductive_reversals": unproductive_reversals / episodes,
     }
 
 

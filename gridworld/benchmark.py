@@ -77,8 +77,14 @@ def run_benchmark(episodes: int = 100, monster_episodes: int = 300,
             "monster_deaths": evaluation["monster_deaths"],
             "timeouts": evaluation["timeouts"],
             "mean_steps_on_victory": evaluation["mean_steps_on_victory"],
+            "blocked_actions": evaluation["blocked_actions"],
+            "blocked_action_rate": evaluation["blocked_action_rate"],
+            "blocked_episode_rate": evaluation["blocked_episode_rate"],
+            "mean_unproductive_reversals": evaluation["mean_unproductive_reversals"],
             "representative_status": rollout["status"],
             "representative_steps": rollout["steps"],
+            "representative_blocked_actions": rollout["blocked_actions"],
+            "representative_unproductive_reversals": rollout["unproductive_reversals"],
             "representative_reward": rollout["environment_reward"],
             "training_seed": metadata.get("seed", ""),
             "layout_fingerprint": metadata.get("layout_fingerprint", ""),
@@ -90,6 +96,7 @@ def run_benchmark(episodes: int = 100, monster_episodes: int = 300,
             f"L{level} {label:<22} "
             f"{evaluation['victory_rate']:>6.1%} wins | "
             f"deaths {evaluation['fire_deaths'] + evaluation['monster_deaths']:>3} | "
+            f"blocked {evaluation['blocked_action_rate']:>5.2%} | "
             f"timeouts {evaluation['timeouts']:>3}"
         )
     return rows

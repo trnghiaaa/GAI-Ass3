@@ -5,8 +5,9 @@ from gridworld.agents.q_learning import QLearningAgent
 from gridworld.agents.sarsa import SARSAAgent
 from gridworld.benchmark import MODEL_MATRIX
 from gridworld.build_evidence import expected_artifacts
+from gridworld.compare import greedy_rollout
 from gridworld.environment import GridWorldEnv, STATE_SCHEMA
-from gridworld.train import LOGS_DIR, MODELS_DIR
+from gridworld.train import LOGS_DIR, MODELS_DIR, load_config
 
 
 def test_all_submission_evidence_artifacts_exist_and_are_nonempty():
@@ -41,6 +42,36 @@ def test_final_policy_benchmark_meets_acceptance_thresholds():
     for row in benchmark["rows"]:
         threshold = 0.90 if row["level"] in (4, 5) else 1.0
         assert row["victory_rate"] >= threshold
+        assert "blocked_action_rate" in row
+        assert row["representative_blocked_actions"] == 0
+
+    rows = {
+        (row["level"], row["algorithm"], row["intrinsic"]): row
+        for row in benchmark["rows"]
+    }
+    assert rows[(2, "qlearning", 0)]["representative_steps"] == 30
+    assert rows[(4, "sarsa", 0)]["representative_steps"] == 29
+    assert rows[(4, "sarsa", 0)]["victory_rate"] >= 0.99
+
+
+def test_level4_sarsa_goes_straight_after_lower_right_apple_when_safe():
+    agent = SARSAAgent()
+    agent.load(Path(MODELS_DIR) / "level4_sarsa.pkl")
+    rollout = greedy_rollout(
+        4,
+        agent,
+        load_config(),
+        seed=24_099,
+        max_steps=350,
+    )
+    apple_index = rollout["path"].index((8, 8))
+    assert rollout["path"][apple_index + 1 : apple_index + 4] == [
+        (7, 8),
+        (6, 8),
+        (5, 8),
+    ]
+    assert rollout["steps"] == 29
+    assert rollout["blocked_actions"] == 0
 
 
 def test_comparison_summaries_contain_required_behavioral_evidence():

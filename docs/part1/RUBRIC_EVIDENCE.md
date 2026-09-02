@@ -56,6 +56,11 @@ Both redesigned maps contain three apples, one key, and one chest. Level 2 uses 
 
 Artifacts: Level 2 and 3 Q-learning/SARSA models, dashboards, metrics CSVs, and summary JSONs.
 
+The final Level 2 Q-learning policy completes the combined three-apple, key,
+and chest objective in the verified 30-action optimum. Level 2 SARSA completes
+in 34 actions, and both Level 3 policies complete in 31; none of these saved
+greedy policies attempts a blocked action.
+
 ## Task 4 — Monster Levels 4–5
 
 - Each monster independently samples the configured 0.4 movement probability after agent actions.
@@ -67,11 +72,15 @@ Artifacts: Level 2 and 3 Q-learning/SARSA models, dashboards, metrics CSVs, and 
 Artifacts: Level 4 and 5 Q-learning/SARSA models, dashboards, full metrics CSVs,
 held-out seed-selection JSON, summaries, and `policy_benchmark.json`.
 
-Each monster policy competes across three training seeds on a common 1,000-episode
-held-out set. A separate 1,000-episode benchmark seed range records Level 4
-Q-learning **96.7%**, Level 4 SARSA **97.6%**, Level 5 Q-learning **97.5%**, and
-Level 5 SARSA **97.5%** success. Stochastic deaths remain possible because the
-required 40% random monster transition occurs after the agent commits an action.
+Each monster policy competes across independent training seeds on a common
+held-out set. Champion selection ranks completion first and then audits path
+length, blocked actions, and non-collection reversals. A separate 1,000-episode
+benchmark seed range records Level 4 Q-learning **99.5%**, Level 4 SARSA
+**100.0%**, Level 5 Q-learning **99.4%**, and Level 5 SARSA **98.6%** success.
+The representative Level 4 policies both complete the 29-action theoretical
+route with zero blocked actions. Stochastic evasive detours and rare deaths
+remain possible because the required 40% random monster transition occurs after
+the agent commits each action.
 
 ## F — Task 5: intrinsic reward Level 6
 

@@ -59,9 +59,38 @@
                 "epsilon_end": 0.05
             }
         },
-        "5": {
+        "2": {
+            "qlearning": {
+                "episodes": 10000,
+                "gamma": 0.97
+            },
             "sarsa": {
+                "episodes": 6000
+            }
+        },
+        "4": {
+            "qlearning": {
                 "episodes": 15000,
+                "alpha": 0.08,
+                "gamma": 0.97,
+                "epsilon_end": 0.015
+            },
+            "sarsa": {
+                "episodes": 20000,
+                "alpha": 0.08,
+                "gamma": 0.97,
+                "epsilon_end": 0.015
+            }
+        },
+        "5": {
+            "qlearning": {
+                "episodes": 50000,
+                "alpha": 0.07,
+                "gamma": 0.99,
+                "epsilon_end": 0.015
+            },
+            "sarsa": {
+                "episodes": 30000,
                 "epsilon_end": 0.02
             }
         }
@@ -81,7 +110,7 @@
         "hold_window": false
     },
     "model_selection": {
-        "monster_candidate_seeds": [1729, 2718, 3141],
+        "monster_candidate_seeds": [3141, 6111, 8111],
         "validation_episodes": 1000,
         "validation_seed": 73000
     },

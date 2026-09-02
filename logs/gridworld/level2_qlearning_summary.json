@@ -6,10 +6,10 @@
   "profile": {
     "alpha": 0.1,
     "bootstrap_on_truncation": true,
-    "episodes": 2500,
+    "episodes": 10000,
     "epsilon_end": 0.01,
     "epsilon_start": 1.0,
-    "gamma": 0.99,
+    "gamma": 0.97,
     "intrinsic_strength": 0.0001,
     "max_steps": 200,
     "rolling_window": 50,
@@ -24,20 +24,20 @@
     "monster_observation"
   ],
   "summary": {
-    "episodes": 2500,
-    "first_success_episode": 171,
+    "episodes": 10000,
+    "first_success_episode": 403,
     "overall": {
       "death_rate": 0.0,
-      "mean_extrinsic_reward": 4.4508,
+      "mean_extrinsic_reward": 4.4925,
       "mean_intrinsic_reward": 0.0,
-      "truncation_rate": 0.2296,
-      "victory_rate": 0.7704
+      "truncation_rate": 0.2431,
+      "victory_rate": 0.7569
     },
     "tail": {
       "death_rate": 0.0,
       "mean_extrinsic_reward": 5.0,
       "mean_intrinsic_reward": 0.0,
-      "mean_steps_on_victory": 35.3,
+      "mean_steps_on_victory": 30.56,
       "truncation_rate": 0.0,
       "victory_rate": 1.0
     },

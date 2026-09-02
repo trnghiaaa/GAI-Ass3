@@ -141,7 +141,7 @@ There is no hidden step penalty, death penalty, bonus environment reward, or alt
 |---:|---|---|
 | 0 | Task 1: basic Q-learning | Redesigned orchard; greedy Q-learning completes the verified optimum in **22 steps** |
 | 1 | Task 2: SARSA | Q-learning uses a 7-step fire-edge route; SARSA uses a 9-step safe route |
-| 2 | Task 3 | Branching garden with three apples, key, chest; Q-learning and SARSA |
+| 2 | Task 3 | Branching garden with three apples, key, chest; Q-learning reaches the verified 30-action optimum and SARSA completes in 34 |
 | 3 | Task 3 | Dense maze with three apples, key, chest; both algorithms |
 | 4 | Task 4 | One stochastic monster; both algorithms and learning curves |
 | 5 | Task 4 | Two stochastic monsters; both algorithms and learning curves |
@@ -152,10 +152,12 @@ Level 0's three apples are compliant with the Task 1 wording: they are all on
 the right side and are the only collectible type present. Levels 2–3 introduce
 the required combined planning problem of multiple apples, a key, and a chest.
 
-The final independent seeded benchmark records **96.7% / 97.6%** success for
-Level 4 Q-learning / SARSA and **97.5% / 97.5%** for Level 5 over 1,000 episodes
-per monster policy. All deterministic policies and both Level 6 variants achieve
-100% over 300 episodes. Full results are in `logs/gridworld/policy_benchmark.json`.
+The final independent seeded benchmark records **99.5% / 100.0%** success for
+Level 4 Q-learning / SARSA and **99.4% / 98.6%** for Level 5 over 1,000 episodes
+per monster policy. Every deterministic policy and both Level 6 variants achieve
+100%. The same benchmark now audits blocked actions and non-collection reversals;
+all representative deterministic runs and both representative Level 4 runs use
+zero blocked actions. Full results are in `logs/gridworld/policy_benchmark.json`.
 
 ## RL implementation
 
@@ -241,8 +243,9 @@ Useful overrides include `--episodes`, `--alpha`, `--gamma`, `--epsilon-start`, 
 
 `gridworld.optimize` trains several configured candidate seeds, evaluates every
 candidate on the same held-out stochastic episodes, and saves only the most
-reliable model. Completion rate is ranked before timeouts, deaths, and path
-length; environment rewards and the Q-learning/SARSA rules are unchanged.
+reliable model. Completion rate is ranked before timeouts and deaths, followed
+by successful path length, blocked-action rate, and non-collection reversals;
+environment rewards and the Q-learning/SARSA rules are unchanged.
 
 ### Visual or headless evaluation
 
@@ -264,9 +267,9 @@ python -m gridworld.compare --comparison intrinsic
 
 The Level 1 experiment uses 10 paired seeds. Its saved evidence shows:
 
-- greedy Q-learning: 5 steps, 4 hazard-adjacent steps;
-- greedy SARSA: 7 steps, 0 hazard-adjacent steps;
-- at epsilon 0.05 over 2,000 evaluations per algorithm: Q-learning averages 9.4 fire deaths per 200 episodes/seed, SARSA 0.4.
+- greedy Q-learning: 7 steps, 6 hazard-adjacent steps;
+- greedy SARSA: 9.4 mean steps, 0.1 mean hazard-adjacent steps;
+- at epsilon 0.05 over 2,000 evaluations per algorithm: Q-learning averages 15.2 fire deaths per 200 episodes/seed, SARSA 0.9.
 
 ## Output layout
 
