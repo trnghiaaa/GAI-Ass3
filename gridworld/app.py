@@ -279,6 +279,11 @@ class GridworldApp:
         self.volume_slider_track_rect = pygame.Rect(VIRTUAL_WIDTH - 300, 68, 260, 10)
         self.victory_flash_alpha = 0.0
         self.victory_confetti_timer = 0.0
+        self.defeat_flash_alpha = 0.0
+        self.defeat_slowmo_timer = 0.0
+        self.defeat_shockwave_origin: Optional[Tuple[float, float]] = None
+        self.defeat_shockwave_radius = 0.0
+        self.defeat_vignette_alpha = 0.0
 
         self.level_select_context = "free"
         self.selected_level = min(LEVELS)
@@ -966,8 +971,15 @@ class GridworldApp:
             self._spawn_victory_confetti(120)
         elif result_kind == "death":
             self.audio.play("death")
+            self.defeat_flash_alpha = 140.0
+            self.defeat_slowmo_timer = 0.75
+            self.defeat_vignette_alpha = 180.0
+            self.defeat_shockwave_radius = 8.0
             if self.env is not None:
-                self._spawn_particles(tuple(self.env.agent_pos), COLORS["red"], 32)
+                _, cell_size, origin = self._grid_geometry()
+                self.defeat_shockwave_origin = self._cell_center(tuple(self.env.agent_pos), cell_size, origin)
+                self._spawn_particles(tuple(self.env.agent_pos), COLORS["red"], 42)
+                self._spawn_particles(tuple(self.env.agent_pos), COLORS["orange"], 24)
         elif result_kind in ("timeout", "error"):
             self.audio.play("timeout")
             if self.env is not None:
@@ -997,6 +1009,12 @@ class GridworldApp:
         self.notice_time = max(0.0, self.notice_time - dt)
         self.event_time = max(0.0, self.event_time - dt)
         self.victory_flash_alpha = max(0.0, self.victory_flash_alpha - 110.0 * dt)
+        self.defeat_flash_alpha = max(0.0, self.defeat_flash_alpha - 110.0 * dt)
+        if self.defeat_slowmo_timer > 0.0:
+            self.defeat_slowmo_timer = max(0.0, self.defeat_slowmo_timer - dt)
+            self.defeat_shockwave_radius += 180.0 * dt
+            self.defeat_vignette_alpha = max(0.0, self.defeat_vignette_alpha - 45.0 * dt)
+
         self.move_anim = min(
             1.0, self.move_anim + dt / max(self.move_anim_duration, 0.001)
         )
@@ -1868,6 +1886,35 @@ class GridworldApp:
             pygame.draw.rect(flash, (*COLORS["green"], int(alpha * 0.80)), flash.get_rect(), width=16)
             self.canvas.blit(flash, (0, 0))
 
+        if self.defeat_flash_alpha > 0.5:
+            flash = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT), pygame.SRCALPHA)
+            alpha = int(self.defeat_flash_alpha)
+            flash.fill((*COLORS["red"], int(alpha * 0.28)))
+            pygame.draw.rect(flash, (*COLORS["red"], int(alpha * 0.75)), flash.get_rect(), width=16)
+            self.canvas.blit(flash, (0, 0))
+
+        if self.defeat_slowmo_timer > 0 and self.defeat_shockwave_origin:
+            ox, oy = self.defeat_shockwave_origin
+            rad = int(self.defeat_shockwave_radius)
+            progress = 1.0 - (self.defeat_slowmo_timer / 0.75)
+            alpha = int(max(0, (1.0 - progress) * 230))
+            if rad > 2 and alpha > 2:
+                shock_surf = pygame.Surface((rad * 2 + 10, rad * 2 + 10), pygame.SRCALPHA)
+                center = (rad + 5, rad + 5)
+                pygame.draw.circle(shock_surf, (*COLORS["red"], alpha), center, rad, width=max(2, int(5 * (1.0 - progress))))
+                inner_rad = max(2, int(rad * 0.65))
+                pygame.draw.circle(shock_surf, (*COLORS["orange"], int(alpha * 0.7)), center, inner_rad, width=2)
+                self.canvas.blit(shock_surf, (round(ox - rad - 5), round(oy - rad - 5)))
+
+        if self.defeat_vignette_alpha > 0.5:
+            vignette = pygame.Surface((VIRTUAL_WIDTH, VIRTUAL_HEIGHT), pygame.SRCALPHA)
+            for i in range(45):
+                norm = 1.0 - (i / 45)
+                alpha = int(self.defeat_vignette_alpha * (norm ** 2) * 0.6)
+                if alpha > 0:
+                    pygame.draw.rect(vignette, (45, 8, 18, alpha), (i, i, VIRTUAL_WIDTH - 2 * i, VIRTUAL_HEIGHT - 2 * i), width=1)
+            self.canvas.blit(vignette, (0, 0))
+
         for particle in self.particles:
             alpha = int(255 * particle.life / particle.max_life)
             radius = max(1, int(particle.radius * particle.life / particle.max_life))
@@ -1895,7 +1942,7 @@ class GridworldApp:
             banner.blit(text_surface, text_surface.get_rect(center=banner.get_rect().center))
             self.canvas.blit(banner, (board_rect.centerx - 215, board_rect.bottom - 53))
 
-        if self.run_done:
+        if self.run_done and self.defeat_slowmo_timer <= 0.0:
             # Only result controls should be clickable through the overlay.
             self.buttons = []
             self._draw_result_overlay()

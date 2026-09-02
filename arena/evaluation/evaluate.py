@@ -129,6 +129,8 @@ def watch_policy(
                         observation, _ = env.reset(seed=seed + episode - 1)
                         frames_left = 0
                         paused = False
+                    elif event.key == pygame.K_c:
+                        renderer.cycle_theme()
                     elif event.key == pygame.K_v:
                         renderer.show_volume_slider = not renderer.show_volume_slider
                         if renderer.audio and renderer.show_volume_slider:

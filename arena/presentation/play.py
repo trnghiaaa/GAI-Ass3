@@ -50,10 +50,10 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
     renderer = ArenaRenderer(env, mode="human")
 
     if control_style == "direct":
-        footer = "WASD / ARROWS move  •  SPACE fire  •  P pause  •  V volume  •  R restart  •  ESC quit"
+        footer = "WASD / ARROWS move  •  SPACE fire  •  C skin  •  P pause  •  V vol  •  R restart"
         choose_action = _direct_action
     else:
-        footer = "W thrust  •  A/D rotate  •  SPACE fire  •  P pause  •  V volume  •  R restart  •  ESC quit"
+        footer = "W thrust  •  A/D rotate  •  SPACE fire  •  C skin  •  P pause  •  V vol  •  R restart"
         choose_action = _rotation_action
 
     running = True
@@ -75,6 +75,8 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                 elif event.key == pygame.K_r:
                     env.reset(seed=seed)
                     paused = False
+                elif event.key == pygame.K_c:
+                    renderer.cycle_theme()
                 elif event.key == pygame.K_p and env.pending_choice_kind is None:
                     paused = not paused
                 elif event.key == pygame.K_v:

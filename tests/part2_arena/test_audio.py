@@ -22,6 +22,12 @@ def test_arena_procedural_audio_initializes_and_toggles_with_dummy_driver(monkey
             "shield_hit",
             "kill_enemy",
             "destroy_spawner",
+            "laser",
+            "laser_cyber_cyan",
+            "laser_solar_flare",
+            "laser_void_phantom",
+            "laser_emerald_aegis",
+            "laser_synth_pink",
             "player_hit",
             "missile_launch",
             "boss_telegraph",
@@ -38,6 +44,8 @@ def test_arena_procedural_audio_initializes_and_toggles_with_dummy_driver(monkey
 
         # Test event dispatching
         audio.sync_events({"projectiles_fired": 1})
+        audio.sync_events({"projectiles_fired": 1}, theme="solar_flare")
+        audio.sync_events({"projectiles_fired": 1}, theme="void_phantom")
         audio.sync_events({"spawners_destroyed": 1, "levels_gained": 1})
         audio.sync_events({"player_hit": True, "missiles_fired": 1})
         audio.sync_events({"damage_taken": 25}, done=True)
@@ -120,3 +128,69 @@ def test_renderer_composite_surface_renders_with_shake():
     assert frame is not None
     assert frame.shape == (env.height, env.width, 3)
     assert frame.dtype.name == "uint8"
+
+
+def test_ship_themes_cycle_and_set():
+    from arena.environment import ArenaEnv
+    from arena.presentation.renderer import ArenaRenderer, SHIP_THEMES
+
+    assert len(SHIP_THEMES) == 5
+    for theme_name in ("cyber_cyan", "solar_flare", "void_phantom", "emerald_aegis", "synth_pink"):
+        assert theme_name in SHIP_THEMES
+        assert "player" in SHIP_THEMES[theme_name]
+        assert "thrust" in SHIP_THEMES[theme_name]
+        assert "laser" in SHIP_THEMES[theme_name]
+        assert "name" in SHIP_THEMES[theme_name]
+
+    env = ArenaEnv(render_mode="rgb_array")
+    env.reset(seed=42)
+    renderer = ArenaRenderer(env, mode="rgb_array")
+
+    assert renderer.current_theme == "cyber_cyan"
+    assert renderer.get_color("player") == (65, 210, 255)
+
+    # Cycle through all themes
+    visited = [renderer.current_theme]
+    for _ in range(len(SHIP_THEMES) - 1):
+        visited.append(renderer.cycle_theme())
+    assert len(set(visited)) == 5
+
+    # Wraps back to first
+    assert renderer.cycle_theme() == "cyber_cyan"
+
+    # Direct theme selection
+    renderer.set_theme("solar_flare")
+    assert renderer.current_theme == "solar_flare"
+    assert renderer.get_color("player") == (255, 175, 40)
+    assert renderer.get_color("thrust") == (255, 65, 25)
+
+    # Render frame under custom theme
+    frame = renderer.render()
+    assert frame is not None
+    assert frame.shape == (env.height, env.width, 3)
+
+
+def test_arena_defeat_slowmo_and_vignette():
+    from arena.environment import ArenaEnv
+    from arena.presentation.renderer import ArenaRenderer
+
+    env = ArenaEnv(render_mode="rgb_array")
+    env.reset(seed=42)
+    renderer = ArenaRenderer(env, mode="rgb_array")
+
+    # Simulate player destruction
+    env.done = True
+    env.last_end_reason = "player_destroyed"
+    renderer._sync_effects()
+
+    assert renderer.defeat_slowmo_timer == 0.75
+    assert renderer.defeat_shockwave_origin is not None
+    assert renderer.defeat_vignette_alpha == 180.0
+    assert renderer.shake_intensity >= 7.0
+
+    # Render slow-mo frame
+    frame = renderer.render()
+    assert frame is not None
+    assert frame.shape == (env.height, env.width, 3)
+    assert renderer.defeat_slowmo_timer < 0.75
+    assert renderer.defeat_shockwave_radius > 12.0
