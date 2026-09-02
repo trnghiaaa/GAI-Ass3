@@ -50,16 +50,18 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
     renderer = ArenaRenderer(env, mode="human")
 
     if control_style == "direct":
-        footer = "WASD / ARROWS move  •  SPACE fire  •  P pause  •  V audio  •  R restart  •  ESC quit"
+        footer = "WASD / ARROWS move  •  SPACE fire  •  P pause  •  V volume  •  R restart  •  ESC quit"
         choose_action = _direct_action
     else:
-        footer = "W thrust  •  A/D rotate  •  SPACE fire  •  P pause  •  V audio  •  R restart  •  ESC quit"
+        footer = "W thrust  •  A/D rotate  •  SPACE fire  •  P pause  •  V volume  •  R restart  •  ESC quit"
         choose_action = _rotation_action
 
     running = True
     paused = False
     while running:
         for event in pygame.event.get():
+            if renderer.handle_volume_event(event):
+                continue
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
@@ -76,8 +78,9 @@ def play_manual(control_style: str = "direct", seed: int = 42) -> None:
                 elif event.key == pygame.K_p and env.pending_choice_kind is None:
                     paused = not paused
                 elif event.key == pygame.K_v:
-                    if renderer.audio:
-                        renderer.audio.toggle()
+                    renderer.show_volume_slider = not renderer.show_volume_slider
+                    if renderer.audio and renderer.show_volume_slider:
+                        renderer.audio.play("click", minimum_interval_ms=50)
                 elif event.key == pygame.K_TAB and env.pending_choice_kind is None:
                     renderer.show_build_panel = not renderer.show_build_panel
                 elif env.pending_choice_kind is not None and event.key in (

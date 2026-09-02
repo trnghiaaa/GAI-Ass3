@@ -148,27 +148,52 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
     }
     elapsed = 0.0
     last_hovered_card: LaunchCard | None = None
+    show_volume_slider = False
+    dragging_volume = False
+    vol_panel = pygame.Rect(WIDTH - 300, 15, 280, 130)
+    vol_track = pygame.Rect(WIDTH - 280, 68, 240, 10)
+
     while True:
         elapsed += clock.tick(60) / 1000.0
         mouse = pygame.mouse.get_pos()
         hovered_card = next((c for c in cards if c.rect.collidepoint(mouse)), None)
-        if hovered_card is not None and hovered_card != last_hovered_card:
+        if hovered_card is not None and hovered_card != last_hovered_card and not show_volume_slider:
             audio.play("click", minimum_interval_ms=100)
         last_hovered_card = hovered_card
+
+        if show_volume_slider and dragging_volume:
+            rel_x = max(0, min(vol_track.width, mouse[0] - vol_track.x))
+            audio.set_volume(rel_x / vol_track.width)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 audio.close()
                 pygame.quit()
                 return None
-            if event.type == pygame.KEYDOWN:
-                if event.key in (pygame.K_ESCAPE, pygame.K_q):
-                    audio.close()
-                    pygame.quit()
-                    return None
-                if event.key == pygame.K_v:
-                    audio.toggle()
+
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if show_volume_slider:
+                    if vol_panel.collidepoint(event.pos):
+                        if vol_track.inflate(0, 16).collidepoint(event.pos):
+                            dragging_volume = True
+                            rel_x = max(0, min(vol_track.width, event.pos[0] - vol_track.x))
+                            audio.set_volume(rel_x / vol_track.width)
+                        elif event.pos[1] >= vol_panel.y + 88:
+                            btn_minus = pygame.Rect(vol_panel.x + 16, vol_panel.y + 88, 46, 26)
+                            btn_mute = pygame.Rect(vol_panel.x + 70, vol_panel.y + 88, 140, 26)
+                            btn_plus = pygame.Rect(vol_panel.x + 218, vol_panel.y + 88, 46, 26)
+                            if btn_minus.collidepoint(event.pos):
+                                audio.set_volume(audio.volume - 0.05)
+                                audio.play("click", minimum_interval_ms=50)
+                            elif btn_plus.collidepoint(event.pos):
+                                audio.set_volume(audio.volume + 0.05)
+                                audio.play("click", minimum_interval_ms=50)
+                            elif btn_mute.collidepoint(event.pos):
+                                audio.toggle()
+                        continue
+                    else:
+                        show_volume_slider = False
+                        dragging_volume = False
                 for card in cards:
                     if card.rect.collidepoint(event.pos):
                         audio.play("menu_select")
@@ -176,7 +201,78 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                         audio.close()
                         pygame.quit()
                         return card.mode, card.control_style
+
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                dragging_volume = False
+
+            if event.type == pygame.KEYDOWN:
+                if show_volume_slider:
+                    if event.key in (pygame.K_LEFT, pygame.K_DOWN, pygame.K_MINUS):
+                        audio.set_volume(audio.volume - 0.05)
+                        audio.play("click", minimum_interval_ms=50)
+                        continue
+                    if event.key in (pygame.K_RIGHT, pygame.K_UP, pygame.K_PLUS, pygame.K_EQUALS):
+                        audio.set_volume(audio.volume + 0.05)
+                        audio.play("click", minimum_interval_ms=50)
+                        continue
+                    if event.key == pygame.K_m:
+                        audio.toggle()
+                        continue
+                    if event.key in (pygame.K_ESCAPE, pygame.K_v):
+                        show_volume_slider = False
+                        continue
+                if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                    audio.close()
+                    pygame.quit()
+                    return None
+                if event.key == pygame.K_v:
+                    show_volume_slider = not show_volume_slider
+                    if show_volume_slider and audio.available:
+                        audio.play("click", minimum_interval_ms=50)
+
         _draw_menu(screen, cards, readiness, mouse, elapsed, notice, fonts)
+
+        if show_volume_slider and audio.available:
+            shadow = vol_panel.move(0, 4)
+            pygame.draw.rect(screen, (2, 5, 15), shadow, border_radius=12)
+            panel = pygame.Surface(vol_panel.size, pygame.SRCALPHA)
+            panel.fill((14, 22, 44, 245))
+            screen.blit(panel, vol_panel.topleft)
+            pygame.draw.rect(screen, CYAN, vol_panel, 2, border_radius=12)
+
+            vol_pct = int(audio.get_volume() * 100)
+            status_text = f"VOLUME: {vol_pct}%" if audio.enabled and vol_pct > 0 else "VOLUME: MUTED"
+            status_color = CYAN if audio.enabled and vol_pct > 0 else YELLOW
+            title_surf = fonts["body"].render(status_text, True, status_color)
+            screen.blit(title_surf, (vol_panel.x + 16, vol_panel.y + 16))
+
+            hint_surf = fonts["tiny"].render("V to close", True, MUTED)
+            screen.blit(hint_surf, (vol_panel.right - 16 - hint_surf.get_width(), vol_panel.y + 18))
+
+            fill_w = int(vol_track.width * audio.get_volume())
+            fill_rect = pygame.Rect(vol_track.x, vol_track.y, fill_w, vol_track.height)
+            pygame.draw.rect(screen, BACKGROUND, vol_track, border_radius=5)
+            if fill_w > 0:
+                pygame.draw.rect(screen, CYAN, fill_rect, border_radius=5)
+
+            knob_x = vol_track.x + fill_w
+            knob_y = vol_track.centery
+            pygame.draw.circle(screen, TEXT, (knob_x, knob_y), 7)
+            pygame.draw.circle(screen, CYAN, (knob_x, knob_y), 4)
+
+            btn_minus = pygame.Rect(vol_panel.x + 16, vol_panel.y + 88, 46, 26)
+            btn_mute = pygame.Rect(vol_panel.x + 70, vol_panel.y + 88, 140, 26)
+            btn_plus = pygame.Rect(vol_panel.x + 218, vol_panel.y + 88, 46, 26)
+
+            for b_rect, b_text in ((btn_minus, "-5%"), (btn_mute, "UNMUTE" if not audio.enabled else "MUTE"), (btn_plus, "+5%")):
+                hover = b_rect.collidepoint(mouse)
+                bg = PANEL_HOVER if hover else PANEL
+                border = CYAN if hover else LINE
+                pygame.draw.rect(screen, bg, b_rect, border_radius=4)
+                pygame.draw.rect(screen, border, b_rect, 1, border_radius=4)
+                t_surf = fonts["tiny"].render(b_text, True, TEXT if hover else MUTED)
+                screen.blit(t_surf, t_surf.get_rect(center=b_rect.center))
+
         pygame.display.flip()
 
 
