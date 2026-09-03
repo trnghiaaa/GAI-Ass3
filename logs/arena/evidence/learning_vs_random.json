@@ -10,7 +10,7 @@
     {
       "control_style": "rotation",
       "random_mean_reward": -170.499337,
-      "trained_mean_reward": 128.590705,
+      "trained_mean_reward": 113.46716,
       "random_phase_progression_rate": 0.0,
       "trained_phase_progression_rate": 1.0
     }

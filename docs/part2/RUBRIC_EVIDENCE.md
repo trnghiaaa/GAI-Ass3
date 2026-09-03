@@ -84,18 +84,22 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
   action output is unchanged; its shared aim assist now protects against an
   immediate threat and otherwise attacks the damageable progression objective.
 - The final Rotation checkpoint uses action repeat 2 and cooldown-aware targets
-  for finer steering. Its combat-balanced demonstration pass keeps immediate
-  boss/missile safety overrides but attacks through moderate ambient pressure.
-  On 16 identical unseen seeds, mean phase rises 3.50 to 4.00, reward 86.4 to
-  128.6, enemy kills 25.1 to 44.9, spawner kills 5.19 to 6.19, and boss clears
-  0.31 to 0.50. Accuracy rises 83% to 87%; damage per 1,000 frames falls 38.86
-  to 32.80, contacts 2.29 to 1.86, and wall contacts 2.69 to 1.09. Runtime is
-  still the saved SB3 DQN—no teacher or scripted steering is loaded.
+  for finer steering. Its anticipatory demonstration pass reacts during boss
+  telegraphs and intercepts nearby closing enemies, but attacks through moderate
+  ambient pressure. On 16 identical unseen seeds it keeps mean phase 4.00 while
+  raising boss clears from the previous combat pass's 0.50 to 0.625, reducing
+  close approaches 29.0% to 26.1%, raising resolved boss-skill dodging 65.9% to
+  73.4%, and reducing boss-skill hits 2.88 to 2.06 per run. Compared with the
+  original safety baseline, enemy kills remain higher (36.8 versus 25.1), boss
+  clears double (0.625 versus 0.31), and wall contacts fall 2.69 to 1.17 per
+  1,000 frames. Runtime is still the saved SB3 DQN—no teacher or scripted
+  steering is loaded.
 - The final pre-boss build planner recognizes both an active boss and the phase
   immediately before one. It guarantees a visible Shield option, prioritizes
   that option for non-interactive playback, and keeps manual selection free.
-  Launcher seed 590009 provides a representative combat-balanced run that
-  reaches Phase 5, clears Boss 1, and records only one resolved boss-skill hit.
+  Launcher seed 590002 provides a reproducible anticipatory-policy run that
+  reaches Phase 6, clears Boss 1, dodges 12 boss skills, and takes no missile
+  hits.
 - A later fixed-seed assist ablation keeps the learned Rotation model and action
   set unchanged: 18 degrees raises maximum phase from 3 to 5, lowers damage
   from 68.3 to 54.3 per 1,000 frames, and raises mean boss dodges from 1.6 to
@@ -114,8 +118,8 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 - `logs/arena/evidence/rotation_refined_final_holdout.{csv,json}`
 - `logs/arena/evidence/rotation_refined_final_boss_holdout.{csv,json}`
 - `logs/arena/evidence/rotation_refined_launcher_seed530005.{csv,json}`
-- `logs/arena/evidence/rotation_attack_balance_{normal,boss}_holdout.{csv,json}`
-- `logs/arena/evidence/rotation_attack_balance_launcher_seed590009.{csv,json}`
+- `logs/arena/evidence/rotation_anticipatory18_{normal,boss}_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_anticipatory18_launcher_seed590002.{csv,json}`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/ai_mission_summary_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`

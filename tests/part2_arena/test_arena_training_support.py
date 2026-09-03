@@ -65,6 +65,32 @@ class ArenaTrainingSupportTests(unittest.TestCase):
             RotationTeacher().action(observation), ROTATION_ACTIONS["SHOOT"]
         )
 
+    def test_rotation_teacher_reacts_during_boss_telegraph_not_after_it(self) -> None:
+        observation = np.zeros(len(OBSERVATION_NAMES), dtype=np.float32)
+        observation[ObservationIndex.SPAWNER_COUNT] = 1.0
+        observation[ObservationIndex.WEAPON_READY] = 1.0
+        observation[ObservationIndex.ACTIVE_TARGET_AIM_ALIGNMENT] = 1.0
+        observation[ObservationIndex.HAZARD_DISTANCE_TO_SAFETY] = 0.5
+        observation[ObservationIndex.HAZARD_TIME_TO_IMPACT] = 0.8
+        observation[ObservationIndex.SAFETY_ESCAPE_ALIGNMENT] = -0.5
+        observation[ObservationIndex.SAFETY_ESCAPE_TURN] = -1.0
+
+        self.assertEqual(
+            RotationTeacher().action(observation), ROTATION_ACTIONS["ROTATE_LEFT"]
+        )
+
+    def test_rotation_teacher_escapes_a_close_closing_enemy(self) -> None:
+        observation = np.zeros(len(OBSERVATION_NAMES), dtype=np.float32)
+        observation[ObservationIndex.ENEMY_COUNT] = 1.0
+        observation[ObservationIndex.NEAREST_ENEMY_DISTANCE] = 0.1
+        observation[ObservationIndex.NEAREST_ENEMY_CLOSING] = 0.3
+        observation[ObservationIndex.SAFETY_ESCAPE_ALIGNMENT] = -0.4
+        observation[ObservationIndex.SAFETY_ESCAPE_TURN] = 1.0
+
+        self.assertEqual(
+            RotationTeacher().action(observation), ROTATION_ACTIONS["ROTATE_RIGHT"]
+        )
+
     def test_boss_curriculum_only_changes_training_reset_phase(self) -> None:
         base = ArenaEnv(control_style="direct")
         env = BossCurriculumWrapper(base, probability=1.0, phases=(3,), seed=7)

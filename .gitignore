@@ -179,8 +179,8 @@ Thumbs.db
 /models/arena/direct_missile_distill_*.zip
 /models/arena/direct_missile_distill_*.metadata.json
 
-# Rejected Rotation combat-balance trials remain local. The selected .48
-# holdouts are named rotation_attack_balance_* and remain report evidence.
+# Rejected Rotation combat-balance trials remain local. The accepted
+# rotation_attack_balance holdouts remain as the before/after baseline.
 /logs/arena/evidence/rotation_objective_target_*
 /logs/arena/evidence/rotation_combat_balance_*
 /logs/arena/evidence/rotation_attack_safe_*
@@ -193,3 +193,17 @@ Thumbs.db
 /models/arena/rotation_attack_balance_*.metadata.json
 /logs/arena/tensorboard/rotation_teacher_680000/
 /logs/arena/tensorboard/rotation_teacher_700000/
+
+# Rejected anticipatory Rotation trials and intermediate checkpoints stay local.
+# The promoted model plus the anticipatory18 holdouts below are the deliverables.
+/logs/arena/evidence/rotation_anticipatory_normal_holdout.*
+/logs/arena/evidence/rotation_anticipatory_launcher_seed590009.*
+/logs/arena/evidence/rotation_anticipatory20_*
+/logs/arena/evidence/rotation_anticipatory52_*
+/logs/arena/evidence/rotation_anticipatory18_launcher_seed590006.*
+/models/arena/rotation_anticipatory_s*.zip
+/models/arena/rotation_anticipatory_s*.metadata.json
+/logs/arena/tensorboard/rotation_teacher_710000/
+/logs/arena/tensorboard/rotation_teacher_720000/
+/logs/arena/tensorboard/rotation_teacher_730000/
+/logs/arena/tensorboard/rotation_teacher_740000/

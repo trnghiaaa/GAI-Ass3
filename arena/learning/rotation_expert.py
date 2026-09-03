@@ -37,11 +37,23 @@ class RotationTeacher:
         # threshold so the teacher does not demonstrate endless retreat in
         # otherwise manageable combat.
         missile_emergency = float(values[I.MISSILE_ESCAPE_URGENCY]) > 0.12
+        # HAZARD_ACTIVE becomes one only after the telegraph expires.  Use the
+        # positive distance-to-safety while the warning is still visible so a
+        # momentum-based ship starts turning before the damaging frame.
         hazard_emergency = (
-            float(values[I.HAZARD_ACTIVE]) > 0.5
-            and float(values[I.HAZARD_TIME_TO_IMPACT]) < 0.72
+            float(values[I.HAZARD_DISTANCE_TO_SAFETY]) > 0.01
+            and float(values[I.HAZARD_TIME_TO_IMPACT]) < 0.90
         )
-        if missile_emergency or hazard_emergency or urgency > self.safety_threshold:
+        closing_emergency = (
+            float(values[I.NEAREST_ENEMY_DISTANCE]) < 0.16
+            and float(values[I.NEAREST_ENEMY_CLOSING]) > 0.04
+        )
+        if (
+            missile_emergency
+            or hazard_emergency
+            or closing_emergency
+            or urgency > self.safety_threshold
+        ):
             alignment = float(values[I.SAFETY_ESCAPE_ALIGNMENT])
             if alignment < 0.72:
                 return self._turn_action(float(values[I.SAFETY_ESCAPE_TURN]))

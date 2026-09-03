@@ -611,7 +611,7 @@ python -m arena.train --control-style rotation --timesteps 600000 --profile safe
 python -m arena.train --control-style rotation --timesteps 150000 --profile safety_adapter --seed 97100 --run-name unified_v12_rotation_150k_r2_s97100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --adapt-input-start 119 --boss-curriculum 0.30 --sentry-curriculum 0.75 --curriculum-phases 3 --action-repeat 2
 
 # Optional Rotation demonstration initialisation; runtime remains an SB3 DQN
-python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 12 --boss-episodes 10 --epochs 16 --learning-rate 0.00005 --action-repeat 2 --safety-threshold 0.48
+python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 12 --boss-episodes 10 --epochs 18 --learning-rate 0.000025 --action-repeat 2 --safety-threshold 0.48
 
 # Generic from-scratch runs
 python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
@@ -628,14 +628,16 @@ curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
 On the final independent normal-start holdout, Direct retains 100% progression
 and its tactical targeting reaches mean phase 16.92. Rotation uses a finer
-two-frame decision cadence. A combat-balanced demonstration pass keeps
-immediate boss-telegraph and missile overrides but no longer treats moderate
-crowd/wall pressure as a reason to retreat. On the same 16-seed holdout it
-raises mean phase from 3.50 to 4.00, mean reward from 86.4 to 128.6, enemy kills
-from 25.1 to 44.9, spawner kills from 5.19 to 6.19, and boss clears from 0.31
-to 0.50. Accuracy rises from 83% to 87%; damage, contact, and wall-contact rates
-all fall. The runtime remains a cooldown-aware SB3 DQN with no teacher or
-scripted steering.
+two-frame decision cadence. Its final demonstration pass begins escaping while
+a boss attack is still telegraphing and treats a nearby closing enemy as an
+immediate interception threat, while continuing to attack through moderate
+ambient pressure. On 16 unseen seeds it keeps mean phase 4.00, raises boss
+clears from the previous combat pass's 0.50 to 0.625, cuts close approaches
+from 29.0% to 26.1%, raises resolved boss-skill dodging from 65.9% to 73.4%,
+and lowers boss-skill hits from 2.88 to 2.06 per run. Against the original
+safety baseline, enemy kills remain higher (36.8 versus 25.1) and wall contacts
+fall from 2.69 to 1.17 per 1,000 frames. The runtime remains a cooldown-aware
+SB3 DQN with no teacher or scripted steering.
 
 ### Visual Evaluation
 
