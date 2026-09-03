@@ -18,7 +18,7 @@ from arena.core.environment import ObservationIndex as I, ROTATION_ACTIONS
 class RotationTeacher:
     """Provide safe, attacking demonstrations for rotation/thrust control."""
 
-    def __init__(self, safety_threshold: float = 0.12) -> None:
+    def __init__(self, safety_threshold: float = 0.48) -> None:
         self.safety_threshold = float(safety_threshold)
 
     @staticmethod
@@ -32,7 +32,16 @@ class RotationTeacher:
     def action(self, observation: np.ndarray) -> int:
         values = np.asarray(observation, dtype=np.float32).reshape(-1)
         urgency = float(values[I.SAFETY_URGENCY])
-        if urgency > self.safety_threshold:
+        # Boss telegraphs and guided sentry fire always deserve an early
+        # response. Ordinary crowd/wall pressure uses a deliberately higher
+        # threshold so the teacher does not demonstrate endless retreat in
+        # otherwise manageable combat.
+        missile_emergency = float(values[I.MISSILE_ESCAPE_URGENCY]) > 0.12
+        hazard_emergency = (
+            float(values[I.HAZARD_ACTIVE]) > 0.5
+            and float(values[I.HAZARD_TIME_TO_IMPACT]) < 0.72
+        )
+        if missile_emergency or hazard_emergency or urgency > self.safety_threshold:
             alignment = float(values[I.SAFETY_ESCAPE_ALIGNMENT])
             if alignment < 0.72:
                 return self._turn_action(float(values[I.SAFETY_ESCAPE_TURN]))

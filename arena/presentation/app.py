@@ -12,7 +12,7 @@ from arena.presentation.play import play_manual
 
 
 WIDTH, HEIGHT = 800, 600
-DEMO_SEEDS = {"direct": 22003, "rotation": 530005}
+DEMO_SEEDS = {"direct": 22003, "rotation": 590009}
 BACKGROUND = (7, 10, 25)
 PANEL = (19, 29, 55)
 PANEL_HOVER = (28, 43, 75)

@@ -611,7 +611,7 @@ python -m arena.train --control-style rotation --timesteps 600000 --profile safe
 python -m arena.train --control-style rotation --timesteps 150000 --profile safety_adapter --seed 97100 --run-name unified_v12_rotation_150k_r2_s97100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --adapt-input-start 119 --boss-curriculum 0.30 --sentry-curriculum 0.75 --curriculum-phases 3 --action-repeat 2
 
 # Optional Rotation demonstration initialisation; runtime remains an SB3 DQN
-python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 32 --boss-episodes 16 --epochs 18
+python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 12 --boss-episodes 10 --epochs 16 --learning-rate 0.00005 --action-repeat 2 --safety-threshold 0.48
 
 # Generic from-scratch runs
 python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
@@ -628,13 +628,14 @@ curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
 On the final independent normal-start holdout, Direct retains 100% progression
 and its tactical targeting reaches mean phase 16.92. Rotation uses a finer
-two-frame decision cadence. Against the previous Rotation DQN on 12 identical
-seeds, its demonstration-initialised neural checkpoint raises mean phase from
-2.67 to 3.33, maximum phase from 3 to 5, mean reward from -36.60 to +70.49,
-accuracy from 47.0% to 80.0%, and boss clears from 0 to 0.50 per run. Damage per
-1,000 frames falls 24%, wall contacts fall 65%, and boss-skill hits fall from
-2.25 to 1.50. A separate 16-seed final holdout records 100% progression, mean
-phase 3.50, and maximum phase 6.
+two-frame decision cadence. A combat-balanced demonstration pass keeps
+immediate boss-telegraph and missile overrides but no longer treats moderate
+crowd/wall pressure as a reason to retreat. On the same 16-seed holdout it
+raises mean phase from 3.50 to 4.00, mean reward from 86.4 to 128.6, enemy kills
+from 25.1 to 44.9, spawner kills from 5.19 to 6.19, and boss clears from 0.31
+to 0.50. Accuracy rises from 83% to 87%; damage, contact, and wall-contact rates
+all fall. The runtime remains a cooldown-aware SB3 DQN with no teacher or
+scripted steering.
 
 ### Visual Evaluation
 

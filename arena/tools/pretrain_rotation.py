@@ -72,12 +72,18 @@ def main() -> None:
     parser.add_argument("--learning-rate", type=float, default=2.0e-4)
     parser.add_argument("--seed", type=int, default=550000)
     parser.add_argument("--action-repeat", type=int, default=2)
+    parser.add_argument(
+        "--safety-threshold",
+        type=float,
+        default=0.48,
+        help="Unified-pressure threshold; boss hazards and missiles still override it",
+    )
     args = parser.parse_args()
     if args.output.exists() or args.output.with_suffix(".metadata.json").exists():
         raise FileExistsError("Choose a new output path; artifacts are protected")
 
     torch.set_num_threads(1)
-    teacher = RotationTeacher()
+    teacher = RotationTeacher(safety_threshold=args.safety_threshold)
     normal_x, normal_y = _collect(
         teacher,
         episodes=args.normal_episodes,
@@ -163,6 +169,7 @@ def main() -> None:
         "learning_rate": args.learning_rate,
         "validation_accuracy": validation_accuracy,
         "action_repeat": args.action_repeat,
+        "safety_threshold": args.safety_threshold,
         "cooldown_mask": True,
         "observation_names": list(OBSERVATION_NAMES),
         "observation_size": len(OBSERVATION_NAMES),

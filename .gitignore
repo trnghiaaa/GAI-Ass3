@@ -178,3 +178,18 @@ Thumbs.db
 /logs/arena/tensorboard/direct_missile_distill_*/
 /models/arena/direct_missile_distill_*.zip
 /models/arena/direct_missile_distill_*.metadata.json
+
+# Rejected Rotation combat-balance trials remain local. The selected .48
+# holdouts are named rotation_attack_balance_* and remain report evidence.
+/logs/arena/evidence/rotation_objective_target_*
+/logs/arena/evidence/rotation_combat_balance_*
+/logs/arena/evidence/rotation_attack_safe_*
+/logs/arena/evidence/rotation_attack_balance_launcher_seed530005.*
+/models/arena/rotation_combat_balance_*.zip
+/models/arena/rotation_combat_balance_*.metadata.json
+/models/arena/rotation_attack_safe_*.zip
+/models/arena/rotation_attack_safe_*.metadata.json
+/models/arena/rotation_attack_balance_*.zip
+/models/arena/rotation_attack_balance_*.metadata.json
+/logs/arena/tensorboard/rotation_teacher_680000/
+/logs/arena/tensorboard/rotation_teacher_700000/

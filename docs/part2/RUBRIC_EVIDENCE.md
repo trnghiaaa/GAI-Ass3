@@ -84,18 +84,18 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
   action output is unchanged; its shared aim assist now protects against an
   immediate threat and otherwise attacks the damageable progression objective.
 - The final Rotation checkpoint uses action repeat 2 and cooldown-aware targets
-  for finer steering. On 12 identical unseen seeds, demonstration
-  initialisation raises mean phase from 2.67 to 3.33, maximum phase from 3 to
-  5, mean reward from -36.60 to +70.49, accuracy from 47.0% to 80.0%, and boss
-  clears from 0 to 0.50 per run. Damage per 1,000 frames falls 52.78 to 39.90,
-  wall contacts 5.50 to 1.92, and boss-skill hits 2.25 to 1.50. A second final
-  16-seed holdout reaches mean phase 3.50, maximum phase 6, and 100%
-  progression.
+  for finer steering. Its combat-balanced demonstration pass keeps immediate
+  boss/missile safety overrides but attacks through moderate ambient pressure.
+  On 16 identical unseen seeds, mean phase rises 3.50 to 4.00, reward 86.4 to
+  128.6, enemy kills 25.1 to 44.9, spawner kills 5.19 to 6.19, and boss clears
+  0.31 to 0.50. Accuracy rises 83% to 87%; damage per 1,000 frames falls 38.86
+  to 32.80, contacts 2.29 to 1.86, and wall contacts 2.69 to 1.09. Runtime is
+  still the saved SB3 DQN—no teacher or scripted steering is loaded.
 - The final pre-boss build planner recognizes both an active boss and the phase
   immediately before one. It guarantees a visible Shield option, prioritizes
   that option for non-interactive playback, and keeps manual selection free.
-  Launcher seed 530005 provides a representative smooth run that reaches Phase
-  5, clears Boss 1, and records zero boss-skill hits.
+  Launcher seed 590009 provides a representative combat-balanced run that
+  reaches Phase 5, clears Boss 1, and records only one resolved boss-skill hit.
 - A later fixed-seed assist ablation keeps the learned Rotation model and action
   set unchanged: 18 degrees raises maximum phase from 3 to 5, lowers damage
   from 68.3 to 54.3 per 1,000 frames, and raises mean boss dodges from 1.6 to
@@ -114,6 +114,8 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 - `logs/arena/evidence/rotation_refined_final_holdout.{csv,json}`
 - `logs/arena/evidence/rotation_refined_final_boss_holdout.{csv,json}`
 - `logs/arena/evidence/rotation_refined_launcher_seed530005.{csv,json}`
+- `logs/arena/evidence/rotation_attack_balance_{normal,boss}_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_attack_balance_launcher_seed590009.{csv,json}`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/ai_mission_summary_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`

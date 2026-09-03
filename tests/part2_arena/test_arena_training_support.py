@@ -11,6 +11,7 @@ import arena.evaluate_rotation as evaluate_rotation
 from arena.learning.rotation_expert import RotationTeacher
 from arena.environment import (
     ArenaEnv,
+    OBSERVATION_NAMES,
     ObservationIndex,
     ROTATION_ACTIONS,
 )
@@ -52,6 +53,17 @@ class ArenaTrainingSupportTests(unittest.TestCase):
             self.assertNotEqual(teacher.action(observation), ROTATION_ACTIONS["SHOOT"])
         finally:
             env.close()
+
+    def test_rotation_teacher_keeps_attacking_through_moderate_pressure(self) -> None:
+        observation = np.zeros(len(OBSERVATION_NAMES), dtype=np.float32)
+        observation[ObservationIndex.SPAWNER_COUNT] = 1.0
+        observation[ObservationIndex.WEAPON_READY] = 1.0
+        observation[ObservationIndex.ACTIVE_TARGET_AIM_ALIGNMENT] = 0.96
+        observation[ObservationIndex.SAFETY_URGENCY] = 0.35
+
+        self.assertEqual(
+            RotationTeacher().action(observation), ROTATION_ACTIONS["SHOOT"]
+        )
 
     def test_boss_curriculum_only_changes_training_reset_phase(self) -> None:
         base = ArenaEnv(control_style="direct")
