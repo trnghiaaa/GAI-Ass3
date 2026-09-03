@@ -156,10 +156,29 @@ class ObservationIndex(IntEnum):
     MISSILE_ESCAPE_X = 104
     MISSILE_ESCAPE_Y = 105
     MISSILE_LOCK_ON = 106
+    MISSILE_COUNT = 107
+    MISSILE_PRESSURE = 108
+    MISSILE_COMBINED_ESCAPE_X = 109
+    MISSILE_COMBINED_ESCAPE_Y = 110
+    MISSILE_ESCAPE_ALIGNMENT = 111
+    MISSILE_ESCAPE_TURN = 112
+    SECOND_MISSILE_DIRECTION_X = 113
+    SECOND_MISSILE_DIRECTION_Y = 114
+    SECOND_MISSILE_DISTANCE = 115
+    SECOND_MISSILE_TIME_TO_IMPACT = 116
+    SECOND_MISSILE_RISK = 117
+    MISSILE_ESCAPE_URGENCY = 118
+    SAFETY_ESCAPE_X = 119
+    SAFETY_ESCAPE_Y = 120
+    SAFETY_ESCAPE_ALIGNMENT = 121
+    SAFETY_ESCAPE_TURN = 122
+    SAFETY_URGENCY = 123
+    SAFETY_THRUST_READINESS = 124
+    SAFETY_TARGET_CONFLICT = 125
 
 
 OBSERVATION_NAMES = tuple(index.name.lower() for index in ObservationIndex)
-ENVIRONMENT_SCHEMA_VERSION = 10
+ENVIRONMENT_SCHEMA_VERSION = 12
 
 
 def _merge_dict(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -285,6 +304,16 @@ class ArenaEnv(gym.Env):
             ObservationIndex.NEAREST_MISSILE_VELOCITY_Y,
             ObservationIndex.MISSILE_ESCAPE_X,
             ObservationIndex.MISSILE_ESCAPE_Y,
+            ObservationIndex.MISSILE_COMBINED_ESCAPE_X,
+            ObservationIndex.MISSILE_COMBINED_ESCAPE_Y,
+            ObservationIndex.MISSILE_ESCAPE_ALIGNMENT,
+            ObservationIndex.MISSILE_ESCAPE_TURN,
+            ObservationIndex.SECOND_MISSILE_DIRECTION_X,
+            ObservationIndex.SECOND_MISSILE_DIRECTION_Y,
+            ObservationIndex.SAFETY_ESCAPE_X,
+            ObservationIndex.SAFETY_ESCAPE_Y,
+            ObservationIndex.SAFETY_ESCAPE_ALIGNMENT,
+            ObservationIndex.SAFETY_ESCAPE_TURN,
         )
         low[[int(index) for index in signed_features]] = -1.0
         high = np.ones(len(self.observation_names), dtype=np.float32)
@@ -405,7 +434,10 @@ class ArenaEnv(gym.Env):
             "missiles_fired": 0,
             "missiles_evaded": 0,
             "missile_hits": 0,
+            "missile_exposure": 0.0,
             "hazard_exposure": 0.0,
+            "wall_exposure": 0.0,
+            "wall_contacts": 0,
             "sustain_healed": 0.0,
             "boss_rewards_chosen": 0,
         }
@@ -479,16 +511,35 @@ class ArenaEnv(gym.Env):
             "missiles_evaded": 0,
             "missile_hits": 0,
             "missile_escape_improvement": 0.0,
+            "missile_exposure": 0.0,
+            "hazard_heading_improvement": 0.0,
+            "missile_heading_improvement": 0.0,
+            "crowd_heading_improvement": 0.0,
+            "wall_heading_improvement": 0.0,
+            "safety_heading_improvement": 0.0,
+            "safe_thrust": 0.0,
+            "unsafe_thrust": 0.0,
             "hazard_escape_improvement": 0.0,
             "hazard_exposure": 0.0,
+            "wall_escape_improvement": 0.0,
+            "wall_exposure": 0.0,
+            "wall_contacts": 0,
             "sustain_healed": 0.0,
             "barrier_blocks": 0,
             "phase_timeout": False,
         }
 
         shaping_before = self._shaping_snapshot()
+        if self.control_style == "rotation" and int(action) == ROTATION_ACTIONS["THRUST"]:
+            safety_urgency = float(shaping_before["safety_urgency"])
+            thrust_readiness = float(shaping_before["safety_thrust_readiness"])
+            events["safe_thrust"] = thrust_readiness
+            events["unsafe_thrust"] = max(0.0, safety_urgency - thrust_readiness)
         self._tick_cooldowns()
-        events["projectiles_fired"] = self._apply_player_action(int(action))
+        (
+            events["projectiles_fired"],
+            events["wall_contacts"],
+        ) = self._apply_player_action(int(action))
         if self._manual_fire_requested and not events["projectiles_fired"]:
             events["projectiles_fired"] += self._fire_projectile(
                 auto_aim=self.control_style == "direct"
@@ -581,7 +632,7 @@ class ArenaEnv(gym.Env):
             raise RuntimeError("Simultaneous fire is available only in manual play.")
         self._manual_fire_requested = True
 
-    def _apply_player_action(self, action: int) -> int:
+    def _apply_player_action(self, action: int) -> tuple[int, int]:
         projectiles_fired = 0
         engine_multiplier = 1.0 + 0.075 * self.upgrade_stacks.get("engine", 0)
 
@@ -630,17 +681,30 @@ class ArenaEnv(gym.Env):
                 self.player.vy *= scale
 
         self.player.angle %= 2.0 * math.pi
-        self.player.x += self.player.vx * self.dt
-        self.player.y += self.player.vy * self.dt
-        self.player.x = float(np.clip(self.player.x, self.player.radius, self.width - self.player.radius))
+        next_x = self.player.x + self.player.vx * self.dt
+        next_y = self.player.y + self.player.vy * self.dt
+        minimum_x = self.player.radius
+        maximum_x = self.width - self.player.radius
+        minimum_y = self.playfield_top + self.player.radius
+        maximum_y = self.height - self.player.radius
+        hit_horizontal_wall = next_x < minimum_x or next_x > maximum_x
+        hit_vertical_wall = next_y < minimum_y or next_y > maximum_y
+        self.player.x = float(np.clip(next_x, minimum_x, maximum_x))
         self.player.y = float(
             np.clip(
-                self.player.y,
-                self.playfield_top + self.player.radius,
-                self.height - self.player.radius,
+                next_y,
+                minimum_y,
+                maximum_y,
             )
         )
-        return projectiles_fired
+        # Slide along arena edges instead of retaining velocity into a wall.
+        # This keeps rotation controls responsive while preserving momentum on
+        # the unblocked axis. Contact remains observable and reward-auditable.
+        if hit_horizontal_wall:
+            self.player.vx = 0.0
+        if hit_vertical_wall:
+            self.player.vy = 0.0
+        return projectiles_fired, int(hit_horizontal_wall) + int(hit_vertical_wall)
 
     def _fire_projectile(self, auto_aim: bool) -> int:
         if self.player.fire_cooldown_steps > 0:
@@ -1269,6 +1333,10 @@ class ArenaEnv(gym.Env):
 
     def _roll_choices(self, kind: str) -> list[dict[str, Any]]:
         catalog = self._choice_catalog(kind)
+        boss_interval = int(self.phase_cfg["boss_interval"])
+        boss_current_or_next = self.is_boss_phase or (
+            (self.phase + 1) % boss_interval == 0
+        )
         if kind == "level_up":
             catalog = [
                 item
@@ -1286,12 +1354,29 @@ class ArenaEnv(gym.Env):
             order = self.np_random.permutation(len(catalog))
             return [catalog[int(index)] for index in order]
         indices = self.np_random.choice(len(catalog), size=count, replace=False)
-        return [catalog[int(index)] for index in indices]
+        choices = [catalog[int(index)] for index in indices]
+        # A boss transition should offer an informed defensive decision rather
+        # than hide every defensive option behind draft randomness. Humans can
+        # still choose any card; the non-interactive pilot can now consistently
+        # execute its documented Aegis preference before a boss.
+        if kind == "phase_reward" and self.is_boss_phase:
+            aegis = next((item for item in catalog if item["id"] == "aegis"), None)
+            if aegis is not None and all(item["id"] != "aegis" for item in choices):
+                choices[-1] = aegis
+        elif kind == "level_up" and boss_current_or_next:
+            shield = next((item for item in catalog if item["id"] == "shield"), None)
+            if shield is not None and all(item["id"] != "shield" for item in choices):
+                choices[-1] = shield
+        return choices
 
     def _auto_choice_index(self) -> int:
         """Draft a coherent survival/build choice for non-interactive agents."""
 
         health_ratio = self.player.health / max(1.0, self.player.max_health)
+        boss_interval = int(self.phase_cfg["boss_interval"])
+        boss_current_or_next = self.is_boss_phase or (
+            (self.phase + 1) % boss_interval == 0
+        )
         scores: list[float] = []
         for item in self.pending_choices:
             item_id = str(item["id"])
@@ -1324,10 +1409,15 @@ class ArenaEnv(gym.Env):
                     score -= 14.0
                 elif item_id == "repair" and health_ratio < 0.35:
                     score += 8.0
-                if self.is_boss_phase:
+                if boss_current_or_next:
                     score += {
                         "riftbreaker": 5.0,
-                        "shield": 4.0,
+                        # A non-interactive pilot must survive long enough to
+                        # demonstrate its learned boss movement.  Prefer the
+                        # guaranteed defensive option before a boss instead of
+                        # allowing an offensive synergy to narrowly outscore it.
+                        # Manual pilots still choose every card themselves.
+                        "shield": 9.0,
                         "engine": 3.5,
                         "homing": 2.0,
                         "critical": 2.0,
@@ -1337,7 +1427,7 @@ class ArenaEnv(gym.Env):
                         "homing": 4.5,
                         "engine": 3.0,
                         "range": 2.0,
-                        "shield": 1.5,
+                        "shield": 2.0,
                     }.get(item_id, 0.0)
                 else:
                     score += {
@@ -2262,6 +2352,13 @@ class ArenaEnv(gym.Env):
             distance_to_safety = float(
                 np.clip(safety / max(1.0, zone.half_width), 0.0, 1.0)
             )
+        if safety > 0.0:
+            escape_x, escape_y = self._feasible_hazard_escape(
+                zone,
+                float(escape_x),
+                float(escape_y),
+                float(safety),
+            )
         time_to_impact = (
             float(np.clip(zone.telegraph_steps / zone.maximum_telegraph_steps, 0.0, 1.0))
             if zone.telegraph_steps > 0
@@ -2275,6 +2372,72 @@ class ArenaEnv(gym.Env):
             float(zone.telegraph_steps == 0),
             float(zone.kind == "circle"),
         )
+
+    def _feasible_hazard_escape(
+        self,
+        zone: DangerZone,
+        preferred_x: float,
+        preferred_y: float,
+        safety_distance: float,
+    ) -> tuple[float, float]:
+        """Choose an in-bounds direction that reduces the current hazard.
+
+        The geometric shortest exit can point through an arena boundary. This
+        feature search keeps the observation truthful near edges without ever
+        selecting or replacing the agent's action.
+        """
+
+        preferred_angle = math.atan2(preferred_y, preferred_x)
+        probe_distance = float(np.clip(safety_distance + 28.0, 64.0, 150.0))
+        minimum_x = self.player.radius
+        maximum_x = self.width - self.player.radius
+        minimum_y = self.playfield_top + self.player.radius
+        maximum_y = self.height - self.player.radius
+
+        def remaining_risk(x: float, y: float) -> float:
+            dx = x - zone.x
+            dy = y - zone.y
+            if zone.kind == "circle":
+                return max(
+                    0.0,
+                    zone.radius + self.player.radius - math.hypot(dx, dy),
+                )
+            signed = -math.sin(zone.angle) * dx + math.cos(zone.angle) * dy
+            return max(
+                0.0,
+                zone.half_width + self.player.radius - abs(signed),
+            )
+
+        best_direction = (preferred_x, preferred_y)
+        best_score = float("-inf")
+        for index in range(16):
+            angle = preferred_angle + index * math.tau / 16.0
+            direction_x = math.cos(angle)
+            direction_y = math.sin(angle)
+            endpoint_x = self.player.x + direction_x * probe_distance
+            endpoint_y = self.player.y + direction_y * probe_distance
+            if not (
+                minimum_x <= endpoint_x <= maximum_x
+                and minimum_y <= endpoint_y <= maximum_y
+            ):
+                continue
+            reduction = safety_distance - remaining_risk(endpoint_x, endpoint_y)
+            alignment = direction_x * preferred_x + direction_y * preferred_y
+            endpoint_clearance = min(
+                endpoint_x - minimum_x,
+                maximum_x - endpoint_x,
+                endpoint_y - minimum_y,
+                maximum_y - endpoint_y,
+            )
+            score = (
+                5.0 * reduction / max(1.0, safety_distance)
+                + 0.25 * alignment
+                + 0.15 * min(1.0, endpoint_clearance / 90.0)
+            )
+            if score > best_score:
+                best_score = score
+                best_direction = (direction_x, direction_y)
+        return float(best_direction[0]), float(best_direction[1])
 
     def _ordered_danger_zones(self) -> list[DangerZone]:
         return sorted(
@@ -2661,6 +2824,17 @@ class ArenaEnv(gym.Env):
     def _nearest_target(
         self, max_distance: float | None = None
     ) -> Enemy | Spawner | None:
+        """Choose an urgent threat or the current progression objective.
+
+        Pure nearest-neighbour targeting made a safe Direct policy look
+        passive: every newly spawned minion stole aim from the rift or boss,
+        so the agent could keep firing without progressing.  Sentries remain
+        mandatory during their intermission, enemies inside the protection
+        radius take precedence, and otherwise a damageable spawner is the
+        tactical target.  This rule is shared by humans, agents, the reticle,
+        drones, and observations.
+        """
+
         targets = self._priority_targets()
         if max_distance is not None:
             max_distance_squared = max_distance * max_distance
@@ -2673,11 +2847,38 @@ class ArenaEnv(gym.Env):
             ]
         if not targets:
             return None
-        return min(
-            targets,
-            key=lambda target: (target.x - self.player.x) ** 2
-            + (target.y - self.player.y) ** 2,
-        )
+
+        def distance_squared(target: Enemy | Spawner) -> float:
+            return (target.x - self.player.x) ** 2 + (target.y - self.player.y) ** 2
+
+        # During the boss intermission `_priority_targets` deliberately returns
+        # only defenders, so no immune boss can steal the target here.
+        if all(isinstance(target, Enemy) and target.is_boss_defender for target in targets):
+            return min(targets, key=distance_squared)
+
+        # The submitted Rotation DQN learned explicit heading/turn features
+        # against the nearest live target. Keep that stable contract while the
+        # Direct controller, which has no aim action, uses objective-aware
+        # assist below. This is a control-scheme distinction shared by manual
+        # and learned play, not an AI-only override.
+        if self.control_style == "rotation":
+            return min(targets, key=distance_squared)
+
+        enemies = [target for target in targets if isinstance(target, Enemy)]
+        protection = float(self.player_cfg["target_protection_clearance"])
+        urgent_enemies = [
+            enemy
+            for enemy in enemies
+            if math.sqrt(distance_squared(enemy)) - enemy.radius - self.player.radius
+            <= protection
+        ]
+        if urgent_enemies:
+            return min(urgent_enemies, key=distance_squared)
+
+        spawners = [target for target in targets if isinstance(target, Spawner)]
+        if spawners:
+            return min(spawners, key=distance_squared)
+        return min(enemies, key=distance_squared) if enemies else None
 
     def _priority_targets(self) -> list[Enemy | Spawner]:
         """Expose the current damageable objective to aim-assist and agents.
@@ -2832,11 +3033,7 @@ class ArenaEnv(gym.Env):
                 boss.summon_cooldown_steps / max(1.0,self.fps*float(self.phase_cfg['boss_summon_interval_seconds'])) if boss else 0.0]
 
     def _nearest_enemy_missile(self) -> Projectile | None:
-        missiles = [
-            projectile
-            for projectile in self.projectiles
-            if projectile.owner == "enemy" and projectile.weapon_kind == "enemy_missile"
-        ]
+        missiles = self._enemy_missiles()
         return min(
             missiles,
             key=lambda item: (item.x - self.player.x) ** 2
@@ -2844,28 +3041,352 @@ class ArenaEnv(gym.Env):
             default=None,
         )
 
-    def _missile_risk(self, missile: Projectile | None = None) -> float:
-        candidate = missile or self._nearest_enemy_missile()
-        if candidate is None:
-            return 0.0
-        speed = max(1.0, math.hypot(candidate.vx, candidate.vy))
-        ux, uy = candidate.vx / speed, candidate.vy / speed
-        to_player_x = self.player.x - candidate.x
-        to_player_y = self.player.y - candidate.y
+    def _enemy_missiles(self) -> list[Projectile]:
+        """Return every live hostile sentry projectile.
+
+        Keeping this query separate from ``_nearest_enemy_missile`` lets the
+        observation expose a whole volley instead of assuming one projectile
+        is the only threat.
+        """
+
+        return [
+            projectile
+            for projectile in self.projectiles
+            if projectile.owner == "enemy" and projectile.weapon_kind == "enemy_missile"
+        ]
+
+    def _missile_risk_at(
+        self,
+        missile: Projectile,
+        x: float,
+        y: float,
+    ) -> tuple[float, float]:
+        """Return collision-lane risk and seconds until the lane crossing."""
+
+        speed = max(1.0, math.hypot(missile.vx, missile.vy))
+        ux, uy = missile.vx / speed, missile.vy / speed
+        to_player_x = x - missile.x
+        to_player_y = y - missile.y
         along = to_player_x * ux + to_player_y * uy
         lateral = abs(ux * to_player_y - uy * to_player_x)
-        telegraph = candidate.telegraph_steps / max(1.0, self.fps)
-        if along <= 0.0 and candidate.telegraph_steps <= 0:
-            return 0.0
+        telegraph = missile.telegraph_steps / max(1.0, self.fps)
+        if along <= 0.0 and missile.telegraph_steps <= 0:
+            return 0.0, 3.0
         time_to_cross = max(0.0, along) / speed + telegraph
-        collision_lane = candidate.radius + self.player.radius + 12.0
+        collision_lane = missile.radius + self.player.radius + 12.0
         lateral_risk = np.clip(
             1.0 - max(0.0, lateral - collision_lane) / 105.0,
             0.0,
             1.0,
         )
         time_risk = np.clip(1.0 - time_to_cross / 2.6, 0.0, 1.0)
-        return float(lateral_risk * time_risk)
+        return float(lateral_risk * time_risk), float(time_to_cross)
+
+    def _missile_risk(self, missile: Projectile | None = None) -> float:
+        candidate = missile or self._nearest_enemy_missile()
+        if candidate is None:
+            return 0.0
+        return self._missile_risk_at(
+            candidate,
+            self.player.x,
+            self.player.y,
+        )[0]
+
+    def _missile_pressure(self) -> tuple[dict[int, float], float]:
+        """Return per-projectile risk and bounded combined volley pressure."""
+
+        risks = {
+            missile.entity_id: self._missile_risk_at(
+                missile,
+                self.player.x,
+                self.player.y,
+            )[0]
+            for missile in self._enemy_missiles()
+        }
+        return risks, float(np.clip(sum(risks.values()) / 2.0, 0.0, 1.0))
+
+    def _multi_missile_observation(self) -> list[float]:
+        """Encode a feasible escape from a sentry volley for both controls.
+
+        A single nearest-projectile feature is ambiguous when two Aegis
+        sentries fire from different sides.  This planner evaluates sixteen
+        *in-bounds* candidate directions only to describe the safest local
+        direction; it never changes the action selected by the trained agent.
+        """
+
+        missiles = self._enemy_missiles()
+        if not missiles:
+            return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0]
+
+        threat_rows = [
+            (
+                *self._missile_risk_at(
+                    missile,
+                    self.player.x,
+                    self.player.y,
+                ),
+                missile,
+            )
+            for missile in missiles
+        ]
+        threat_rows.sort(
+            key=lambda row: (
+                -row[0],
+                (row[2].x - self.player.x) ** 2
+                + (row[2].y - self.player.y) ** 2,
+            )
+        )
+        pressure = float(np.clip(sum(row[0] for row in threat_rows) / 2.0, 0.0, 1.0))
+        urgency = float(max(row[0] for row in threat_rows))
+
+        escape_x = escape_y = 0.0
+        if urgency > 1e-4:
+            travel = max(84.0, float(self.player_cfg["direct_speed"]) * 0.34)
+            best_score = float("inf")
+            best_clearance = -1.0
+            radius = self.player.radius
+            for index in range(16):
+                angle = math.tau * index / 16.0
+                direction_x, direction_y = math.cos(angle), math.sin(angle)
+                candidate_x = self.player.x + direction_x * travel
+                candidate_y = self.player.y + direction_y * travel
+                if not (
+                    radius <= candidate_x <= self.width - radius
+                    and self.playfield_top + radius
+                    <= candidate_y
+                    <= self.height - radius
+                ):
+                    continue
+                candidate_risk = sum(
+                    self._missile_risk_at(missile, candidate_x, candidate_y)[0]
+                    for missile in missiles
+                )
+                clearance = min(
+                    candidate_x - radius,
+                    self.width - radius - candidate_x,
+                    candidate_y - self.playfield_top - radius,
+                    self.height - radius - candidate_y,
+                )
+                wall_pressure = max(
+                    0.0,
+                    1.0
+                    - clearance
+                    / max(1.0, float(self.reward_cfg["wall_safe_distance"])),
+                ) ** 2
+                crowd_pressure = 0.0
+                for enemy in self.enemies:
+                    enemy_clearance = max(
+                        0.0,
+                        math.hypot(enemy.x - candidate_x, enemy.y - candidate_y)
+                        - enemy.radius
+                        - radius,
+                    )
+                    if enemy_clearance < 150.0:
+                        crowd_pressure += (1.0 - enemy_clearance / 150.0) ** 2
+                score = candidate_risk + 0.50 * wall_pressure + 0.18 * crowd_pressure
+                if score < best_score - 1e-9 or (
+                    abs(score - best_score) <= 1e-9 and clearance > best_clearance
+                ):
+                    best_score = score
+                    best_clearance = clearance
+                    escape_x, escape_y = direction_x, direction_y
+
+        heading_x, heading_y = math.cos(self.player.angle), math.sin(self.player.angle)
+        alignment = heading_x * escape_x + heading_y * escape_y
+        turn = heading_x * escape_y - heading_y * escape_x
+
+        second = threat_rows[1] if len(threat_rows) > 1 else None
+        if second is None:
+            second_features = (0.0, 0.0, 1.0, 1.0, 0.0)
+        else:
+            second_risk, second_time, second_missile = second
+            dx = second_missile.x - self.player.x
+            dy = second_missile.y - self.player.y
+            distance = max(1e-6, math.hypot(dx, dy))
+            diagonal = math.hypot(self.width, self.height - self.playfield_top)
+            second_features = (
+                dx / distance,
+                dy / distance,
+                float(np.clip(distance / diagonal, 0.0, 1.0)),
+                float(np.clip(second_time / 3.0, 0.0, 1.0)),
+                second_risk,
+            )
+        return [
+            float(np.clip(len(missiles) / 4.0, 0.0, 1.0)),
+            pressure,
+            escape_x,
+            escape_y,
+            alignment,
+            turn,
+            *second_features,
+            urgency,
+        ]
+
+    def _danger_zone_risk_at(self, x: float, y: float) -> float:
+        """Return the strongest urgency-weighted boss-lane overlap at a point."""
+
+        strongest = 0.0
+        for zone in self.danger_zones:
+            dx, dy = x - zone.x, y - zone.y
+            if zone.kind == "circle":
+                overlap = max(
+                    0.0,
+                    zone.radius + self.player.radius - math.hypot(dx, dy),
+                ) / max(1.0, zone.radius)
+            else:
+                signed = -math.sin(zone.angle) * dx + math.cos(zone.angle) * dy
+                overlap = max(
+                    0.0,
+                    zone.half_width + self.player.radius - abs(signed),
+                ) / max(1.0, zone.half_width)
+            time_left = (
+                float(np.clip(zone.telegraph_steps / zone.maximum_telegraph_steps, 0.0, 1.0))
+                if zone.telegraph_steps > 0
+                else 0.0
+            )
+            strongest = max(strongest, float(np.clip(overlap, 0.0, 1.0)) * (2.0 - time_left))
+        return float(np.clip(strongest, 0.0, 1.0))
+
+    def _crowd_pressure_at(self, x: float, y: float) -> float:
+        pressure = 0.0
+        for enemy in self.enemies:
+            clearance = max(
+                0.0,
+                math.hypot(enemy.x - x, enemy.y - y)
+                - enemy.radius
+                - self.player.radius,
+            )
+            if clearance < 200.0:
+                pressure += (1.0 - clearance / 200.0) ** 2
+        return float(np.clip(pressure / 3.0, 0.0, 1.0))
+
+    def _wall_risk_at(self, x: float, y: float) -> float:
+        radius = self.player.radius
+        clearance = min(
+            x - radius,
+            self.width - radius - x,
+            y - self.playfield_top - radius,
+            self.height - radius - y,
+        )
+        safe_distance = max(1.0, float(self.reward_cfg["wall_safe_distance"]))
+        return float(np.clip(1.0 - clearance / safe_distance, 0.0, 1.0) ** 2)
+
+    def _unified_safety_observation(self) -> list[float]:
+        """Describe one feasible escape that reconciles every live threat.
+
+        Rotation cannot instantly move along a world-space vector: it must turn,
+        then thrust, while retaining momentum.  These fields make that two-step
+        relationship explicit without choosing or replacing an action.
+        """
+
+        missiles = self._enemy_missiles()
+        hazard_risk = self._danger_zone_risk_at(self.player.x, self.player.y)
+        missile_risk = float(
+            np.clip(
+                sum(
+                    self._missile_risk_at(item, self.player.x, self.player.y)[0]
+                    for item in missiles
+                )
+                / 2.0,
+                0.0,
+                1.0,
+            )
+        )
+        crowd_risk = self._crowd_pressure_at(self.player.x, self.player.y)
+        wall_risk = self._wall_risk_at(self.player.x, self.player.y)
+        urgency = float(
+            np.clip(
+                0.95 * hazard_risk
+                + 0.85 * missile_risk
+                + 0.65 * crowd_risk
+                + 0.75 * wall_risk,
+                0.0,
+                1.0,
+            )
+        )
+        if urgency <= 1e-4:
+            return [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+        travel = max(82.0, float(self.player_cfg["direct_speed"]) * 0.33)
+        momentum_seconds = 0.22
+        radius = self.player.radius
+        best_score = float("inf")
+        best_clearance = -1.0
+        escape_x = escape_y = 0.0
+        for index in range(16):
+            angle = math.tau * index / 16.0
+            direction_x, direction_y = math.cos(angle), math.sin(angle)
+            candidate_x = (
+                self.player.x + self.player.vx * momentum_seconds + direction_x * travel
+            )
+            candidate_y = (
+                self.player.y + self.player.vy * momentum_seconds + direction_y * travel
+            )
+            if not (
+                radius <= candidate_x <= self.width - radius
+                and self.playfield_top + radius <= candidate_y <= self.height - radius
+            ):
+                continue
+            candidate_missile = float(
+                np.clip(
+                    sum(
+                        self._missile_risk_at(item, candidate_x, candidate_y)[0]
+                        for item in missiles
+                    )
+                    / 2.0,
+                    0.0,
+                    1.0,
+                )
+            )
+            candidate_hazard = self._danger_zone_risk_at(candidate_x, candidate_y)
+            candidate_crowd = self._crowd_pressure_at(candidate_x, candidate_y)
+            candidate_wall = self._wall_risk_at(candidate_x, candidate_y)
+            score = (
+                2.8 * candidate_hazard
+                + 2.35 * candidate_missile
+                + 1.15 * candidate_crowd
+                + 1.0 * candidate_wall
+            )
+            clearance = min(
+                candidate_x - radius,
+                self.width - radius - candidate_x,
+                candidate_y - self.playfield_top - radius,
+                self.height - radius - candidate_y,
+            )
+            if score < best_score - 1e-9 or (
+                abs(score - best_score) <= 1e-9 and clearance > best_clearance
+            ):
+                best_score = score
+                best_clearance = clearance
+                escape_x, escape_y = direction_x, direction_y
+
+        heading_x, heading_y = math.cos(self.player.angle), math.sin(self.player.angle)
+        alignment = heading_x * escape_x + heading_y * escape_y
+        turn = heading_x * escape_y - heading_y * escape_x
+        target = self._nearest_target()
+        conflict = 0.0
+        if target is not None:
+            target_dx, target_dy = target.x - self.player.x, target.y - self.player.y
+            target_distance = max(1e-6, math.hypot(target_dx, target_dy))
+            conflict = float(
+                np.clip(
+                    -(
+                        escape_x * target_dx / target_distance
+                        + escape_y * target_dy / target_distance
+                    ),
+                    0.0,
+                    1.0,
+                )
+            )
+        return [
+            escape_x,
+            escape_y,
+            alignment,
+            turn,
+            urgency,
+            urgency * max(0.0, alignment),
+            conflict,
+        ]
 
     def _boss_intermission_observation(self) -> list[float]:
         """Expose boss vulnerability, sentry priority, and incoming missiles."""
@@ -2935,10 +3456,23 @@ class ArenaEnv(gym.Env):
             *missile_motion,
         ]
 
-    def _shaping_snapshot(self) -> dict[str, Any]:
+    def _shaping_snapshot(self, *, include_safety: bool = True) -> dict[str, Any]:
         """Capture potential features used for small, explainable shaping terms."""
 
         missile = self._nearest_enemy_missile()
+        missile_risks, missile_pressure = self._missile_pressure()
+        heading_x, heading_y = math.cos(self.player.angle), math.sin(self.player.angle)
+        hazard_features = self._multi_danger_zone_features()
+        missile_features = self._multi_missile_observation()
+        crowd_features = self._crowd_metrics()
+        safety_features = (
+            self._unified_safety_observation()
+            if include_safety
+            else [0.0] * 7
+        )
+        to_center_x = self.width / 2.0 - self.player.x
+        to_center_y = (self.playfield_top + self.height) / 2.0 - self.player.y
+        center_distance = max(1e-6, math.hypot(to_center_x, to_center_y))
         spawner = min(
             self.spawners,
             key=lambda item: (item.x - self.player.x) ** 2
@@ -2976,8 +3510,16 @@ class ArenaEnv(gym.Env):
                 sorted({zone.attack_id for zone in self.danger_zones})
             ),
             "hazard_risk": self._danger_zone_risk(),
+            "hazard_heading": (
+                heading_x * hazard_features[1] + heading_y * hazard_features[2]
+            ),
             "missile_id": None if missile is None else missile.entity_id,
             "missile_risk": self._missile_risk(missile),
+            "missile_risks": missile_risks,
+            "missile_pressure": missile_pressure,
+            "missile_ids": tuple(sorted(missile_risks)),
+            "missile_heading": float(missile_features[4]),
+            "missile_urgency": float(missile_features[11]),
             "enemy_pressure": {
                 enemy.entity_id: (
                     max(
@@ -2999,7 +3541,26 @@ class ArenaEnv(gym.Env):
                 for enemy in self.enemies
             },
             "crowd_pressure": self._crowd_metrics()[1],
+            "crowd_ids": tuple(sorted(enemy.entity_id for enemy in self.enemies)),
+            "crowd_heading": (
+                heading_x * crowd_features[2] + heading_y * crowd_features[3]
+            ),
+            "wall_risk": self._wall_risk(),
+            "wall_heading": (
+                heading_x * to_center_x / center_distance
+                + heading_y * to_center_y / center_distance
+            ),
+            "safety_alignment": float(safety_features[2]),
+            "safety_urgency": float(safety_features[4]),
+            "safety_thrust_readiness": float(safety_features[5]),
+            "safety_escape_x": float(safety_features[0]),
+            "safety_escape_y": float(safety_features[1]),
         }
+
+    def _wall_risk(self) -> float:
+        """Continuous edge pressure used to teach early, feasible escapes."""
+
+        return self._wall_risk_at(self.player.x, self.player.y)
 
     def _apply_shaping_delta(
         self,
@@ -3012,8 +3573,16 @@ class ArenaEnv(gym.Env):
         when a target is destroyed or a new phase appears.
         """
 
-        after = self._shaping_snapshot()
+        # The unified escape vector is action guidance captured before the
+        # transition. Reusing that vector makes turn credit local and stable,
+        # and avoids a second expensive 16-direction safety search per frame.
+        after = self._shaping_snapshot(include_safety=False)
         events["crowd_pressure"] = float(after["crowd_pressure"])
+        events["wall_exposure"] = float(after["wall_risk"])
+        events["wall_escape_improvement"] = float(before["wall_risk"]) - float(
+            after["wall_risk"]
+        )
+        events["missile_exposure"] = float(after["missile_pressure"])
         events["crowd_escape"] = 0.0
         # Compare only threats present on both sides of the transition. This
         # continues teaching separation when another enemy spawns, but never
@@ -3041,10 +3610,53 @@ class ArenaEnv(gym.Env):
             events["hazard_escape_improvement"] = float(before["hazard_risk"]) - float(
                 after["hazard_risk"]
             )
-        if before["missile_id"] is not None and before["missile_id"] == after["missile_id"]:
-            events["missile_escape_improvement"] = float(
-                before["missile_risk"]
-            ) - float(after["missile_risk"])
+            if self.control_style == "rotation":
+                events["hazard_heading_improvement"] = (
+                    float(after["hazard_heading"])
+                    - float(before["hazard_heading"])
+                ) * max(float(before["hazard_risk"]), float(after["hazard_risk"]))
+        common_missile_ids = set(before["missile_risks"]).intersection(
+            after["missile_risks"]
+        )
+        if common_missile_ids:
+            events["missile_escape_improvement"] = (
+                sum(float(before["missile_risks"][key]) for key in common_missile_ids)
+                - sum(float(after["missile_risks"][key]) for key in common_missile_ids)
+            ) / max(1.0, min(2.0, float(len(common_missile_ids))))
+        if (
+            self.control_style == "rotation"
+            and before["missile_ids"]
+            and before["missile_ids"] == after["missile_ids"]
+        ):
+            events["missile_heading_improvement"] = (
+                float(after["missile_heading"])
+                - float(before["missile_heading"])
+            ) * max(float(before["missile_urgency"]), float(after["missile_urgency"]))
+        if (
+            self.control_style == "rotation"
+            and before["crowd_ids"]
+            and before["crowd_ids"] == after["crowd_ids"]
+        ):
+            events["crowd_heading_improvement"] = (
+                float(after["crowd_heading"])
+                - float(before["crowd_heading"])
+            ) * max(float(before["crowd_pressure"]), float(after["crowd_pressure"]))
+        if self.control_style == "rotation":
+            events["wall_heading_improvement"] = (
+                float(after["wall_heading"])
+                - float(before["wall_heading"])
+            ) * max(float(before["wall_risk"]), float(after["wall_risk"]))
+            if float(before["safety_urgency"]) > 1e-4:
+                heading_x = math.cos(self.player.angle)
+                heading_y = math.sin(self.player.angle)
+                after_alignment = (
+                    heading_x * float(before["safety_escape_x"])
+                    + heading_y * float(before["safety_escape_y"])
+                )
+                events["safety_heading_improvement"] = (
+                    after_alignment
+                    - float(before["safety_alignment"])
+                ) * float(before["safety_urgency"])
 
     def _get_observation(self) -> np.ndarray:
         engine_multiplier = 1.0 + 0.075 * self.upgrade_stacks.get("engine", 0)
@@ -3131,6 +3743,8 @@ class ArenaEnv(gym.Env):
                 self.upgrade_stacks.get("riftbreaker", 0) / 6.0,
                 *self._threat_observation(),
                 *self._boss_intermission_observation(),
+                *self._multi_missile_observation(),
+                *self._unified_safety_observation(),
             ],
             dtype=np.float32,
         )
@@ -3198,13 +3812,41 @@ class ArenaEnv(gym.Env):
             * float(self.reward_cfg["missile_hit"]),
             "missile_escape": float(events.get("missile_escape_improvement", 0.0))
             * float(self.reward_cfg["missile_escape"]),
+            "missile_exposure": float(events.get("missile_exposure", 0.0))
+            * float(self.reward_cfg["missile_exposure"]),
+            "hazard_heading": float(events.get("hazard_heading_improvement", 0.0))
+            * float(self.reward_cfg["hazard_heading"]),
+            "missile_heading": float(events.get("missile_heading_improvement", 0.0))
+            * float(self.reward_cfg["missile_heading"]),
+            "crowd_heading": float(events.get("crowd_heading_improvement", 0.0))
+            * float(self.reward_cfg["crowd_heading"]),
+            "wall_heading": float(events.get("wall_heading_improvement", 0.0))
+            * float(self.reward_cfg["wall_heading"]),
+            "safety_heading": float(events.get("safety_heading_improvement", 0.0))
+            * float(self.reward_cfg["safety_heading"]),
+            "safe_thrust": float(events.get("safe_thrust", 0.0))
+            * float(self.reward_cfg["safe_thrust"]),
+            "unsafe_thrust": float(events.get("unsafe_thrust", 0.0))
+            * float(self.reward_cfg["unsafe_thrust"]),
             "hazard_escape": float(events.get("hazard_escape_improvement", 0.0))
             * float(self.reward_cfg["hazard_escape"]),
             "hazard_exposure": float(events.get("hazard_exposure", 0.0))
             * float(self.reward_cfg["hazard_exposure"]),
+            "wall_escape": float(events.get("wall_escape_improvement", 0.0))
+            * float(self.reward_cfg["wall_escape"]),
+            "wall_exposure": float(events.get("wall_exposure", 0.0))
+            * float(self.reward_cfg["wall_exposure"]),
+            "wall_contact": int(events.get("wall_contacts", 0))
+            * float(self.reward_cfg["wall_contact"]),
             "crowd_escape": float(events.get("crowd_escape", 0.0)) * float(self.reward_cfg["crowd_escape"]),
-            "crowd_contact_risk": max(0.0, float(events.get("crowd_pressure", 0.0)) - 0.5)
+            "crowd_contact_risk": max(
+                0.0,
+                float(events.get("crowd_pressure", 0.0))
+                - float(self.reward_cfg["crowd_safe_pressure"]),
+            )
             * float(self.reward_cfg["crowd_contact_risk"]),
+            "enemy_contact": int(events.get("contact_events", 0))
+            * float(self.reward_cfg["enemy_contact"]),
             "phase_timeout": (
                 float(self.reward_cfg["phase_timeout"])
                 if events.get("phase_timeout", False)
@@ -3250,7 +3892,10 @@ class ArenaEnv(gym.Env):
             "missiles_fired",
             "missiles_evaded",
             "missile_hits",
+            "missile_exposure",
             "hazard_exposure",
+            "wall_exposure",
+            "wall_contacts",
             "miniboss_caches",
             "sustain_healed",
         ):

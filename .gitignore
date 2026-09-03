@@ -23,3 +23,158 @@ Thumbs.db
 # Local recovery area for superseded training artifacts. It is intentionally
 # excluded from the submission tree; use Git history or retraining as needed.
 .archive/
+
+# Rejected rotation anti-ram tuning candidates are kept locally for comparison,
+# but are not submission artifacts. The currently promoted rotation model and
+# its holdout evidence remain tracked normally.
+/logs/arena/training/anti_ram_rotation_*/
+/logs/arena/tensorboard/anti_ram_rotation_*/
+/models/arena/anti_ram_rotation_*.zip
+/models/arena/anti_ram_rotation_*.metadata.json
+
+# Superseded anti-ram tuning is retained locally; the final edge-escape runs
+# below replace it in the submitted evidence set.
+/logs/arena/evidence/anti_ram_*
+/logs/arena/training/anti_ram_direct_*/
+/logs/arena/tensorboard/anti_ram_direct_*/
+/models/arena/anti_ram_direct_*.zip
+/models/arena/anti_ram_direct_*.metadata.json
+
+# Keep only the final same-seed edge comparison, not exploratory cadence runs.
+/logs/arena/evidence/edge_escape_*
+!/logs/arena/evidence/edge_escape_final_direct_current_holdout.csv
+!/logs/arena/evidence/edge_escape_final_direct_current_holdout.json
+!/logs/arena/evidence/edge_escape_final_direct_candidate_holdout.csv
+!/logs/arena/evidence/edge_escape_final_direct_candidate_holdout.json
+!/logs/arena/evidence/edge_escape_final_direct_current_boss_holdout.csv
+!/logs/arena/evidence/edge_escape_final_direct_current_boss_holdout.json
+!/logs/arena/evidence/edge_escape_final_direct_candidate_boss_holdout.csv
+!/logs/arena/evidence/edge_escape_final_direct_candidate_boss_holdout.json
+!/logs/arena/evidence/edge_escape_final_rotation_current_holdout.csv
+!/logs/arena/evidence/edge_escape_final_rotation_current_holdout.json
+!/logs/arena/evidence/edge_escape_final_rotation_candidate_holdout.csv
+!/logs/arena/evidence/edge_escape_final_rotation_candidate_holdout.json
+!/logs/arena/evidence/edge_escape_final_rotation_current_boss_holdout.csv
+!/logs/arena/evidence/edge_escape_final_rotation_current_boss_holdout.json
+!/logs/arena/evidence/edge_escape_final_rotation_candidate_boss_holdout.csv
+!/logs/arena/evidence/edge_escape_final_rotation_candidate_boss_holdout.json
+
+# Aborted consolidation passes did not beat the promoted rotation checkpoint.
+/logs/arena/training/edge_escape_rotation_balanced_*/
+/logs/arena/training/edge_escape_rotation_consolidate_*/
+/logs/arena/tensorboard/edge_escape_rotation_balanced_*/
+/logs/arena/tensorboard/edge_escape_rotation_consolidate_*/
+
+# Schema-11/12 rotation adaptation attempts below were explicitly rejected by
+# same-seed full-run gates. Keep them out of a clone if a local interrupted run
+# is retained; the promoted edge-escape lineage remains the submitted model.
+/logs/arena/training/volley_v11_rotation_*/
+/logs/arena/training/heading_v11_rotation_*/
+/logs/arena/training/safety_v12_rotation_*/
+/logs/arena/training/unified_v12_rotation_*/
+/logs/arena/tensorboard/volley_v11_rotation_*/
+/logs/arena/tensorboard/heading_v11_rotation_*/
+/logs/arena/tensorboard/safety_v12_rotation_*/
+/logs/arena/tensorboard/unified_v12_rotation_*/
+/models/arena/volley_v11_rotation_*.zip
+/models/arena/volley_v11_rotation_*.metadata.json
+/models/arena/heading_v11_rotation_*.zip
+/models/arena/heading_v11_rotation_*.metadata.json
+/models/arena/safety_v12_rotation_*.zip
+/models/arena/safety_v12_rotation_*.metadata.json
+/models/arena/unified_v12_rotation_*.zip
+/models/arena/unified_v12_rotation_*.metadata.json
+
+# Progression-bootstrap safety adaptation was evaluated but did not pass the
+# launcher gate, so it remains a reproducible local experiment, not a model
+# shipped to teammates or submitted as the learned Rotation policy.
+/logs/arena/training/progression_safety_v12_rotation_*/
+/logs/arena/tensorboard/progression_safety_v12_rotation_*/
+/models/arena/progression_safety_v12_rotation_*.zip
+/models/arena/progression_safety_v12_rotation_*.metadata.json
+
+# Full-network tactical/safety refinement failed both the normal and launcher
+# promotion gates. Preserve it locally only when diagnosing future training.
+/logs/arena/training/tactical_safety_v12_rotation_*/
+/logs/arena/tensorboard/tactical_safety_v12_rotation_*/
+/models/arena/tactical_safety_v12_rotation_*.zip
+/models/arena/tactical_safety_v12_rotation_*.metadata.json
+
+# Short diagnostic probes support local tuning decisions but are not final
+# report evidence; retain only named full holdouts and promoted comparisons.
+/logs/arena/evidence/*_probe.csv
+/logs/arena/evidence/*_probe.json
+/logs/arena/evidence/*_probe_boss.csv
+/logs/arena/evidence/*_probe_boss.json
+/logs/arena/evidence/volley_v11_*baseline*.csv
+/logs/arena/evidence/volley_v11_*baseline*.json
+
+# Keep the compact final safety evidence and the documented aim-assist
+# ablation; hide one-off diagnostic replays and rejected candidate gates.
+/logs/arena/evidence/safety_v12_direct_*
+!/logs/arena/evidence/safety_v12_direct_final_holdout.csv
+!/logs/arena/evidence/safety_v12_direct_final_holdout.json
+/logs/arena/evidence/safety_v12_rotation_*
+!/logs/arena/evidence/safety_v12_rotation_final_holdout.csv
+!/logs/arena/evidence/safety_v12_rotation_final_holdout.json
+!/logs/arena/evidence/safety_v12_rotation_preboss_shield_launcher_seed53006.csv
+!/logs/arena/evidence/safety_v12_rotation_preboss_shield_launcher_seed53006.json
+!/logs/arena/evidence/safety_v12_rotation_assist15_full_holdout.csv
+!/logs/arena/evidence/safety_v12_rotation_assist15_full_holdout.json
+!/logs/arena/evidence/safety_v12_rotation_assist18_full_holdout.csv
+!/logs/arena/evidence/safety_v12_rotation_assist18_full_holdout.json
+!/logs/arena/evidence/safety_v12_rotation_assist18_boss_holdout.csv
+!/logs/arena/evidence/safety_v12_rotation_assist18_boss_holdout.json
+!/logs/arena/evidence/safety_v12_rotation_assist21_full_holdout.csv
+!/logs/arena/evidence/safety_v12_rotation_assist21_full_holdout.json
+!/logs/arena/evidence/safety_v12_rotation_assist24_full_holdout.csv
+!/logs/arena/evidence/safety_v12_rotation_assist24_full_holdout.json
+
+# Keep only the accepted tactical Direct holdout and the unchanged Rotation
+# contract holdout; one-off guard/drag/retraining probes are local diagnostics.
+/logs/arena/evidence/tactical_*
+!/logs/arena/evidence/tactical_target_direct_final_holdout.csv
+!/logs/arena/evidence/tactical_target_direct_final_holdout.json
+!/logs/arena/evidence/tactical_rotation_current_final_holdout.csv
+!/logs/arena/evidence/tactical_rotation_current_final_holdout.json
+
+# Rotation movement experiments: keep rejected cold-start, cooldown-adapter,
+# blend and DQfD artifacts local. The promoted model plus its compact final
+# holdouts are the only runtime/evidence files teammates need.
+/logs/arena/training/rotation_precision_v12_*/
+/logs/arena/training/rotation_cooldown_adapter_v12_*/
+/logs/arena/training/rotation_teacher_rl_v12_*/
+/logs/arena/training/rotation_dqfd_v12_*/
+/logs/arena/tensorboard/rotation_precision_v12_*/
+/logs/arena/tensorboard/rotation_cooldown_adapter_v12_*/
+/logs/arena/tensorboard/rotation_teacher_rl_v12_*/
+/logs/arena/tensorboard/rotation_dqfd_v12_*/
+/models/arena/rotation_teacher_*.zip
+/models/arena/rotation_teacher_*.metadata.json
+/models/arena/rotation_cooldown_adapter_*.zip
+/models/arena/rotation_cooldown_adapter_*.metadata.json
+/models/arena/rotation_dqfd_*.zip
+/models/arena/rotation_dqfd_*.metadata.json
+/logs/arena/evidence/rotation_checkpoint_tournament_*
+/logs/arena/evidence/rotation_cooldown_adapter_*
+/logs/arena/evidence/rotation_teacher_*
+/logs/arena/evidence/rotation_production_shared_teacher_*
+!/logs/arena/evidence/rotation_refined_final_holdout.csv
+!/logs/arena/evidence/rotation_refined_final_holdout.json
+!/logs/arena/evidence/rotation_refined_final_boss_holdout.csv
+!/logs/arena/evidence/rotation_refined_final_boss_holdout.json
+
+# Direct sentry diagnostics and failed repair/fine-tuning candidates stay local.
+# The accepted finite-guidance holdouts use the separate direct_guidance024 name.
+/logs/arena/evidence/direct_sentry_*
+/logs/arena/training/direct_sentry_rl_*/
+/logs/arena/tensorboard/direct_sentry_rl_*/
+/logs/arena/tensorboard/direct_safety_teacher_*/
+/models/arena/direct_sentry_repair_*.zip
+/models/arena/direct_sentry_repair_*.metadata.json
+/logs/arena/evidence/direct_guidance0*
+/logs/arena/evidence/rotation_guidance0*
+/logs/arena/evidence/direct_missile_distill_*
+/logs/arena/tensorboard/direct_missile_distill_*/
+/models/arena/direct_missile_distill_*.zip
+/models/arena/direct_missile_distill_*.metadata.json

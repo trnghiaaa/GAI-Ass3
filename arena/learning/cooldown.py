@@ -69,6 +69,7 @@ class CooldownAwareDQN(DQN):
     """
 
     cooldown_replacements: int = 0
+    teacher_loss_weight: float = 0.0
 
     def _sample_action(
         self,
@@ -144,13 +145,33 @@ class CooldownAwareDQN(DQN):
                     + (1 - replay_data.dones) * discounts * next_q_values
                 )
 
-            current_q_values = self.q_net(replay_data.observations)
+            all_current_q_values = self.q_net(replay_data.observations)
             current_q_values = torch.gather(
-                current_q_values,
+                all_current_q_values,
                 dim=1,
                 index=replay_data.actions.long(),
             )
             loss = F.smooth_l1_loss(current_q_values, target_q_values)
+            teacher_weight = float(getattr(self, "teacher_loss_weight", 0.0))
+            if teacher_weight > 0.0:
+                # DQfD-style auxiliary classification keeps the difficult
+                # turn-then-thrust skill while temporal-difference learning
+                # calibrates values from real environment rewards.
+                from arena.learning.rotation_expert import RotationTeacher
+
+                teacher = RotationTeacher()
+                teacher_actions = torch.as_tensor(
+                    [
+                        teacher.action(row)
+                        for row in replay_data.observations.detach().cpu().numpy()
+                    ],
+                    dtype=torch.long,
+                    device=all_current_q_values.device,
+                )
+                loss = loss + teacher_weight * F.cross_entropy(
+                    all_current_q_values,
+                    teacher_actions,
+                )
             losses.append(float(loss.item()))
 
             self.policy.optimizer.zero_grad()
@@ -164,6 +185,10 @@ class CooldownAwareDQN(DQN):
         self._n_updates += gradient_steps
         self.logger.record("train/n_updates", self._n_updates, exclude="tensorboard")
         self.logger.record("train/loss", float(np.mean(losses)))
+        self.logger.record(
+            "train/teacher_loss_weight",
+            float(getattr(self, "teacher_loss_weight", 0.0)),
+        )
 
 
 class CooldownAwarePolicy:

@@ -39,7 +39,7 @@ when present, so nobody needs to type the interpreter path.
 arena/
   core/                Part II simulation, entities, and API adapter
   presentation/        Pygame launcher, rendering, and manual play
-  learning/            DQN training, wrappers, cooldown handling, and tuning
+  learning/            DQN training, Rotation demonstrations, wrappers, and tuning
   evaluation/          Policy evaluation and deterministic benchmarks
   tools/               Evidence, comparison, selection, and promotion utilities
   config.json          Arena mechanics and training configuration
@@ -350,8 +350,9 @@ python -m arena.play --control-style direct
 ```
 
 Use `WASD` or the arrow keys to move and hold `Space` to fire at the same time. Direct mode snaps
-shots to the nearest hostile when its reticle turns green inside the balanced
-220-pixel assist range;
+shots to the tactical target when its reticle turns green inside the moderate
+420-pixel assist range. Immediate threats inside 120 pixels of surface clearance
+are handled first; otherwise targeting stays on the damageable rift or boss;
 outside that range it fires along the current heading. To try rotation and
 thrust controls instead:
 
@@ -360,7 +361,7 @@ python -m arena.play --control-style rotation
 ```
 
 For rotation controls, use `W` to thrust, `A`/`D` to rotate, and hold `Space` to
-fire while thrusting or turning. Rotation shots receive a narrow seven-degree
+fire while thrusting or turning. Rotation shots receive a measured 18-degree
 aim correction only when the pilot is already aligned with a target; aiming is
 still controlled by rotation. In both modes, `R` restarts an episode and
 `Esc` quits. `P` or the visible PAUSE/RESUME button freezes the simulation and
@@ -426,7 +427,7 @@ env.close()
 
 ### Arena Observation Vector
 
-The agent receives a one-dimensional `float32` vector with exactly 107
+The agent receives a one-dimensional `float32` vector with exactly 126
 normalized features. It never receives the rendered pixels.
 
 | Indices | Features | Range | Meaning |
@@ -465,6 +466,8 @@ normalized features. It never receives the rendered pixels.
 | 96–99 | Nearest missile direction X/Y, distance and impact time | mixed normalized | Supports anticipatory missile avoidance rather than reacting after damage |
 | 100–101 | Boss velocity X/Y | `[-1, 1]` | Lets the policy track the shield-broken mobile boss |
 | 102–106 | Missile velocity X/Y, recommended escape X/Y, lock-on fraction | mixed normalized | Makes the telegraph, finite guidance window, and safest perpendicular dodge directly observable |
+| 107–118 | Volley count/pressure, feasible combined escape, body-relative turn, second missile geometry/risk and urgency | mixed normalized | Lets both policies anticipate intersecting Aegis fire instead of reacting to only the nearest missile |
+| 119–125 | Unified safety escape X/Y, body-relative alignment/turn, urgency, thrust readiness and target conflict | mixed normalized | Reconciles boss lanes, sentry fire, crowds, momentum and walls for rotation steering |
 
 If a target type is absent, its four target features are `(0, 0, 1, 0)`:
 no direction, maximum normalized distance, and zero health. Stable feature
@@ -478,9 +481,10 @@ named view for debugging and report evidence.
 | Rotation/thrust | No-op, thrust forward, rotate left, rotate right, shoot |
 | Direct | No-op, move up, move down, move left, move right, shoot |
 
-The training wrapper holds a decision for four 60 Hz simulation frames. This
-does not add or remove actions; it makes rotation and thrust decisions visible
-enough for DQN to learn while the renderer remains smooth.
+The training wrapper holds a decision for a documented number of 60 Hz frames
+(four for Direct and two for the finer Rotation policy). This does not add or
+remove actions; it makes decisions visible enough for DQN to learn while the
+renderer remains smooth.
 
 ### Combat XP, Build Drafts, and Boss Phases
 
@@ -535,7 +539,21 @@ chooses from the same seeded three-card offers using health, upcoming boss risk,
 control style, owned-weapon synergies, and diminishing-stack value. This keeps both rubric-required
 action dictionaries exactly unchanged: the existing `Shoot` action uses the
 composed build. XP and drafts never add an unreported RL reward term or replace
-the required phase rule.
+the required phase rule. An approaching boss guarantees that Shield Matrix is
+one of the three level-up options and Aegis is one of the phase-reward options;
+manual pilots remain free to choose another card, while the non-interactive
+pilot deliberately prioritizes those defenses instead of entering the boss
+with a fragile offense-only build.
+
+Direct targeting follows the same transparent rule in manual and learned play:
+an enemy inside the configured protection clearance is handled first, while a
+safe ship keeps its fire on the damageable rift, boss, or mandatory Aegis
+defender. This prevents an endless stream of nearer minions from stealing every
+shot from the phase objective. Rotation keeps its nearest-target observation
+contract because heading and target-turn selection are explicit learned tasks.
+Its submitted neural policy is demonstration-initialised from safe trajectories
+and saved as a cooldown-aware SB3 DQN; the observation-only teacher is a
+training aid and is never called by gameplay or evaluation.
 
 ### Reward Design
 
@@ -543,14 +561,17 @@ The configurable reward function contains the required progression terms:
 enemy destruction, larger spawner destruction, phase advancement, damage
 penalty, and a strong death penalty. Small shaping terms give credit for actual
 damage, progress toward a safe range around a stable spawner target, crowd
-separation, aim improvement, and
-well-aligned shots. Shaping never changes health, collisions, entity movement,
+separation, early close-range pressure, explicit enemy-contact and wall-contact
+penalties, feasible edge escape, aim improvement, and well-aligned shots.
+Shaping never changes health, collisions, entity movement,
 or terminal rules. A potential-difference term rewards movement out of an
 unchanged boss barrage, while a full dodge remains a separate event reward.
-Schema 10 also logs boss-skill and missile-hit penalties, explicit sentry-kill
+Schema 12 also logs boss-skill and missile-hit penalties, explicit sentry-kill
 credit, a small penalty for wasting shots on an immune boss, potential-based
 missile escape credit, and a small per-step hazard-exposure
-penalty. Overlapping boss lanes use the highest danger value rather than an
+penalty. Rotation also receives auditable credit for turning toward the unified
+safe vector and distinguishes aligned thrust from thrusting deeper into danger.
+Overlapping boss lanes use the highest danger value rather than an
 average, so standing in one active lane cannot be masked by safer lanes.
 Combat XP is deliberately excluded from this total. Every
 `step()` exposes `info["reward_breakdown"]`, making the exact contribution of
@@ -563,9 +584,11 @@ Use a unique `--run-name` for every new run. The submitted
 `python -m arena.train` command intentionally stops instead of overwriting
 them. Train direct and rotation separately with new names, incrementing the
 suffix for later attempts. The `boss_intermission` profile can use a training-only
-boss curriculum: it samples a genuine Phase-3 reset for a configured fraction
-of training episodes. It never selects actions for the policy or makes the
-boss easier. A changed game still requires training and fresh evaluation.
+boss curriculum: it samples a genuine Phase-3/6 reset for a configured fraction
+of training episodes and reconstructs the levels and visible draft rewards that
+would have been earned in the skipped phases. It never selects movement/combat
+actions for the policy or makes the boss easier. Explicit evaluation resets are
+unchanged. A changed game still requires training and fresh evaluation.
 
 Both policies use SB3 DQN with a configurable MLP, replay buffer, target
 network, epsilon schedule, checkpoints, held-out evaluation, TensorBoard, and
@@ -576,9 +599,19 @@ model metadata:
 python -m arena.train --control-style direct --run-name retrain_direct_v1
 python -m arena.train --control-style rotation --run-name retrain_rotation_v1
 
-# Boss/missile-aware refinements used by the submitted policies
+# Boss/missile-aware refinement lineage
 python -m arena.train --control-style direct --timesteps 350000 --profile boss_intermission --benchmark-episodes 20 --seed 46100 --run-name dodgeable_missile_direct_350k_s46100 --init-model models/arena/dqn_direct.zip --boss-curriculum 0.78 --curriculum-phases 3
 python -m arena.train --control-style rotation --timesteps 400000 --profile boss_intermission --benchmark-episodes 20 --seed 47100 --run-name dodgeable_missile_rotation_400k_s47100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --boss-curriculum 0.76 --curriculum-phases 3
+
+# Final edge-aware refinements used by the submitted policies
+python -m arena.train --control-style direct --timesteps 250000 --profile safety_consolidation --benchmark-episodes 8 --seed 91100 --run-name edge_escape_direct_250k_s91100 --init-model models/arena/dqn_direct.zip --boss-curriculum 0.35 --curriculum-phases 3,6
+python -m arena.train --control-style rotation --timesteps 600000 --profile safety_aware --benchmark-episodes 10 --seed 92100 --run-name edge_escape_rotation_600k_r2_s92100 --init-model models/arena/dqn_rotation.zip --boss-curriculum 0.40 --curriculum-phases 3,6 --action-repeat 2
+
+# Schema-12 multi-volley / unified-safety refinement experiment
+python -m arena.train --control-style rotation --timesteps 150000 --profile safety_adapter --seed 97100 --run-name unified_v12_rotation_150k_r2_s97100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --adapt-input-start 119 --boss-curriculum 0.30 --sentry-curriculum 0.75 --curriculum-phases 3 --action-repeat 2
+
+# Optional Rotation demonstration initialisation; runtime remains an SB3 DQN
+python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 32 --boss-episodes 16 --epochs 18
 
 # Generic from-scratch runs
 python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
@@ -593,15 +626,15 @@ Default models are saved separately as `models/arena/dqn_direct.zip` and
 `logs/arena/evidence/` (screenshots and held-outs), `training/` (final monitor,
 curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
-On the current assist-220/tier-balanced schema-10 24-episode holdouts, direct
-achieved 2549.38 mean reward, mean Phase 16.83, 4.79 boss clears, 13.50
-boss-skill dodges, and 1.42 boss-skill hits. Its fixed-Phase-3 test achieved 92%
-phase progression, 2.21 boss clears, 8.00 sentry kills, 9.25 dodges, 1.08
-boss-skill hits, and 2.75 missile hits per episode. Rotation achieved 72.08 mean reward, mean Phase 2.96,
-100% normal phase progression, reached Phase 5, and averaged 0.50 missile hits,
-but did not clear the deliberately harsh no-upgrade Phase-3 stress start. The
-stronger direct boss result is expected because direct movement is the easier
-action set; both models are reported honestly in `docs/part2/RUBRIC_EVIDENCE.md`.
+On the final independent normal-start holdout, Direct retains 100% progression
+and its tactical targeting reaches mean phase 16.92. Rotation uses a finer
+two-frame decision cadence. Against the previous Rotation DQN on 12 identical
+seeds, its demonstration-initialised neural checkpoint raises mean phase from
+2.67 to 3.33, maximum phase from 3 to 5, mean reward from -36.60 to +70.49,
+accuracy from 47.0% to 80.0%, and boss clears from 0 to 0.50 per run. Damage per
+1,000 frames falls 24%, wall contacts fall 65%, and boss-skill hits fall from
+2.25 to 1.50. A separate 16-seed final holdout records 100% progression, mean
+phase 3.50, and maximum phase 6.
 
 ### Visual Evaluation
 

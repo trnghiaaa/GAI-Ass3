@@ -99,7 +99,10 @@ class ArenaTelemetryCallback(BaseCallback):
             "boss_immune_hits",
             "missiles_evaded",
             "missile_hits",
+            "missile_exposure",
             "hazard_exposure",
+            "wall_exposure",
+            "wall_contacts",
             "damage_taken",
         ):
             self.logger.record(
@@ -117,6 +120,7 @@ def _make_env(
     boss_curriculum: float = 0.0,
     curriculum_phases: tuple[int, ...] = (3,),
     curriculum_seed: int = 0,
+    sentry_curriculum: float = 0.0,
 ) -> Monitor:
     base_env: gymnasium.Env = ArenaEnv(control_style=control_style)
     if boss_curriculum > 0.0:
@@ -125,6 +129,7 @@ def _make_env(
             probability=boss_curriculum,
             phases=curriculum_phases,
             seed=curriculum_seed,
+            sentry_probability=sentry_curriculum,
         )
     env = ActionRepeatWrapper(base_env, repeat=action_repeat)
     filename = str(monitor_file) if monitor_file is not None else None
@@ -226,12 +231,21 @@ def train_control_style(
     boss_curriculum: float = 0.0,
     curriculum_phases: tuple[int, ...] = (3,),
     action_repeat_override: int | None = None,
+    sentry_curriculum: float = 0.0,
+    adapt_input_start: int | None = None,
+    rotation_teacher_loss: float = 0.0,
 ) -> dict[str, Any]:
     """Train, save, and independently benchmark one control-style policy."""
 
     ensure_artifact_directories()
     if cooldown_mask and control_style != 'rotation':
         raise ValueError('Cooldown masking currently requires rotation controls')
+    if rotation_teacher_loss < 0.0:
+        raise ValueError('Rotation teacher loss must be non-negative')
+    if rotation_teacher_loss > 0.0 and (
+        control_style != 'rotation' or not cooldown_mask
+    ):
+        raise ValueError('Rotation teacher loss requires rotation controls and cooldown masking')
     settings = training_settings(control_style, profile)
     total_timesteps = int(timesteps or settings["total_timesteps"])
     if total_timesteps < 1:
@@ -242,6 +256,8 @@ def train_control_style(
         raise ValueError("boss_curriculum must be between 0 and 1")
     if not curriculum_phases:
         raise ValueError("curriculum_phases cannot be empty")
+    if not 0.0 <= sentry_curriculum <= 1.0:
+        raise ValueError("sentry curriculum must be between 0 and 1")
     training_seed = int(settings["seed"] if seed is None else seed)
     action_repeat = int(
         settings["action_repeat"]
@@ -268,6 +284,7 @@ def train_control_style(
         boss_curriculum=boss_curriculum,
         curriculum_phases=curriculum_phases,
         curriculum_seed=training_seed,
+        sentry_curriculum=sentry_curriculum,
     )
     eval_env = _make_env(control_style, action_repeat)
     learning_starts = min(
@@ -295,6 +312,7 @@ def train_control_style(
         verbose=verbose,
     )
     model.cooldown_mask_enabled = cooldown_mask
+    model.teacher_loss_weight = float(rotation_teacher_loss)
     if init_model is not None:
         source = DQN.load(str(init_model), device='cpu')
         with init_model.with_suffix('.metadata.json').open(encoding='utf-8') as handle:
@@ -304,7 +322,12 @@ def train_control_style(
             raise ValueError('Transfer requires the same control style and an exact observation prefix')
         transfer_prefix_policy(source, model)
         if new_inputs_only:
-            restrict_to_appended_inputs(model, int(source.observation_space.shape[0]))
+            input_start = (
+                int(source.observation_space.shape[0])
+                if adapt_input_start is None
+                else int(adapt_input_start)
+            )
+            restrict_to_appended_inputs(model, input_start)
     elif new_inputs_only:
         raise ValueError('--new-inputs-only requires --init-model')
 
@@ -391,6 +414,9 @@ def train_control_style(
             - 3.0 * float(candidate_benchmark["contacts_per_1000_frames"])
             - 20.0 * float(candidate_benchmark["mean_crowd_fraction"])
             + 0.08 * float(candidate_benchmark["mean_enemy_clearance"])
+            - 80.0 * float(candidate_benchmark["close_approach_rate"])
+            - 35.0 * float(candidate_benchmark["mean_wall_fraction"])
+            - 2.0 * float(candidate_benchmark["wall_contacts_per_1000_frames"])
             + 12.0 * float(boss_benchmark["mean_boss_skills_dodged"])
             - 18.0 * float(boss_benchmark["mean_boss_skill_hits"])
             + 8.0 * float(boss_benchmark["mean_boss_defenders_destroyed"])
@@ -398,6 +424,9 @@ def train_control_style(
             - 10.0 * float(boss_benchmark["mean_missile_hits"])
             - 0.5 * float(boss_benchmark["mean_boss_immune_hits"])
             + 12.0 * float(boss_benchmark["mean_bosses_destroyed"])
+            - 50.0 * float(boss_benchmark["close_approach_rate"])
+            - 60.0 * float(boss_benchmark["mean_wall_fraction"])
+            - 3.0 * float(boss_benchmark["wall_contacts_per_1000_frames"])
         )
         candidate_results.append(
             {
@@ -443,8 +472,11 @@ def train_control_style(
         "initialization_model": str(init_model) if init_model else None,
         "cooldown_mask": cooldown_mask,
         "new_inputs_only": new_inputs_only,
+        "adapt_input_start": adapt_input_start,
         "boss_curriculum_probability": boss_curriculum,
         "boss_curriculum_phases": list(curriculum_phases),
+        "sentry_curriculum_probability": sentry_curriculum,
+        "rotation_teacher_loss": rotation_teacher_loss,
         "run_name": stem,
         "control_style": control_style,
         "profile": profile,
@@ -513,6 +545,7 @@ def build_parser() -> argparse.ArgumentParser:
             "long_exploration",
             "safety_aware",
             "safety_consolidation",
+            "safety_adapter",
             "safety_exploration",
             "threat_aware",
             "boss_dodge",
@@ -529,7 +562,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument('--init-model', type=Path, default=None)
     parser.add_argument('--cooldown-mask', action='store_true')
+    parser.add_argument(
+        '--rotation-teacher-loss',
+        type=float,
+        default=0.0,
+        help='Auxiliary DQfD-style Rotation demonstration loss weight',
+    )
     parser.add_argument('--new-inputs-only', action='store_true')
+    parser.add_argument(
+        '--adapt-input-start',
+        type=int,
+        default=None,
+        help='With --new-inputs-only, train columns from this index onward',
+    )
     parser.add_argument(
         "--action-repeat",
         type=int,
@@ -546,6 +591,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--curriculum-phases",
         default="3",
         help="Comma-separated boss phases sampled by the training curriculum",
+    )
+    parser.add_argument(
+        "--sentry-curriculum",
+        type=float,
+        default=0.0,
+        help="Fraction of boss-curriculum starts placed at the finite Aegis sentry wave",
     )
     return parser
 
@@ -582,6 +633,9 @@ def main() -> None:
                 if value.strip()
             ),
             action_repeat_override=args.action_repeat,
+            sentry_curriculum=args.sentry_curriculum,
+            adapt_input_start=args.adapt_input_start,
+            rotation_teacher_loss=args.rotation_teacher_loss,
         )
 
 

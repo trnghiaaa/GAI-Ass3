@@ -50,6 +50,12 @@ def _score(normal: dict[str, Any], boss: dict[str, Any]) -> float:
         + 2.0 * float(boss["mean_missiles_evaded"])
         - 12.0 * float(boss["mean_missile_hits"])
         - 0.75 * float(boss["mean_boss_immune_hits"])
+        - 80.0 * float(normal["close_approach_rate"])
+        - 50.0 * float(boss["close_approach_rate"])
+        - 35.0 * float(normal["mean_wall_fraction"])
+        - 2.0 * float(normal["wall_contacts_per_1000_frames"])
+        - 60.0 * float(boss["mean_wall_fraction"])
+        - 3.0 * float(boss["wall_contacts_per_1000_frames"])
     )
 
 
@@ -61,6 +67,7 @@ def evaluate_candidates(
     output: Path,
     episodes: int,
     seed: int,
+    action_repeat: int,
 ) -> dict[str, Any]:
     """Evaluate candidates on fixed normal and Phase-3 boss-start episodes."""
 
@@ -78,14 +85,14 @@ def evaluate_candidates(
             model,
             control_style,
             episodes=episodes,
-            action_repeat=4,
+            action_repeat=action_repeat,
             seed=seed,
         )
         boss_rows, boss = evaluate_model(
             model,
             control_style,
             episodes=episodes,
-            action_repeat=4,
+            action_repeat=action_repeat,
             seed=seed + 10_000,
             reset_options={"start_phase": 3},
         )
@@ -107,6 +114,7 @@ def evaluate_candidates(
         "episodes_per_condition": episodes,
         "normal_seed_start": seed,
         "boss_seed_start": seed + 10_000,
+        "action_repeat": action_repeat,
         "winner": winner,
         "candidates": rows,
     }
@@ -124,8 +132,27 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--episodes", type=int, default=12)
     parser.add_argument("--seed", type=int, default=71_000)
+    parser.add_argument(
+        "--action-repeat",
+        type=int,
+        default=None,
+        help="Decision cadence; defaults to the reference model metadata.",
+    )
     args = parser.parse_args()
     torch.set_num_threads(1)
+    metadata_path = args.reference.with_suffix(".metadata.json")
+    metadata = (
+        json.loads(metadata_path.read_text(encoding="utf-8"))
+        if metadata_path.is_file()
+        else {}
+    )
+    action_repeat = int(
+        args.action_repeat
+        if args.action_repeat is not None
+        else metadata.get("action_repeat", 4)
+    )
+    if action_repeat < 1:
+        raise ValueError("action repeat must be positive")
     evaluate_candidates(
         run_dir=args.run_dir,
         reference=args.reference,
@@ -133,6 +160,7 @@ def main() -> None:
         output=args.output,
         episodes=args.episodes,
         seed=args.seed,
+        action_repeat=action_repeat,
     )
 
 

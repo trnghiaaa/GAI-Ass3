@@ -9,8 +9,8 @@ import numpy as np
 from stable_baselines3 import DQN
 import torch
 
-from arena.entities import DangerZone, Enemy
-from arena.environment import ArenaEnv, ObservationIndex as I
+from arena.entities import DangerZone, Enemy, Projectile
+from arena.environment import ArenaEnv, ObservationIndex as I, ROTATION_ACTIONS
 from arena.train import transfer_prefix_policy, restrict_to_appended_inputs
 from gymnasium.spaces import Box
 from stable_baselines3.common.logger import configure
@@ -463,6 +463,139 @@ class ThreatTests(unittest.TestCase):
         events = {}
         self.env._apply_shaping_delta(events, before)
         self.assertGreater(events['crowd_escape'], 0)
+
+    def test_volley_reward_credits_escape_from_all_persistent_missiles(self):
+        player = self.env.player
+        player.x, player.y = 500.0, 360.0
+        self.env.projectiles = [
+            Projectile(
+                x=200.0,
+                y=360.0 + offset,
+                radius=7.0,
+                entity_id=8200 + index,
+                vx=170.0,
+                vy=0.0,
+                damage=10.0,
+                lifetime_steps=180,
+                weapon_kind='enemy_missile',
+                owner='enemy',
+            )
+            for index, offset in enumerate((-12.0, 12.0))
+        ]
+        before = self.env._shaping_snapshot()
+        player.y += 80.0
+        events = {}
+
+        self.env._apply_shaping_delta(events, before)
+
+        self.assertGreater(events['missile_escape_improvement'], 0.0)
+        self.assertLess(events['missile_exposure'], before['missile_pressure'])
+
+    def test_rotation_receives_credit_for_turning_toward_missile_escape(self):
+        player = self.env.player
+        player.x, player.y = 400.0, 300.0
+        player.angle = 0.0
+        self.env.enemies.clear()
+        self.env.projectiles = [
+            Projectile(
+                x=160.0,
+                y=player.y,
+                radius=7.0,
+                entity_id=8301,
+                vx=170.0,
+                vy=0.0,
+                damage=10.0,
+                lifetime_steps=180,
+                weapon_kind='enemy_missile',
+                owner='enemy',
+            )
+        ]
+        before = self.env._shaping_snapshot()
+        escape = self.env._multi_missile_observation()
+        player.angle = np.arctan2(escape[3], escape[2])
+        events = defaultdict(float)
+
+        self.env._apply_shaping_delta(events, before)
+        _, breakdown = self.env._calculate_reward(events, terminated=False)
+
+        self.assertGreater(events['missile_heading_improvement'], 0.0)
+        self.assertGreater(breakdown['missile_heading'], 0.0)
+
+    def test_rotation_receives_credit_for_turning_toward_unified_safety(self):
+        player = self.env.player
+        player.x, player.y = 400.0, 300.0
+        player.angle = 0.0
+        self.env.enemies = [
+            Enemy(player.x + 45.0, player.y, 15, 8401, 50, 50, 0)
+        ]
+        before = self.env._shaping_snapshot()
+        player.angle = np.arctan2(
+            self.env._unified_safety_observation()[1],
+            self.env._unified_safety_observation()[0],
+        )
+        events = defaultdict(float)
+
+        self.env._apply_shaping_delta(events, before)
+        _, breakdown = self.env._calculate_reward(events, terminated=False)
+
+        self.assertGreater(events['safety_heading_improvement'], 0.0)
+        self.assertGreater(breakdown['safety_heading'], 0.0)
+
+    def test_rotation_thrust_reward_distinguishes_safe_and_unsafe_heading(self):
+        player = self.env.player
+        player.x, player.y = 400.0, 300.0
+        self.env.enemies = [
+            Enemy(player.x + 45.0, player.y, 15, 8402, 50, 50, 0)
+        ]
+        player.angle = np.pi
+        _, _, _, _, safe_info = self.env.step(ROTATION_ACTIONS['THRUST'])
+        self.assertGreater(safe_info['reward_breakdown']['safe_thrust'], 0.0)
+        self.assertEqual(safe_info['reward_breakdown']['unsafe_thrust'], 0.0)
+
+        self.env.reset(seed=19)
+        player = self.env.player
+        player.x, player.y = 400.0, 300.0
+        self.env.enemies = [
+            Enemy(player.x + 45.0, player.y, 15, 8403, 50, 50, 0)
+        ]
+        player.angle = 0.0
+        _, _, _, _, unsafe_info = self.env.step(ROTATION_ACTIONS['THRUST'])
+        self.assertLess(unsafe_info['reward_breakdown']['unsafe_thrust'], 0.0)
+
+    def test_enemy_contact_has_an_explicit_penalty(self):
+        events = defaultdict(float)
+        events.update(
+            damage_dealt_enemy=0.0,
+            damage_dealt_spawner=0.0,
+            enemies_destroyed=0,
+            spawners_destroyed=0,
+            phase_advanced=False,
+            shot_fired=False,
+        )
+        events['contact_events'] = 1
+        _, breakdown = self.env._calculate_reward(events, terminated=False)
+        self.assertEqual(
+            breakdown['enemy_contact'], self.env.reward_cfg['enemy_contact']
+        )
+        self.assertLess(breakdown['enemy_contact'], 0.0)
+
+    def test_single_close_enemy_creates_dense_proximity_penalty(self):
+        player = self.env.player
+        self.env.enemies = [
+            Enemy(player.x + 45, player.y, 15, 991, 50, 50, 72)
+        ]
+        pressure = self.env._crowd_metrics()[1]
+        events = defaultdict(float, crowd_pressure=pressure)
+        events.update(
+            damage_dealt_enemy=0.0,
+            damage_dealt_spawner=0.0,
+            enemies_destroyed=0,
+            spawners_destroyed=0,
+            phase_advanced=False,
+            shot_fired=False,
+        )
+        _, breakdown = self.env._calculate_reward(events, terminated=False)
+        self.assertLess(breakdown['crowd_contact_risk'], 0.0)
 
     def test_summons_respect_enemy_cap(self):
         boss = self.boss()

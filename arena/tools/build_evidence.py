@@ -167,6 +167,17 @@ def _load_final_metadata() -> list[dict[str, Any]]:
                 "mean_enemies_destroyed": benchmark["mean_enemies_destroyed"],
                 "mean_spawners_destroyed": benchmark["mean_spawners_destroyed"],
                 "mean_accuracy": benchmark["mean_accuracy"],
+                "contacts_per_1000_frames": benchmark.get(
+                    "contacts_per_1000_frames", 0.0
+                ),
+                "wall_contacts_per_1000_frames": benchmark.get(
+                    "wall_contacts_per_1000_frames", 0.0
+                ),
+                "mean_wall_fraction": benchmark.get("mean_wall_fraction", 0.0),
+                "close_approach_rate": benchmark.get("close_approach_rate", 0.0),
+                "mean_enemy_clearance": benchmark.get(
+                    "mean_enemy_clearance", 0.0
+                ),
                 "mean_hits_per_projectile": benchmark.get(
                     "mean_hits_per_projectile", benchmark["mean_accuracy"]
                 ),
@@ -201,15 +212,19 @@ def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
     ) as output:
         json.dump({"control_styles": rows}, output, indent=2)
 
-    figure, axes_grid = plt.subplots(2, 2, figsize=(12, 8.2))
+    figure, axes_grid = plt.subplots(2, 4, figsize=(17, 8.2))
     axes = axes_grid.flat
     labels = [str(row["control_style"]).title() for row in rows]
     colors = ["#35cfff", "#b552ff"]
     metrics = (
         ("mean_reward", "Mean reward"),
+        ("mean_phase", "Mean phase reached"),
         ("phase_progression_rate", "Phase progression rate"),
         ("mean_enemies_destroyed", "Mean enemies destroyed"),
-        ("mean_player_level", "Mean ship level"),
+        ("contacts_per_1000_frames", "Contacts / 1,000 frames"),
+        ("wall_contacts_per_1000_frames", "Wall contacts / 1,000 frames"),
+        ("mean_wall_fraction", "Near-edge decision rate"),
+        ("close_approach_rate", "Close approach rate"),
     )
     for axis, (key, label) in zip(axes, metrics):
         values = [float(row[key]) for row in rows]
@@ -218,6 +233,9 @@ def _write_control_comparison(rows: list[dict[str, Any]]) -> None:
         axis.grid(axis="y", alpha=0.2)
         if key == "phase_progression_rate":
             axis.set_ylim(0, 1.05)
+            axis.set_yticks([0, 0.25, 0.5, 0.75, 1.0], ["0%", "25%", "50%", "75%", "100%"])
+        elif key in ("close_approach_rate", "mean_wall_fraction"):
+            axis.set_ylim(0, 1.0)
             axis.set_yticks([0, 0.25, 0.5, 0.75, 1.0], ["0%", "25%", "50%", "75%", "100%"])
     figure.suptitle("Final Part II deterministic policy comparison")
     figure.tight_layout()
@@ -522,7 +540,7 @@ def build() -> None:
     manifest = {
         "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
         "historical_hyperparameter_sweep_schema": 5,
-        "note": "Final schema-10 evidence includes revalidated models, a measured gradual normal-phase pressure director, independent visible boss tiers, a persistent AI mission summary, finite-guidance sentry missiles, explicit missile-escape observations, a boss-intermission curriculum, and fixed-seed normal plus Phase-3 checkpoint selection. The compact tuning sweep is retained as hyperparameter evidence.",
+        "note": "Final schema-12 evidence includes revalidated models, explicit close-approach, contact and wall audits, multi-missile volley pressure, a unified feasible safety escape for rotation, gradual normal-phase pressure, visible boss tiers, a persistent AI mission summary, finite-guidance sentry missiles, sentry-wave curriculum support, and fixed-seed checkpoint selection. Rejected ablations remain traceable and are never silently promoted.",
         "verified_files": [str(path.relative_to(PROJECT_ROOT)) for path in required_artifacts()],
         "tensorboard_event_files": [
             str(path.relative_to(PROJECT_ROOT)) for path in tensorboard_events

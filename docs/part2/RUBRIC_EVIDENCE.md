@@ -1,6 +1,6 @@
 # Part II rubric evidence map
 
-This is the current schema-10 submission map. Generated JSON/CSV files are the
+This is the current schema-12 submission map. Generated JSON/CSV files are the
 source for numeric report claims.
 
 ## G — Real-time Pygame arena
@@ -31,14 +31,16 @@ in `info` and the HUD.
 - `ArenaEnv.reset()` and `ArenaEnv.step()` use Gymnasium/SB3 return values;
   `LegacyArenaEnv` exposes the four-value assignment adapter.
 - `render()` supports visible Pygame evaluation and RGB arrays.
-- The observation is a fixed 107-feature numeric `float32` vector: player
+- The observation is a fixed 126-feature numeric `float32` vector: player
   position/velocity/orientation/health, nearest enemy/rift geometry, phase,
   targeting, build state, boss-hazard escape information, boss vulnerability,
-  sentry priority, missile timing/velocity/escape/lock-on, and boss velocity.
+  sentry priority, nearest and second missile timing/velocity, combined volley
+  pressure/escape/turn guidance, lock-on, and boss velocity.
 - `ObservationIndex`, `OBSERVATION_NAMES`, and `observation_as_dict()` make
   each field inspectable; corresponding tests validate shape/ranges.
-- Direct control uses a shared 220-pixel target assist because its required
-  action set has no aim action. Rotation retains a narrow 7-degree correction;
+- Direct control uses a shared 420-pixel tactical-target assist because its
+  required action set has no aim action: immediate threats defend first, then
+  the damageable rift/boss objective. Rotation retains a measured 18-degree correction;
   neither mode receives a hidden human/AI targeting difference.
 
 ## I — Two control schemes and saved models
@@ -57,16 +59,47 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 - `arena/config.json` defines named required event rewards: enemy/rift kill,
   phase progress, damage, and death.
 - `ArenaEnv._calculate_reward()` also logs shaping terms for damage, spacing,
-  crowd escape, aim/shot quality, barrage/missile escape, full dodges, boss or
+  crowd escape, close-range pressure, explicit enemy and wall contact,
+  feasible edge escape, aim/shot quality,
+  barrage/missile escape, full dodges, boss or
   missile hits, sentry kills, immune-shot waste, and exposure to an active
   telegraphed danger zone. XP remains separate.
 - `arena.train` uses Stable-Baselines3 DQN with a two-hidden-layer MLP, replay
   memory, target network, epsilon schedule, checkpoints, Monitor CSV and
   TensorBoard. `arena.tune` compares fast/balanced/long exploration profiles.
-- `BossCurriculumWrapper` only selects a reset phase during training; it does
-  not control actions or rewrite state. Direct checkpoint selection evaluates
+- `BossCurriculumWrapper` selects boss resets, reconstructs the skipped
+  level/draft progression of a real run, and can expose the genuine finite
+  Aegis intermission more often during training; it never controls actions and
+  explicit evaluation resets remain unchanged. Checkpoint selection evaluates
   both normal starts and fixed Phase-3 boss starts. This is documented in
   `logs/arena/evidence/selection/dodgeable_missile_direct_schema10_sweep.json`.
+- Rotation additionally supports reproducible observation-only demonstration
+  initialisation. The teacher is absent from runtime: the launcher and
+  evaluator load a cooldown-aware SB3 DQN. Optional DQfD-style auxiliary loss
+  is exposed for experiments, while failed candidates remain unpromoted.
+- On 12 identical fresh normal-start seeds, tactical Direct targeting retains
+  100% progression while raising mean phase from 11.25 to 16.92, maximum phase
+  from 38 to 54, boss clears from 3.17 to 5.08 per run, and safety-cap survival
+  from 33% to 67%. Boss-skill hits fall from 1.25 to 0.58 per run. The model's
+  action output is unchanged; its shared aim assist now protects against an
+  immediate threat and otherwise attacks the damageable progression objective.
+- The final Rotation checkpoint uses action repeat 2 and cooldown-aware targets
+  for finer steering. On 12 identical unseen seeds, demonstration
+  initialisation raises mean phase from 2.67 to 3.33, maximum phase from 3 to
+  5, mean reward from -36.60 to +70.49, accuracy from 47.0% to 80.0%, and boss
+  clears from 0 to 0.50 per run. Damage per 1,000 frames falls 52.78 to 39.90,
+  wall contacts 5.50 to 1.92, and boss-skill hits 2.25 to 1.50. A second final
+  16-seed holdout reaches mean phase 3.50, maximum phase 6, and 100%
+  progression.
+- The final pre-boss build planner recognizes both an active boss and the phase
+  immediately before one. It guarantees a visible Shield option, prioritizes
+  that option for non-interactive playback, and keeps manual selection free.
+  Launcher seed 530005 provides a representative smooth run that reaches Phase
+  5, clears Boss 1, and records zero boss-skill hits.
+- A later fixed-seed assist ablation keeps the learned Rotation model and action
+  set unchanged: 18 degrees raises maximum phase from 3 to 5, lowers damage
+  from 68.3 to 54.3 per 1,000 frames, and raises mean boss dodges from 1.6 to
+  4.1 versus 12 degrees. Wider 21/24-degree variants and repeat 1 were rejected.
 
 ## Report-ready artifacts
 
@@ -75,6 +108,12 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 - `logs/arena/evidence/rotation_schema10_assist220_tiered_final.{csv,json}`
 - `logs/arena/evidence/rotation_schema10_assist220_tiered_boss.{csv,json}`
 - `logs/arena/evidence/selection/assist220_*_schema10_sweep.json`
+- `logs/arena/evidence/edge_escape_final_*_holdout.{csv,json}`
+- `logs/arena/evidence/safety_v12_*_final_holdout.{csv,json}`
+- `logs/arena/evidence/safety_v12_rotation_preboss_shield_launcher_seed53006.{csv,json}`
+- `logs/arena/evidence/rotation_refined_final_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_refined_final_boss_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_refined_launcher_seed530005.{csv,json}`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/ai_mission_summary_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`

@@ -5,7 +5,7 @@ import unittest
 
 import numpy as np
 
-from arena.entities import DangerZone, Enemy, Spawner
+from arena.entities import DangerZone, Enemy, Projectile, Spawner
 from arena.environment import (
     ArenaEnv,
     DIRECT_ACTIONS,
@@ -28,7 +28,7 @@ class ArenaObservationTests(unittest.TestCase):
         self.assertEqual(observation.shape, (len(OBSERVATION_NAMES),))
         self.assertEqual(observation.ndim, 1)
         self.assertEqual(observation.dtype, np.float32)
-        self.assertEqual(len(OBSERVATION_NAMES), 107)
+        self.assertEqual(len(OBSERVATION_NAMES), 126)
         self.assertTrue(self.env.observation_space.contains(observation))
 
         # Removing every variable-length entity list must not alter the shape.
@@ -276,6 +276,111 @@ class ArenaObservationTests(unittest.TestCase):
             observation[ObservationIndex.SECONDARY_HAZARD_DISTANCE_TO_SAFETY],
             0.0,
         )
+
+    def test_hazard_escape_vector_never_points_through_top_boundary(self) -> None:
+        self.env.player.y = self.env.playfield_top + self.env.player.radius
+        self.env.danger_zones = [
+            DangerZone(
+                kind="line",
+                x=self.env.player.x,
+                y=self.env.player.y + 20.0,
+                angle=0.0,
+                half_width=45.0,
+                half_length=500.0,
+                telegraph_steps=30,
+                maximum_telegraph_steps=60,
+                active_steps=15,
+                attack_id=77,
+            )
+        ]
+
+        observation = self.env._get_observation()
+
+        self.assertGreater(observation[ObservationIndex.HAZARD_ESCAPE_Y], 0.0)
+        self.assertGreater(
+            observation[ObservationIndex.HAZARD_COMBINED_ESCAPE_Y], 0.0
+        )
+
+    def test_sentry_volley_exposes_multi_missile_escape_and_rotation_turn(self) -> None:
+        self.env.player.x = self.env.width / 2.0
+        self.env.player.y = self.env.playfield_top + self.env.player.radius + 2.0
+        self.env.player.angle = 0.0
+        self.env.projectiles = [
+            Projectile(
+                x=self.env.player.x - 180.0,
+                y=self.env.player.y,
+                radius=7.0,
+                entity_id=8101,
+                vx=170.0,
+                vy=0.0,
+                damage=10.0,
+                lifetime_steps=180,
+                weapon_kind="enemy_missile",
+                owner="enemy",
+            ),
+            Projectile(
+                x=self.env.player.x + 210.0,
+                y=self.env.player.y,
+                radius=7.0,
+                entity_id=8102,
+                vx=-170.0,
+                vy=0.0,
+                damage=10.0,
+                lifetime_steps=180,
+                weapon_kind="enemy_missile",
+                owner="enemy",
+            ),
+        ]
+
+        observation = self.env._get_observation()
+
+        self.assertEqual(observation[ObservationIndex.MISSILE_COUNT], 0.5)
+        self.assertGreater(observation[ObservationIndex.MISSILE_PRESSURE], 0.0)
+        self.assertGreater(
+            observation[ObservationIndex.MISSILE_COMBINED_ESCAPE_Y], 0.0
+        )
+        self.assertGreater(observation[ObservationIndex.MISSILE_ESCAPE_TURN], 0.0)
+        self.assertLess(observation[ObservationIndex.SECOND_MISSILE_DISTANCE], 1.0)
+        self.assertGreater(observation[ObservationIndex.SECOND_MISSILE_RISK], 0.0)
+        self.assertGreater(observation[ObservationIndex.SAFETY_URGENCY], 0.0)
+        self.assertGreater(observation[ObservationIndex.SAFETY_ESCAPE_Y], 0.0)
+        self.assertGreater(observation[ObservationIndex.SAFETY_ESCAPE_TURN], 0.0)
+        self.assertTrue(self.env.observation_space.contains(observation))
+
+    def test_unified_safety_signal_reconciles_crowd_hazard_and_wall(self) -> None:
+        self.env.player.x = self.env.player.radius + 2.0
+        self.env.player.y = self.env.playfield_top + self.env.player.radius + 2.0
+        self.env.player.angle = math.pi
+        self.env.enemies = [
+            Enemy(
+                x=self.env.player.x + 35.0,
+                y=self.env.player.y + 20.0,
+                radius=15.0,
+                entity_id=8401,
+                max_health=50.0,
+                health=50.0,
+                speed=72.0,
+            )
+        ]
+        self.env.danger_zones = [
+            DangerZone(
+                kind="circle",
+                x=self.env.player.x,
+                y=self.env.player.y,
+                radius=65.0,
+                telegraph_steps=20,
+                maximum_telegraph_steps=60,
+                active_steps=15,
+                attack_id=8402,
+            )
+        ]
+
+        observation = self.env._get_observation()
+
+        self.assertGreater(observation[ObservationIndex.SAFETY_ESCAPE_X], 0.0)
+        self.assertGreater(observation[ObservationIndex.SAFETY_ESCAPE_Y], 0.0)
+        self.assertGreater(observation[ObservationIndex.SAFETY_URGENCY], 0.8)
+        self.assertNotEqual(observation[ObservationIndex.SAFETY_ESCAPE_TURN], 0.0)
 
     def test_new_upgrade_state_is_explicitly_encoded(self) -> None:
         self.env.upgrade_stacks.update({"critical": 3, "leech": 2, "riftbreaker": 4})

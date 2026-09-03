@@ -25,8 +25,28 @@ ROW_FIELDS = (
     "boss_rewards_chosen", "drone_level", "barrier_charges",
     "build_summary",
     "contact_events", "crowd_fraction", "wall_fraction", "mean_enemy_clearance",
+    "wall_contacts",
+    "close_threat_decisions", "close_movement_decisions",
+    "close_approach_decisions", "close_approach_rate",
     "phase_diagnostics",
 )
+
+
+def _nearest_enemy_snapshot(core: ArenaEnv) -> tuple[int, float, float, float] | None:
+    """Return enemy identity, direction, and edge clearance for movement audits."""
+
+    if not core.enemies:
+        return None
+    player = core.player
+    enemy = min(
+        core.enemies,
+        key=lambda item: (item.x - player.x) ** 2 + (item.y - player.y) ** 2,
+    )
+    dx = enemy.x - player.x
+    dy = enemy.y - player.y
+    distance = max(1e-6, float(np.hypot(dx, dy)))
+    clearance = max(0.0, distance - player.radius - enemy.radius)
+    return enemy.entity_id, dx / distance, dy / distance, clearance
 
 
 def evaluate_model(
@@ -53,9 +73,13 @@ def evaluate_model(
         episode_reward = 0.0
         decisions = 0
         contacts = 0
+        wall_contacts = 0
         crowd_steps = wall_steps = samples = 0
         clearance_total = 0.0
         enemy_samples = 0
+        close_threat_decisions = 0
+        close_movement_decisions = 0
+        close_approach_decisions = 0
         phase_diagnostics: dict[str, dict[str, float]] = {}
         final_info: dict[str, Any] = {}
         terminated = truncated = False
@@ -63,12 +87,29 @@ def evaluate_model(
             while not (terminated or truncated):
                 phase_before = str(env.unwrapped.phase)
                 action, _ = model.predict(observation, deterministic=deterministic)
+                core = env.unwrapped
+                threat_before = _nearest_enemy_snapshot(core)
+                player_before = (core.player.x, core.player.y)
+                if threat_before is not None and threat_before[3] < 120.0:
+                    close_threat_decisions += 1
                 observation, reward, terminated, truncated, final_info = env.step(
                     int(np.asarray(action).item())
                 )
+                if threat_before is not None and threat_before[3] < 120.0:
+                    displacement_x = core.player.x - player_before[0]
+                    displacement_y = core.player.y - player_before[1]
+                    displacement = float(np.hypot(displacement_x, displacement_y))
+                    if displacement > 1.0:
+                        close_movement_decisions += 1
+                        progress = (
+                            displacement_x * threat_before[1]
+                            + displacement_y * threat_before[2]
+                        )
+                        close_approach_decisions += int(progress > 1.0)
                 episode_reward += float(reward)
                 decisions += 1
                 contacts += int(final_info.get('contact_events', 0))
+                wall_contacts += int(final_info.get('wall_contacts', 0))
                 phase_data = phase_diagnostics.setdefault(phase_before, {
                     'frames': 0, 'damage': 0.0, 'contacts': 0,
                     'boss_casts': 0, 'boss_hits': 0, 'boss_dodges': 0,
@@ -78,7 +119,6 @@ def evaluate_model(
                 phase_data['contacts'] += int(final_info.get('contact_events', 0))
                 for output_key, event_key in [('boss_casts','boss_skills_cast'), ('boss_hits','boss_skill_hits'), ('boss_dodges','boss_skills_dodged')]:
                     phase_data[output_key] += int(final_info.get(event_key, 0))
-                core = env.unwrapped
                 crowd_steps += int(core._crowd_metrics()[1] > 0.25)
                 p = core.player
                 wall_steps += int(min(p.x-p.radius, core.width-p.radius-p.x,
@@ -97,9 +137,16 @@ def evaluate_model(
             {
                 "episode": episode + 1,
                 'contact_events': contacts,
+                'wall_contacts': wall_contacts,
                 'crowd_fraction': crowd_steps / max(1,samples),
                 'wall_fraction': wall_steps / max(1,samples),
                 'mean_enemy_clearance': clearance_total / max(1,enemy_samples),
+                'close_threat_decisions': close_threat_decisions,
+                'close_movement_decisions': close_movement_decisions,
+                'close_approach_decisions': close_approach_decisions,
+                'close_approach_rate': (
+                    close_approach_decisions / max(1, close_movement_decisions)
+                ),
                 'phase_diagnostics': phase_diagnostics,
                 "seed": seed + episode,
                 "reward": round(episode_reward, 6),
@@ -151,9 +198,17 @@ def evaluate_model(
         "control_style": control_style,
         'damage_per_1000_frames': 1000 * sum(r['damage_taken'] for r in rows) / max(1,sum(r['simulation_steps'] for r in rows)),
         'contacts_per_1000_frames': 1000 * sum(r['contact_events'] for r in rows) / max(1,sum(r['simulation_steps'] for r in rows)),
+        'wall_contacts_per_1000_frames': 1000 * sum(r['wall_contacts'] for r in rows) / max(1,sum(r['simulation_steps'] for r in rows)),
         'mean_crowd_fraction': fmean(r['crowd_fraction'] for r in rows),
         'mean_wall_fraction': fmean(r['wall_fraction'] for r in rows),
         'mean_enemy_clearance': fmean(r['mean_enemy_clearance'] for r in rows),
+        'close_threat_decisions': sum(r['close_threat_decisions'] for r in rows),
+        'close_movement_decisions': sum(r['close_movement_decisions'] for r in rows),
+        'close_approach_decisions': sum(r['close_approach_decisions'] for r in rows),
+        'close_approach_rate': (
+            sum(r['close_approach_decisions'] for r in rows)
+            / max(1, sum(r['close_movement_decisions'] for r in rows))
+        ),
         'mean_simulation_steps': fmean(r['simulation_steps'] for r in rows),
         "episodes": episodes,
         "action_repeat": action_repeat,

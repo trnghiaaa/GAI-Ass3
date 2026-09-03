@@ -3,6 +3,8 @@
 import math
 import unittest
 
+import numpy as np
+
 from arena.entities import DangerZone, Enemy, Spawner
 from arena.environment import (
     ArenaEnv,
@@ -49,6 +51,42 @@ class ArenaEnvironmentTests(unittest.TestCase):
             self.assertGreater(env.player.angle % math.tau, initial_angle % math.tau)
             env.step(ROTATION_ACTIONS["THRUST"])
             self.assertGreater(math.hypot(env.player.vx, env.player.vy), 0.0)
+        finally:
+            env.close()
+
+    def test_direct_wall_contact_is_penalized_and_stops_outward_velocity(self) -> None:
+        self.env.player.x = self.env.player.radius
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["LEFT"])
+
+        self.assertEqual(info["wall_contacts"], 1)
+        self.assertEqual(self.env.player.x, self.env.player.radius)
+        self.assertEqual(self.env.player.vx, 0.0)
+        self.assertLess(info["reward_breakdown"]["wall_contact"], 0.0)
+        self.assertLess(info["reward_breakdown"]["wall_exposure"], 0.0)
+
+    def test_moving_inward_from_wall_receives_escape_progress(self) -> None:
+        self.env.player.x = self.env.player.radius
+
+        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["RIGHT"])
+
+        self.assertEqual(info["wall_contacts"], 0)
+        self.assertGreater(info["wall_escape_improvement"], 0.0)
+        self.assertGreater(info["reward_breakdown"]["wall_escape"], 0.0)
+
+    def test_rotation_wall_collision_cancels_only_blocked_momentum(self) -> None:
+        env = ArenaEnv(control_style="rotation")
+        try:
+            env.reset(seed=9)
+            env.player.x = env.player.radius
+            env.player.vx = -120.0
+            env.player.vy = 45.0
+
+            _, _, _, _, info = env.step(ROTATION_ACTIONS["ROTATE_RIGHT"])
+
+            self.assertEqual(info["wall_contacts"], 1)
+            self.assertEqual(env.player.vx, 0.0)
+            self.assertGreater(env.player.vy, 0.0)
         finally:
             env.close()
 
@@ -110,6 +148,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
         self.assertEqual(self.env.episode_stats["projectile_hits"], 1)
 
     def test_direct_shooting_uses_nearest_target_assist(self) -> None:
+        self.env.spawners = []
         self.env.enemies = [
             Enemy(
                 # A useful assist must reach beyond the old 160px radius.
@@ -124,12 +163,39 @@ class ArenaEnvironmentTests(unittest.TestCase):
         ]
         self.env.player.angle = -math.pi / 2.0
 
-        _, _, _, _, info = self.env.step(DIRECT_ACTIONS["SHOOT"])
+        projectiles_fired = self.env._fire_projectile(auto_aim=True)
 
-        self.assertTrue(info["shot_fired"])
+        self.assertEqual(projectiles_fired, 1)
         self.assertAlmostEqual(self.env.player.angle, 0.0)
         self.assertGreater(self.env.projectiles[0].vx, 0.0)
         self.assertAlmostEqual(self.env.projectiles[0].vy, 0.0)
+
+    def test_tactical_target_defends_close_then_attacks_objective(self) -> None:
+        enemy = Enemy(
+            x=self.env.player.x + 200.0,
+            y=self.env.player.y,
+            radius=15.0,
+            entity_id=992,
+            max_health=50.0,
+            health=50.0,
+            speed=0.0,
+        )
+        spawner = Spawner(
+            x=self.env.player.x,
+            y=self.env.player.y + 300.0,
+            radius=28.0,
+            entity_id=993,
+            max_health=100.0,
+            health=100.0,
+            spawn_cooldown_steps=999,
+        )
+        self.env.enemies = [enemy]
+        self.env.spawners = [spawner]
+
+        self.assertIs(self.env._nearest_target(), spawner)
+
+        enemy.x = self.env.player.x + 80.0
+        self.assertIs(self.env._nearest_target(), enemy)
 
     def test_destroying_last_spawner_advances_phase(self) -> None:
         spawner = Spawner(
@@ -283,7 +349,7 @@ class ArenaEnvironmentTests(unittest.TestCase):
 
             env.projectiles.clear()
             env.player.fire_cooldown_steps = 0
-            original = desired + math.radians(12)
+            original = desired + math.radians(20)
             env.player.angle = original
             env._fire_projectile(auto_aim=False)
             unassisted = math.atan2(env.projectiles[-1].vy, env.projectiles[-1].vx)
@@ -291,6 +357,39 @@ class ArenaEnvironmentTests(unittest.TestCase):
             self.assertAlmostEqual(difference, 0.0, places=5)
         finally:
             env.close()
+
+    def test_pre_boss_reward_draft_always_offers_aegis(self) -> None:
+        self.env.phase = int(self.env.phase_cfg["boss_interval"])
+        for seed in range(20):
+            self.env.np_random = np.random.default_rng(seed)
+            choices = self.env._roll_choices("phase_reward")
+            self.assertIn("aegis", {str(item["id"]) for item in choices})
+
+    def test_pre_boss_level_draft_always_offers_shield_matrix(self) -> None:
+        boss_phase = int(self.env.phase_cfg["boss_interval"])
+        for phase in (boss_phase - 1, boss_phase):
+            self.env.phase = phase
+            for seed in range(20):
+                self.env.np_random = np.random.default_rng(seed)
+                choices = self.env._roll_choices("level_up")
+                self.assertIn("shield", {str(item["id"]) for item in choices})
+
+    def test_noninteractive_boss_build_prioritises_guaranteed_shield(self) -> None:
+        self.env.phase = int(self.env.phase_cfg["boss_interval"]) - 1
+        catalog = {
+            str(item["id"]): item
+            for item in self.env.progression_cfg["upgrade_catalog"]
+        }
+        self.env.pending_choice_kind = "level_up"
+        self.env.pending_choices = [
+            catalog["damage"],
+            catalog["homing"],
+            catalog["shield"],
+        ]
+
+        selected = self.env.pending_choices[self.env._auto_choice_index()]
+
+        self.assertEqual(selected["id"], "shield")
 
     def test_combat_xp_levels_up_without_changing_environment_reward(self) -> None:
         events = {

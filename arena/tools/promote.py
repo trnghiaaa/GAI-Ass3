@@ -40,7 +40,7 @@ def _write_metadata(
         {
             "environment_schema": ENVIRONMENT_SCHEMA_VERSION,
             "model": str(destination),
-            "model_sha256": _sha256(source),
+            "model_sha256": _sha256(destination),
             "config_sha256": _sha256(CONFIG_PATH),
         }
     )
@@ -61,7 +61,7 @@ def _write_metadata(
     if run_name is not None:
         result["run_name"] = run_name
     if boss_holdout is not None:
-        _load_json(boss_holdout)["aggregate"]
+        result["boss_focus_benchmark"] = _load_json(boss_holdout)["aggregate"]
         result["boss_focus_evaluation"] = str(boss_holdout)
     destination.with_suffix(".metadata.json").write_text(
         json.dumps(result, indent=2), encoding="utf-8"
@@ -82,6 +82,13 @@ def promote_checkpoint(
     if source_metadata["observation_names"] != list(OBSERVATION_NAMES):
         raise ValueError("checkpoint does not match the live observation schema")
     destination = model_path(style)
+    # Demonstration-initialised checkpoints intentionally store only their
+    # additional lineage. Preserve the original SB3 training configuration and
+    # timing evidence while overlaying that transparent adaptation metadata.
+    if destination.with_suffix(".metadata.json").exists():
+        existing = _load_json(destination.with_suffix(".metadata.json"))
+        existing.update(source_metadata)
+        source_metadata = existing
     if source.resolve() != destination.resolve():
         shutil.copy2(source, destination)
     _write_metadata(
@@ -95,7 +102,14 @@ def promote_checkpoint(
     )
 
 
-def promote_prefix(source: Path, style: str, metadata: Path, holdout: Path) -> None:
+def promote_prefix(
+    source: Path,
+    style: str,
+    metadata: Path,
+    holdout: Path,
+    run_name: str | None = None,
+    boss_holdout: Path | None = None,
+) -> None:
     source_metadata = _load_json(metadata)
     if source_metadata["control_style"] != style:
         raise ValueError("baseline control style does not match destination")
@@ -118,11 +132,16 @@ def promote_prefix(source: Path, style: str, metadata: Path, holdout: Path) -> N
         destination_model.save(str(destination))
     finally:
         env.close()
-    # The transferred Q-values are exactly those logged in this original run;
-    # keeping that run name lets evidence tooling trace their real provenance.
-    source_metadata["run_name"] = "dqn_direct"
     source_metadata["initialization_model"] = str(source)
-    _write_metadata(source_metadata, destination, source, holdout, "frozen_prefix_compatibility")
+    _write_metadata(
+        source_metadata,
+        destination,
+        source,
+        holdout,
+        "frozen_prefix_compatibility",
+        run_name,
+        boss_holdout,
+    )
 
 
 def main() -> None:
@@ -158,7 +177,14 @@ def main() -> None:
             args.boss_holdout,
         )
     else:
-        promote_prefix(args.source, args.control_style, args.source_metadata, args.holdout)
+        promote_prefix(
+            args.source,
+            args.control_style,
+            args.source_metadata,
+            args.holdout,
+            args.run_name,
+            args.boss_holdout,
+        )
     print(f"Promoted {args.control_style} model to {model_path(args.control_style)}")
 
 

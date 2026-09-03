@@ -1,0 +1,3169 @@
+{
+  "aggregate": {
+    "control_style": "direct",
+    "damage_per_1000_frames": 11.192549972404956,
+    "contacts_per_1000_frames": 1.0847707073846875,
+    "wall_contacts_per_1000_frames": 1.2750813578030538,
+    "mean_crowd_fraction": 0.1059848139991911,
+    "mean_wall_fraction": 0.05798336839152905,
+    "mean_enemy_clearance": 144.02953715146882,
+    "close_threat_decisions": 10514,
+    "close_movement_decisions": 4542,
+    "close_approach_decisions": 1924,
+    "close_approach_rate": 0.4236019374724791,
+    "mean_simulation_steps": 19704.625,
+    "episodes": 8,
+    "action_repeat": 4,
+    "seed_start": 101100,
+    "deterministic": true,
+    "reset_options": {},
+    "mean_reward": 6141.073911,
+    "reward_std": 6493.870376,
+    "mean_phase": 31.625,
+    "max_phase": 72,
+    "phase_progression_rate": 1.0,
+    "survival_rate": 0.375,
+    "mean_enemies_destroyed": 609.0,
+    "mean_spawners_destroyed": 106.125,
+    "mean_damage_taken": 220.545,
+    "mean_accuracy": 0.936269,
+    "mean_hits_per_projectile": 1.016181,
+    "mean_player_level": 17.125,
+    "max_player_level": 30,
+    "mean_xp_earned": 11828.75,
+    "mean_bosses_destroyed": 9.875,
+    "mean_minibosses_destroyed": 19.625,
+    "mean_boss_skills_dodged": 39.125,
+    "mean_boss_skill_hits": 1.25,
+    "mean_boss_defenders_destroyed": 37.0,
+    "mean_boss_immune_hits": 198.875,
+    "mean_missiles_evaded": 13.5,
+    "mean_missile_hits": 3.5,
+    "mean_drone_level": 7.0,
+    "mean_upgrades_chosen": 16.125,
+    "phase_diagnostics": {
+      "1": {
+        "frames": 2000.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "2": {
+        "frames": 2528.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "3": {
+        "frames": 10288.0,
+        "damage": 89.238,
+        "contacts": 7.0,
+        "boss_casts": 47.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 40.0,
+        "damage_per_1000_frames": 8.673989113530327,
+        "contacts_per_1000_frames": 0.6804043545878694
+      },
+      "4": {
+        "frames": 4752.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "5": {
+        "frames": 8242.0,
+        "damage": 223.44000000000005,
+        "contacts": 16.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 27.109924775539923,
+        "contacts_per_1000_frames": 1.941276389225916
+      },
+      "6": {
+        "frames": 11145.0,
+        "damage": 402.12700000000007,
+        "contacts": 9.0,
+        "boss_casts": 56.0,
+        "boss_hits": 6.0,
+        "boss_dodges": 46.0,
+        "damage_per_1000_frames": 36.081381785554065,
+        "contacts_per_1000_frames": 0.8075370121130552
+      },
+      "7": {
+        "frames": 5924.0,
+        "damage": 91.47599999999998,
+        "contacts": 9.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 15.441593517893313,
+        "contacts_per_1000_frames": 1.5192437542201216
+      },
+      "8": {
+        "frames": 3765.0,
+        "damage": 78.435,
+        "contacts": 6.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 20.83266932270916,
+        "contacts_per_1000_frames": 1.593625498007968
+      },
+      "9": {
+        "frames": 5460.0,
+        "damage": 40.832,
+        "contacts": 7.0,
+        "boss_casts": 30.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 22.0,
+        "damage_per_1000_frames": 7.4783882783882785,
+        "contacts_per_1000_frames": 1.2820512820512822
+      },
+      "10": {
+        "frames": 2556.0,
+        "damage": 110.46,
+        "contacts": 6.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 43.21596244131455,
+        "contacts_per_1000_frames": 2.347417840375587
+      },
+      "11": {
+        "frames": 2248.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "12": {
+        "frames": 3756.0,
+        "damage": 0.0,
+        "contacts": 7.0,
+        "boss_casts": 23.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 20.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.8636847710330138
+      },
+      "13": {
+        "frames": 3244.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.3082614056720099
+      },
+      "14": {
+        "frames": 2784.0,
+        "damage": 31.573500000000003,
+        "contacts": 4.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 11.34105603448276,
+        "contacts_per_1000_frames": 1.4367816091954022
+      },
+      "15": {
+        "frames": 2892.0,
+        "damage": 31.24,
+        "contacts": 10.0,
+        "boss_casts": 19.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 13.0,
+        "damage_per_1000_frames": 10.802213001383127,
+        "contacts_per_1000_frames": 3.4578146611341634
+      },
+      "16": {
+        "frames": 2260.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "17": {
+        "frames": 2168.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "18": {
+        "frames": 2912.0,
+        "damage": 0.0,
+        "contacts": 4.0,
+        "boss_casts": 22.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 14.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.3736263736263736
+      },
+      "19": {
+        "frames": 2000.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "20": {
+        "frames": 2400.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "21": {
+        "frames": 2796.0,
+        "damage": 91.12800000000001,
+        "contacts": 8.0,
+        "boss_casts": 22.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 17.0,
+        "damage_per_1000_frames": 32.59227467811159,
+        "contacts_per_1000_frames": 2.8612303290414878
+      },
+      "22": {
+        "frames": 2220.0,
+        "damage": 0.0,
+        "contacts": 2.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.9009009009009009
+      },
+      "23": {
+        "frames": 2040.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "24": {
+        "frames": 2040.0,
+        "damage": 14.058,
+        "contacts": 1.0,
+        "boss_casts": 16.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 13.0,
+        "damage_per_1000_frames": 6.891176470588236,
+        "contacts_per_1000_frames": 0.49019607843137253
+      },
+      "25": {
+        "frames": 1868.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "26": {
+        "frames": 1524.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "27": {
+        "frames": 2384.0,
+        "damage": 44.72,
+        "contacts": 5.0,
+        "boss_casts": 18.0,
+        "boss_hits": 1.0,
+        "boss_dodges": 9.0,
+        "damage_per_1000_frames": 18.758389261744966,
+        "contacts_per_1000_frames": 2.097315436241611
+      },
+      "28": {
+        "frames": 1972.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "29": {
+        "frames": 1764.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "30": {
+        "frames": 2944.0,
+        "damage": 31.24,
+        "contacts": 8.0,
+        "boss_casts": 23.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 17.0,
+        "damage_per_1000_frames": 10.611413043478262,
+        "contacts_per_1000_frames": 2.717391304347826
+      },
+      "31": {
+        "frames": 1764.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.5668934240362812
+      },
+      "32": {
+        "frames": 1712.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.5841121495327103
+      },
+      "33": {
+        "frames": 2500.0,
+        "damage": 105.06,
+        "contacts": 3.0,
+        "boss_casts": 19.0,
+        "boss_hits": 2.0,
+        "boss_dodges": 12.0,
+        "damage_per_1000_frames": 42.024,
+        "contacts_per_1000_frames": 1.2
+      },
+      "34": {
+        "frames": 2825.0,
+        "damage": 166.47750000000002,
+        "contacts": 14.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 58.930088495575234,
+        "contacts_per_1000_frames": 4.95575221238938
+      },
+      "35": {
+        "frames": 1224.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "36": {
+        "frames": 1848.0,
+        "damage": 91.58,
+        "contacts": 4.0,
+        "boss_casts": 15.0,
+        "boss_hits": 1.0,
+        "boss_dodges": 8.0,
+        "damage_per_1000_frames": 49.556277056277054,
+        "contacts_per_1000_frames": 2.1645021645021645
+      },
+      "37": {
+        "frames": 1084.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "38": {
+        "frames": 1336.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "39": {
+        "frames": 1556.0,
+        "damage": 0.0,
+        "contacts": 6.0,
+        "boss_casts": 13.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 8.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 3.8560411311053984
+      },
+      "40": {
+        "frames": 1432.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "41": {
+        "frames": 1176.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "42": {
+        "frames": 1992.0,
+        "damage": 26.46,
+        "contacts": 3.0,
+        "boss_casts": 15.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 10.0,
+        "damage_per_1000_frames": 13.283132530120483,
+        "contacts_per_1000_frames": 1.5060240963855422
+      },
+      "43": {
+        "frames": 1272.0,
+        "damage": 34.1775,
+        "contacts": 1.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 26.869103773584907,
+        "contacts_per_1000_frames": 0.7861635220125787
+      },
+      "44": {
+        "frames": 1124.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.8896797153024911
+      },
+      "45": {
+        "frames": 1672.0,
+        "damage": 26.46,
+        "contacts": 4.0,
+        "boss_casts": 13.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 9.0,
+        "damage_per_1000_frames": 15.825358851674642,
+        "contacts_per_1000_frames": 2.3923444976076556
+      },
+      "46": {
+        "frames": 1648.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "47": {
+        "frames": 1468.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "48": {
+        "frames": 2148.0,
+        "damage": 0.0,
+        "contacts": 2.0,
+        "boss_casts": 17.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 14.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.931098696461825
+      },
+      "49": {
+        "frames": 1584.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "50": {
+        "frames": 1308.0,
+        "damage": 0.0,
+        "contacts": 2.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.529051987767584
+      },
+      "51": {
+        "frames": 1816.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 14.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 7.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.5506607929515418
+      },
+      "52": {
+        "frames": 1220.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "53": {
+        "frames": 1084.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "54": {
+        "frames": 1528.0,
+        "damage": 0.0,
+        "contacts": 6.0,
+        "boss_casts": 12.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 9.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 3.926701570680628
+      },
+      "55": {
+        "frames": 988.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "56": {
+        "frames": 828.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "57": {
+        "frames": 1464.0,
+        "damage": 0.0,
+        "contacts": 1.0,
+        "boss_casts": 11.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 7.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.6830601092896175
+      },
+      "58": {
+        "frames": 1116.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "59": {
+        "frames": 1016.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "60": {
+        "frames": 1300.0,
+        "damage": 0.0,
+        "contacts": 2.0,
+        "boss_casts": 10.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 5.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.5384615384615385
+      },
+      "61": {
+        "frames": 1100.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "62": {
+        "frames": 812.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "63": {
+        "frames": 1120.0,
+        "damage": 0.0,
+        "contacts": 2.0,
+        "boss_casts": 9.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 6.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 1.7857142857142858
+      },
+      "64": {
+        "frames": 1032.0,
+        "damage": 34.1775,
+        "contacts": 4.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 33.11773255813954,
+        "contacts_per_1000_frames": 3.875968992248062
+      },
+      "65": {
+        "frames": 704.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "66": {
+        "frames": 440.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 3.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 3.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "67": {
+        "frames": 376.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "68": {
+        "frames": 380.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "69": {
+        "frames": 568.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 4.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 2.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "70": {
+        "frames": 416.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "71": {
+        "frames": 380.0,
+        "damage": 0.0,
+        "contacts": 0.0,
+        "boss_casts": 0.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 0.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 0.0
+      },
+      "72": {
+        "frames": 400.0,
+        "damage": 0.0,
+        "contacts": 3.0,
+        "boss_casts": 3.0,
+        "boss_hits": 0.0,
+        "boss_dodges": 2.0,
+        "damage_per_1000_frames": 0.0,
+        "contacts_per_1000_frames": 7.5
+      }
+    }
+  },
+  "episodes": [
+    {
+      "episode": 1,
+      "contact_events": 32,
+      "wall_contacts": 0,
+      "crowd_fraction": 0.04122222222222222,
+      "wall_fraction": 0.01411111111111111,
+      "mean_enemy_clearance": 158.3822470135431,
+      "close_threat_decisions": 2404,
+      "close_movement_decisions": 1024,
+      "close_approach_decisions": 649,
+      "close_approach_rate": 0.6337890625,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 212,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 216,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 596,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "4": {
+          "frames": 400,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 416,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 868,
+          "damage": 56.447,
+          "contacts": 3,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "7": {
+          "frames": 584,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "8": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "9": {
+          "frames": 1388,
+          "damage": 40.832,
+          "contacts": 0,
+          "boss_casts": 8,
+          "boss_hits": 0,
+          "boss_dodges": 6
+        },
+        "10": {
+          "frames": 592,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "11": {
+          "frames": 684,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "12": {
+          "frames": 864,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "13": {
+          "frames": 520,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "14": {
+          "frames": 524,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "15": {
+          "frames": 628,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "16": {
+          "frames": 592,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "17": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "18": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "19": {
+          "frames": 460,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "20": {
+          "frames": 612,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "21": {
+          "frames": 484,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "22": {
+          "frames": 364,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "23": {
+          "frames": 468,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "24": {
+          "frames": 424,
+          "damage": 14.058,
+          "contacts": 0,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "25": {
+          "frames": 448,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "26": {
+          "frames": 340,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "27": {
+          "frames": 448,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "28": {
+          "frames": 408,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "29": {
+          "frames": 484,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "30": {
+          "frames": 1016,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 8,
+          "boss_hits": 0,
+          "boss_dodges": 6
+        },
+        "31": {
+          "frames": 428,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "32": {
+          "frames": 416,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "33": {
+          "frames": 428,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 1
+        },
+        "34": {
+          "frames": 444,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "35": {
+          "frames": 516,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "36": {
+          "frames": 580,
+          "damage": 0.0,
+          "contacts": 4,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 1
+        },
+        "37": {
+          "frames": 424,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "38": {
+          "frames": 512,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "39": {
+          "frames": 348,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "40": {
+          "frames": 412,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "41": {
+          "frames": 472,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "42": {
+          "frames": 568,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "43": {
+          "frames": 364,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "44": {
+          "frames": 432,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "45": {
+          "frames": 612,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "46": {
+          "frames": 488,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "47": {
+          "frames": 488,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "48": {
+          "frames": 828,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 7,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "49": {
+          "frames": 436,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "50": {
+          "frames": 388,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "51": {
+          "frames": 480,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "52": {
+          "frames": 412,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "53": {
+          "frames": 440,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "54": {
+          "frames": 872,
+          "damage": 0.0,
+          "contacts": 5,
+          "boss_casts": 7,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "55": {
+          "frames": 520,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "56": {
+          "frames": 384,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "57": {
+          "frames": 552,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "58": {
+          "frames": 584,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "59": {
+          "frames": 468,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "60": {
+          "frames": 448,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 1
+        },
+        "61": {
+          "frames": 420,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "62": {
+          "frames": 416,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "63": {
+          "frames": 476,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "64": {
+          "frames": 352,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "65": {
+          "frames": 404,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "66": {
+          "frames": 440,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "67": {
+          "frames": 376,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "68": {
+          "frames": 380,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "69": {
+          "frames": 568,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "70": {
+          "frames": 416,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "71": {
+          "frames": 380,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "72": {
+          "frames": 400,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        }
+      },
+      "seed": 101100,
+      "reward": 16803.1501,
+      "phase": 72,
+      "phases_advanced": 71,
+      "simulation_steps": 36000,
+      "decisions": 9000,
+      "end_reason": "safety_limit",
+      "survived_time_limit": true,
+      "enemies_destroyed": 1251,
+      "spawners_destroyed": 254,
+      "damage_dealt": 777543.8003,
+      "damage_taken": 111.337,
+      "shots_fired": 11714,
+      "projectile_hits": 11359,
+      "accuracy": 0.969694,
+      "hits_per_projectile": 0.969694,
+      "player_level": 30,
+      "xp_earned": 26626.0,
+      "weapon_name": "Prism Laser",
+      "upgrades_chosen": 29,
+      "phase_rewards_chosen": 48,
+      "bosses_destroyed": 23,
+      "minibosses_destroyed": 46,
+      "boss_skills_dodged": 69,
+      "boss_skill_hits": 0,
+      "boss_defenders_destroyed": 91,
+      "boss_immune_hits": 590,
+      "missiles_evaded": 19,
+      "missile_hits": 6,
+      "boss_rewards_chosen": 23,
+      "drone_level": 12,
+      "barrier_charges": 11,
+      "build_summary": "damage:3;fire_rate:3;multishot:5;range:1;laser:1;piercing:2;splash:3;shield:1;engine:1;drone:8;capacitor:3;critical:3;riftbreaker:1;drone_mastery:4;artifact:4"
+    },
+    {
+      "episode": 2,
+      "contact_events": 16,
+      "wall_contacts": 15,
+      "crowd_fraction": 0.14136986301369864,
+      "wall_fraction": 0.15178082191780823,
+      "mean_enemy_clearance": 131.25832661159373,
+      "close_threat_decisions": 700,
+      "close_movement_decisions": 341,
+      "close_approach_decisions": 93,
+      "close_approach_rate": 0.2727272727272727,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 200,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 452,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 1324,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 6
+        },
+        "4": {
+          "frames": 272,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 504,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 1848,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 9,
+          "boss_hits": 0,
+          "boss_dodges": 8
+        },
+        "7": {
+          "frames": 2148,
+          "damage": 91.47599999999998,
+          "contacts": 9,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "8": {
+          "frames": 549,
+          "damage": 78.435,
+          "contacts": 5,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        }
+      },
+      "seed": 101101,
+      "reward": 532.282461,
+      "phase": 8,
+      "phases_advanced": 7,
+      "simulation_steps": 7297,
+      "decisions": 1825,
+      "end_reason": "player_destroyed",
+      "survived_time_limit": false,
+      "enemies_destroyed": 130,
+      "spawners_destroyed": 19,
+      "damage_dealt": 15403.885,
+      "damage_taken": 169.911,
+      "shots_fired": 443,
+      "projectile_hits": 385,
+      "accuracy": 0.869074,
+      "hits_per_projectile": 0.869074,
+      "player_level": 8,
+      "xp_earned": 2382.0,
+      "weapon_name": "Prism Laser",
+      "upgrades_chosen": 7,
+      "phase_rewards_chosen": 5,
+      "bosses_destroyed": 2,
+      "minibosses_destroyed": 4,
+      "boss_skills_dodged": 14,
+      "boss_skill_hits": 0,
+      "boss_defenders_destroyed": 5,
+      "boss_immune_hits": 4,
+      "missiles_evaded": 5,
+      "missile_hits": 0,
+      "boss_rewards_chosen": 2,
+      "drone_level": 2,
+      "barrier_charges": 0,
+      "build_summary": "damage:1;laser:1;splash:2;shield:1;drone:2;capacitor:1;artifact:1"
+    },
+    {
+      "episode": 3,
+      "contact_events": 36,
+      "wall_contacts": 0,
+      "crowd_fraction": 0.06388888888888888,
+      "wall_fraction": 0.011,
+      "mean_enemy_clearance": 152.18380061180653,
+      "close_threat_decisions": 2323,
+      "close_movement_decisions": 861,
+      "close_approach_decisions": 369,
+      "close_approach_rate": 0.42857142857142855,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 276,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 384,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 652,
+          "damage": 17.976,
+          "contacts": 2,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "4": {
+          "frames": 416,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 456,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 800,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "7": {
+          "frames": 688,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "8": {
+          "frames": 492,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "9": {
+          "frames": 1156,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "10": {
+          "frames": 496,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "11": {
+          "frames": 604,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "12": {
+          "frames": 1224,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 8,
+          "boss_hits": 0,
+          "boss_dodges": 6
+        },
+        "13": {
+          "frames": 324,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "14": {
+          "frames": 304,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "15": {
+          "frames": 864,
+          "damage": 0.0,
+          "contacts": 4,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "16": {
+          "frames": 480,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "17": {
+          "frames": 388,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "18": {
+          "frames": 436,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "19": {
+          "frames": 568,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "20": {
+          "frames": 492,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "21": {
+          "frames": 536,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "22": {
+          "frames": 484,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "23": {
+          "frames": 424,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "24": {
+          "frames": 584,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "25": {
+          "frames": 340,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "26": {
+          "frames": 256,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "27": {
+          "frames": 700,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 1
+        },
+        "28": {
+          "frames": 340,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "29": {
+          "frames": 492,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "30": {
+          "frames": 664,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "31": {
+          "frames": 412,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "32": {
+          "frames": 276,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "33": {
+          "frames": 624,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "34": {
+          "frames": 740,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "35": {
+          "frames": 340,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "36": {
+          "frames": 728,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "37": {
+          "frames": 356,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "38": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "39": {
+          "frames": 588,
+          "damage": 0.0,
+          "contacts": 5,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "40": {
+          "frames": 628,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "41": {
+          "frames": 400,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "42": {
+          "frames": 616,
+          "damage": 26.46,
+          "contacts": 3,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "43": {
+          "frames": 476,
+          "damage": 34.1775,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "44": {
+          "frames": 348,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "45": {
+          "frames": 620,
+          "damage": 26.46,
+          "contacts": 2,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "46": {
+          "frames": 664,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "47": {
+          "frames": 580,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "48": {
+          "frames": 924,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 7,
+          "boss_hits": 0,
+          "boss_dodges": 7
+        },
+        "49": {
+          "frames": 760,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "50": {
+          "frames": 544,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "51": {
+          "frames": 684,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "52": {
+          "frames": 424,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "53": {
+          "frames": 440,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "54": {
+          "frames": 656,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "55": {
+          "frames": 468,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "56": {
+          "frames": 444,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "57": {
+          "frames": 912,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 7,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "58": {
+          "frames": 532,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "59": {
+          "frames": 548,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "60": {
+          "frames": 852,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 7,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "61": {
+          "frames": 680,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "62": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "63": {
+          "frames": 644,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "64": {
+          "frames": 680,
+          "damage": 34.1775,
+          "contacts": 4,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "65": {
+          "frames": 300,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        }
+      },
+      "seed": 101102,
+      "reward": 14678.058782,
+      "phase": 65,
+      "phases_advanced": 64,
+      "simulation_steps": 36000,
+      "decisions": 9000,
+      "end_reason": "safety_limit",
+      "survived_time_limit": true,
+      "enemies_destroyed": 1291,
+      "spawners_destroyed": 231,
+      "damage_dealt": 700755.959,
+      "damage_taken": 139.251,
+      "shots_fired": 7248,
+      "projectile_hits": 10452,
+      "accuracy": 1.0,
+      "hits_per_projectile": 1.442053,
+      "player_level": 29,
+      "xp_earned": 25043.0,
+      "weapon_name": "Prism Laser",
+      "upgrades_chosen": 28,
+      "phase_rewards_chosen": 43,
+      "bosses_destroyed": 21,
+      "minibosses_destroyed": 39,
+      "boss_skills_dodged": 76,
+      "boss_skill_hits": 0,
+      "boss_defenders_destroyed": 81,
+      "boss_immune_hits": 382,
+      "missiles_evaded": 19,
+      "missile_hits": 0,
+      "boss_rewards_chosen": 21,
+      "drone_level": 13,
+      "barrier_charges": 1,
+      "build_summary": "damage:4;fire_rate:1;multishot:3;range:1;laser:1;piercing:2;splash:3;shield:1;homing:2;drone:8;capacitor:4;critical:3;drone_mastery:5;artifact:7"
+    },
+    {
+      "episode": 4,
+      "contact_events": 10,
+      "wall_contacts": 0,
+      "crowd_fraction": 0.09707666850523994,
+      "wall_fraction": 0.01709873138444567,
+      "mean_enemy_clearance": 141.75289679199705,
+      "close_threat_decisions": 543,
+      "close_movement_decisions": 298,
+      "close_approach_decisions": 103,
+      "close_approach_rate": 0.34563758389261745,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 204,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 264,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 1052,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "4": {
+          "frames": 372,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 740,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 1788,
+          "damage": 99.13,
+          "contacts": 3,
+          "boss_casts": 9,
+          "boss_hits": 1,
+          "boss_dodges": 8
+        },
+        "7": {
+          "frames": 716,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "8": {
+          "frames": 844,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "9": {
+          "frames": 864,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "10": {
+          "frames": 408,
+          "damage": 110.46,
+          "contacts": 6,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        }
+      },
+      "seed": 101103,
+      "reward": 900.021766,
+      "phase": 10,
+      "phases_advanced": 9,
+      "simulation_steps": 7252,
+      "decisions": 1813,
+      "end_reason": "player_destroyed",
+      "survived_time_limit": false,
+      "enemies_destroyed": 131,
+      "spawners_destroyed": 26,
+      "damage_dealt": 18395.2068,
+      "damage_taken": 209.59,
+      "shots_fired": 682,
+      "projectile_hits": 637,
+      "accuracy": 0.934018,
+      "hits_per_projectile": 0.934018,
+      "player_level": 9,
+      "xp_earned": 2913.0,
+      "weapon_name": "Multi-Beam Array",
+      "upgrades_chosen": 8,
+      "phase_rewards_chosen": 6,
+      "bosses_destroyed": 3,
+      "minibosses_destroyed": 5,
+      "boss_skills_dodged": 13,
+      "boss_skill_hits": 1,
+      "boss_defenders_destroyed": 9,
+      "boss_immune_hits": 38,
+      "missiles_evaded": 4,
+      "missile_hits": 2,
+      "boss_rewards_chosen": 3,
+      "drone_level": 3,
+      "barrier_charges": 0,
+      "build_summary": "fire_rate:2;multishot:1;homing:1;drone:3;capacitor:1;critical:1;riftbreaker:1;artifact:2"
+    },
+    {
+      "episode": 5,
+      "contact_events": 10,
+      "wall_contacts": 102,
+      "crowd_fraction": 0.278415015641293,
+      "wall_fraction": 0.12200208550573514,
+      "mean_enemy_clearance": 115.94089365446511,
+      "close_threat_decisions": 388,
+      "close_movement_decisions": 259,
+      "close_approach_decisions": 70,
+      "close_approach_rate": 0.2702702702702703,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 188,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 292,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 1136,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "4": {
+          "frames": 704,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 1514,
+          "damage": 127.68000000000004,
+          "contacts": 10,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        }
+      },
+      "seed": 101104,
+      "reward": 109.166254,
+      "phase": 5,
+      "phases_advanced": 4,
+      "simulation_steps": 3834,
+      "decisions": 959,
+      "end_reason": "player_destroyed",
+      "survived_time_limit": false,
+      "enemies_destroyed": 66,
+      "spawners_destroyed": 8,
+      "damage_dealt": 6563.9105,
+      "damage_taken": 127.68,
+      "shots_fired": 200,
+      "projectile_hits": 168,
+      "accuracy": 0.84,
+      "hits_per_projectile": 0.84,
+      "player_level": 6,
+      "xp_earned": 1161.0,
+      "weapon_name": "Nova Payload",
+      "upgrades_chosen": 5,
+      "phase_rewards_chosen": 3,
+      "bosses_destroyed": 1,
+      "minibosses_destroyed": 2,
+      "boss_skills_dodged": 4,
+      "boss_skill_hits": 0,
+      "boss_defenders_destroyed": 2,
+      "boss_immune_hits": 10,
+      "missiles_evaded": 0,
+      "missile_hits": 0,
+      "boss_rewards_chosen": 1,
+      "drone_level": 3,
+      "barrier_charges": 0,
+      "build_summary": "splash:1;homing:1;drone:3;capacitor:1;critical:1;artifact:1"
+    },
+    {
+      "episode": 6,
+      "contact_events": 30,
+      "wall_contacts": 1,
+      "crowd_fraction": 0.049444444444444444,
+      "wall_fraction": 0.021111111111111112,
+      "mean_enemy_clearance": 159.36570690093356,
+      "close_threat_decisions": 2050,
+      "close_movement_decisions": 880,
+      "close_approach_decisions": 311,
+      "close_approach_rate": 0.3534090909090909,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 196,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 312,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 708,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "4": {
+          "frames": 392,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 692,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 2292,
+          "damage": 111.35000000000001,
+          "contacts": 1,
+          "boss_casts": 12,
+          "boss_hits": 1,
+          "boss_dodges": 9
+        },
+        "7": {
+          "frames": 1224,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "8": {
+          "frames": 1008,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "9": {
+          "frames": 1128,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "10": {
+          "frames": 592,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "11": {
+          "frames": 480,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "12": {
+          "frames": 684,
+          "damage": 0.0,
+          "contacts": 4,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "13": {
+          "frames": 1792,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "14": {
+          "frames": 1332,
+          "damage": 31.573500000000003,
+          "contacts": 2,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "15": {
+          "frames": 920,
+          "damage": 31.24,
+          "contacts": 1,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "16": {
+          "frames": 700,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "17": {
+          "frames": 1012,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "18": {
+          "frames": 1212,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 9,
+          "boss_hits": 0,
+          "boss_dodges": 9
+        },
+        "19": {
+          "frames": 508,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "20": {
+          "frames": 712,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "21": {
+          "frames": 1036,
+          "damage": 91.12800000000001,
+          "contacts": 4,
+          "boss_casts": 8,
+          "boss_hits": 0,
+          "boss_dodges": 6
+        },
+        "22": {
+          "frames": 684,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "23": {
+          "frames": 440,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "24": {
+          "frames": 568,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "25": {
+          "frames": 648,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "26": {
+          "frames": 528,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "27": {
+          "frames": 688,
+          "damage": 44.72,
+          "contacts": 4,
+          "boss_casts": 5,
+          "boss_hits": 1,
+          "boss_dodges": 4
+        },
+        "28": {
+          "frames": 836,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "29": {
+          "frames": 448,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "30": {
+          "frames": 748,
+          "damage": 31.24,
+          "contacts": 0,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "31": {
+          "frames": 516,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "32": {
+          "frames": 624,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "33": {
+          "frames": 812,
+          "damage": 105.06,
+          "contacts": 1,
+          "boss_casts": 6,
+          "boss_hits": 2,
+          "boss_dodges": 4
+        },
+        "34": {
+          "frames": 1252,
+          "damage": 0.0,
+          "contacts": 4,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "35": {
+          "frames": 368,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "36": {
+          "frames": 540,
+          "damage": 91.58,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 1,
+          "boss_dodges": 3
+        },
+        "37": {
+          "frames": 304,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "38": {
+          "frames": 428,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "39": {
+          "frames": 620,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "40": {
+          "frames": 392,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "41": {
+          "frames": 304,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "42": {
+          "frames": 808,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "43": {
+          "frames": 432,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "44": {
+          "frames": 344,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "45": {
+          "frames": 440,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "46": {
+          "frames": 496,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "47": {
+          "frames": 400,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "48": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "49": {
+          "frames": 388,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "50": {
+          "frames": 376,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "51": {
+          "frames": 652,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 2
+        },
+        "52": {
+          "frames": 384,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "53": {
+          "frames": 204,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        }
+      },
+      "seed": 101105,
+      "reward": 10609.362457,
+      "phase": 53,
+      "phases_advanced": 52,
+      "simulation_steps": 36000,
+      "decisions": 9000,
+      "end_reason": "safety_limit",
+      "survived_time_limit": true,
+      "enemies_destroyed": 1233,
+      "spawners_destroyed": 186,
+      "damage_dealt": 458375.7436,
+      "damage_taken": 537.8915,
+      "shots_fired": 8021,
+      "projectile_hits": 7760,
+      "accuracy": 0.96746,
+      "hits_per_projectile": 0.96746,
+      "player_level": 27,
+      "xp_earned": 21936.0,
+      "weapon_name": "Multi-Beam Array",
+      "upgrades_chosen": 26,
+      "phase_rewards_chosen": 35,
+      "bosses_destroyed": 17,
+      "minibosses_destroyed": 36,
+      "boss_skills_dodged": 73,
+      "boss_skill_hits": 5,
+      "boss_defenders_destroyed": 65,
+      "boss_immune_hits": 434,
+      "missiles_evaded": 43,
+      "missile_hits": 17,
+      "boss_rewards_chosen": 17,
+      "drone_level": 11,
+      "barrier_charges": 13,
+      "build_summary": "damage:4;fire_rate:1;multishot:4;piercing:1;homing:1;regen:1;drone:8;capacitor:3;critical:5;riftbreaker:2;hull_mastery:1;drone_mastery:3;artifact:2"
+    },
+    {
+      "episode": 7,
+      "contact_events": 30,
+      "wall_contacts": 0,
+      "crowd_fraction": 0.05698388334612433,
+      "wall_fraction": 0.011895625479662318,
+      "mean_enemy_clearance": 160.78307322721,
+      "close_threat_decisions": 1129,
+      "close_movement_decisions": 425,
+      "close_approach_decisions": 164,
+      "close_approach_rate": 0.38588235294117645,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 424,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 244,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 1724,
+          "damage": 71.262,
+          "contacts": 3,
+          "boss_casts": 8,
+          "boss_hits": 0,
+          "boss_dodges": 7
+        },
+        "4": {
+          "frames": 620,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 1200,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 1196,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 6
+        },
+        "7": {
+          "frames": 564,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "8": {
+          "frames": 476,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "9": {
+          "frames": 924,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "10": {
+          "frames": 468,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "11": {
+          "frames": 480,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "12": {
+          "frames": 984,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "13": {
+          "frames": 608,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "14": {
+          "frames": 624,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "15": {
+          "frames": 480,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 3,
+          "boss_hits": 0,
+          "boss_dodges": 1
+        },
+        "16": {
+          "frames": 488,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "17": {
+          "frames": 372,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "18": {
+          "frames": 868,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 7,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "19": {
+          "frames": 464,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "20": {
+          "frames": 584,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "21": {
+          "frames": 740,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 6,
+          "boss_hits": 0,
+          "boss_dodges": 5
+        },
+        "22": {
+          "frames": 688,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "23": {
+          "frames": 708,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "24": {
+          "frames": 464,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "25": {
+          "frames": 432,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "26": {
+          "frames": 400,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "27": {
+          "frames": 548,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 1
+        },
+        "28": {
+          "frames": 388,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "29": {
+          "frames": 340,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "30": {
+          "frames": 516,
+          "damage": 0.0,
+          "contacts": 3,
+          "boss_casts": 4,
+          "boss_hits": 0,
+          "boss_dodges": 3
+        },
+        "31": {
+          "frames": 408,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "32": {
+          "frames": 396,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "33": {
+          "frames": 636,
+          "damage": 0.0,
+          "contacts": 2,
+          "boss_casts": 5,
+          "boss_hits": 0,
+          "boss_dodges": 4
+        },
+        "34": {
+          "frames": 389,
+          "damage": 166.47750000000002,
+          "contacts": 10,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        }
+      },
+      "seed": 101106,
+      "reward": 5248.673325,
+      "phase": 34,
+      "phases_advanced": 33,
+      "simulation_steps": 20845,
+      "decisions": 5212,
+      "end_reason": "player_destroyed",
+      "survived_time_limit": false,
+      "enemies_destroyed": 600,
+      "spawners_destroyed": 113,
+      "damage_dealt": 175511.6093,
+      "damage_taken": 237.7395,
+      "shots_fired": 3113,
+      "projectile_hits": 3727,
+      "accuracy": 1.0,
+      "hits_per_projectile": 1.197237,
+      "player_level": 20,
+      "xp_earned": 12601.0,
+      "weapon_name": "Prism Laser",
+      "upgrades_chosen": 19,
+      "phase_rewards_chosen": 22,
+      "bosses_destroyed": 11,
+      "minibosses_destroyed": 24,
+      "boss_skills_dodged": 42,
+      "boss_skill_hits": 0,
+      "boss_defenders_destroyed": 41,
+      "boss_immune_hits": 132,
+      "missiles_evaded": 14,
+      "missile_hits": 3,
+      "boss_rewards_chosen": 11,
+      "drone_level": 12,
+      "barrier_charges": 0,
+      "build_summary": "fire_rate:1;multishot:2;range:1;laser:1;piercing:2;splash:1;shield:1;homing:1;regen:1;drone:8;capacitor:2;critical:1;riftbreaker:2;drone_mastery:4;artifact:3"
+    },
+    {
+      "episode": 8,
+      "contact_events": 7,
+      "wall_contacts": 83,
+      "crowd_fraction": 0.11947752593161737,
+      "wall_fraction": 0.11486746062235882,
+      "mean_enemy_clearance": 132.56935240020135,
+      "close_threat_decisions": 977,
+      "close_movement_decisions": 454,
+      "close_approach_decisions": 165,
+      "close_approach_rate": 0.3634361233480176,
+      "phase_diagnostics": {
+        "1": {
+          "frames": 300,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "2": {
+          "frames": 364,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "3": {
+          "frames": 3096,
+          "damage": 0.0,
+          "contacts": 1,
+          "boss_casts": 14,
+          "boss_hits": 0,
+          "boss_dodges": 14
+        },
+        "4": {
+          "frames": 1576,
+          "damage": 0.0,
+          "contacts": 0,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "5": {
+          "frames": 2720,
+          "damage": 95.76000000000002,
+          "contacts": 6,
+          "boss_casts": 0,
+          "boss_hits": 0,
+          "boss_dodges": 0
+        },
+        "6": {
+          "frames": 2353,
+          "damage": 135.20000000000002,
+          "contacts": 0,
+          "boss_casts": 12,
+          "boss_hits": 4,
+          "boss_dodges": 8
+        }
+      },
+      "seed": 101107,
+      "reward": 247.876147,
+      "phase": 6,
+      "phases_advanced": 5,
+      "simulation_steps": 10409,
+      "decisions": 2603,
+      "end_reason": "player_destroyed",
+      "survived_time_limit": false,
+      "enemies_destroyed": 170,
+      "spawners_destroyed": 12,
+      "damage_dealt": 14060.5511,
+      "damage_taken": 230.96,
+      "shots_fired": 555,
+      "projectile_hits": 505,
+      "accuracy": 0.90991,
+      "hits_per_projectile": 0.90991,
+      "player_level": 8,
+      "xp_earned": 1968.0,
+      "weapon_name": "Pulse Cannon",
+      "upgrades_chosen": 7,
+      "phase_rewards_chosen": 4,
+      "bosses_destroyed": 1,
+      "minibosses_destroyed": 1,
+      "boss_skills_dodged": 22,
+      "boss_skill_hits": 4,
+      "boss_defenders_destroyed": 2,
+      "boss_immune_hits": 1,
+      "missiles_evaded": 4,
+      "missile_hits": 0,
+      "boss_rewards_chosen": 1,
+      "drone_level": 0,
+      "barrier_charges": 0,
+      "build_summary": "hull:1;damage:2;homing:1;capacitor:1;riftbreaker:2;artifact:1"
+    }
+  ]
+}
