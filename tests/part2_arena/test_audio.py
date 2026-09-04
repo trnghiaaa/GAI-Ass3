@@ -196,31 +196,6 @@ def test_arena_defeat_slowmo_and_vignette():
     assert renderer.defeat_shockwave_radius > 12.0
 
 
-def test_arena_help_overlay_toggle():
-    from arena.environment import ArenaEnv
-    from arena.presentation.renderer import ArenaRenderer
-
-    env = ArenaEnv(render_mode="rgb_array")
-    env.reset(seed=42)
-    renderer = ArenaRenderer(env, mode="rgb_array")
-
-    assert renderer.show_help_overlay is False
-
-    # Toggle help overlay on
-    status = renderer.toggle_help()
-    assert status is True
-    assert renderer.show_help_overlay is True
-
-    # Render frame while help overlay is active
-    frame = renderer.render()
-    assert frame is not None
-    assert frame.shape == (env.height, env.width, 3)
-
-    # Toggle help overlay off
-    status = renderer.toggle_help()
-    assert status is False
-    assert renderer.show_help_overlay is False
-
 
 def test_arena_volume_slider_events(monkeypatch):
     monkeypatch.setenv("SDL_AUDIODRIVER", "dummy")
@@ -272,23 +247,4 @@ def test_arena_volume_slider_events(monkeypatch):
     assert renderer.handle_volume_event(click_outside) is False
     assert renderer.show_volume_slider is False
 
-
-def test_arena_help_overlay_dismiss_isolation():
-    from arena.environment import ArenaEnv
-    from arena.presentation.renderer import ArenaRenderer
-
-    env = ArenaEnv(render_mode="rgb_array")
-    env.reset(seed=42)
-    renderer = ArenaRenderer(env, mode="rgb_array")
-
-    renderer.show_help_overlay = True
-    assert renderer.show_help_overlay is True
-
-    # Render while open
-    frame = renderer.render()
-    assert frame is not None
-
-    # Simulate ESC dismissal
-    renderer.show_help_overlay = False
-    assert renderer.show_help_overlay is False
 

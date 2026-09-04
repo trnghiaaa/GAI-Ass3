@@ -286,6 +286,7 @@ class GridworldApp:
         self.defeat_vignette_alpha = 0.0
         self._defeat_vignette_surface: Optional[pygame.Surface] = None
         self.show_help_overlay = False
+        self.swallow_mouse_up = False
 
         self.level_select_context = "free"
         self.selected_level = min(LEVELS)
@@ -401,6 +402,7 @@ class GridworldApp:
                 virtual_pos = self._screen_to_virtual(event.pos)
                 if self.show_help_overlay:
                     self.show_help_overlay = False
+                    self.swallow_mouse_up = True
                     self.audio.play("click", minimum_interval_ms=50)
                     continue
                 if self.show_volume_slider:
@@ -425,9 +427,14 @@ class GridworldApp:
                     else:
                         self.show_volume_slider = False
                         self.dragging_volume = False
+                        self.swallow_mouse_up = True
+                        continue
 
             if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                 self.dragging_volume = False
+                if getattr(self, "swallow_mouse_up", False):
+                    self.swallow_mouse_up = False
+                    continue
                 virtual_pos = self._screen_to_virtual(event.pos)
                 if self.show_help_overlay:
                     self.show_help_overlay = False
@@ -1292,7 +1299,12 @@ class GridworldApp:
         enabled: bool = True,
         badge: str = "",
     ) -> None:
-        hover = rect.collidepoint(self.mouse_virtual) and enabled
+        hover = (
+            rect.collidepoint(self.mouse_virtual)
+            and enabled
+            and not self.show_help_overlay
+            and not self.show_volume_slider
+        )
         palette = {
             "primary": (COLORS["blue"], (101, 177, 255), (10, 33, 65)),
             "secondary": (COLORS["panel_2"], (37, 57, 91), COLORS["ink"]),
@@ -1588,7 +1600,11 @@ class GridworldApp:
     def _draw_level_card(self, level: int, rect: pygame.Rect) -> None:
         meta = self._level_meta(level)
         accent = COLORS.get(meta.get("accent", "blue"), COLORS["blue"])
-        hover = rect.collidepoint(self.mouse_virtual)
+        hover = (
+            rect.collidepoint(self.mouse_virtual)
+            and not self.show_help_overlay
+            and not self.show_volume_slider
+        )
         fill = (30, 47, 77) if hover else COLORS["panel"]
         border = accent if hover else COLORS["line"]
         self._panel(rect, fill, border, radius=18)
@@ -1735,7 +1751,11 @@ class GridworldApp:
             path = self._model_path(self.selected_level, kind, intrinsic)
             ready = os.path.exists(path)
             recommended = CAMPAIGN_AI_MODELS.get(self.selected_level) == (kind, intrinsic)
-            hover = rect.collidepoint(self.mouse_virtual)
+            hover = (
+                rect.collidepoint(self.mouse_virtual)
+                and not self.show_help_overlay
+                and not self.show_volume_slider
+            )
             self._panel(
                 rect,
                 (30, 47, 77) if hover else COLORS["panel"],

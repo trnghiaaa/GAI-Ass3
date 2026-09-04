@@ -242,11 +242,9 @@ class ArenaRenderer:
             self._draw_upgrade_banner()
         if self.show_build_panel and self.env.pending_choice_kind is None and not self.env.done:
             self._draw_build_panel()
-        if self.show_help_overlay and self.env.pending_choice_kind is None and not self.env.done:
-            self._draw_help_overlay()
         if self.env.pending_choice_kind is not None and not self.env.done:
             self._draw_choice_overlay()
-        elif paused and not self.env.done and not self.show_build_panel and not self.show_help_overlay:
+        elif paused and not self.env.done and not self.show_build_panel:
             self._draw_pause_overlay()
         if self.env.done and self.defeat_slowmo_timer <= 0.0:
             self._draw_episode_end()
@@ -1486,70 +1484,6 @@ class ArenaRenderer:
         self.surface.blit(support_surface, (panel.x + 30, panel.bottom - 42))
         self._draw_modal_footer("BATTLE PAUSED  •  PRESS TAB TO RETURN", COLORS["xp"])
 
-    def toggle_help(self) -> bool:
-        """Toggle quick help and hotkeys cheat-sheet overlay."""
-        self.show_help_overlay = not self.show_help_overlay
-        if self.audio:
-            self.audio.play("click", minimum_interval_ms=50)
-        return self.show_help_overlay
-
-    def _draw_help_overlay(self) -> None:
-        """Draw a sleek holographic quick-help and hotkeys cheat-sheet modal."""
-        overlay = pygame.Surface((self.env.width, self.env.height), pygame.SRCALPHA)
-        overlay.fill((3, 6, 18, 225))
-        self.surface.blit(overlay, (0, 0))
-        panel = pygame.Rect(40, 50, 720, 500)
-        pygame.draw.rect(self.surface, (17, 27, 52), panel, border_radius=18)
-        pygame.draw.rect(self.surface, COLORS["accent"], panel, 2, border_radius=18)
-
-        # Header
-        title = self.font_large.render("PILOT QUICK-HELP & HOTKEYS", True, COLORS["text"])
-        self.surface.blit(title, (panel.x + 28, panel.y + 20))
-        self._text("Click anywhere or press [ H ] / [ ESC ] to resume", panel.x + 30, panel.y + 64, self.font_small, COLORS["muted"])
-
-        # Column 1: Flight & Weapons
-        col1_x = panel.x + 30
-        self._text("FLIGHT & WEAPONS", col1_x, panel.y + 98, self.font_medium, COLORS["accent"])
-
-        controls = (
-            ("Direct Movement", "WASD / Arrow Keys to steer"),
-            ("Mouse Aim Assist", "Left Click / Space to fire lasers"),
-            ("Rotation Mode", "A / D to rotate ship, W to thrust"),
-            ("Rotation Fire", "Space / J to shoot lasers forward"),
-            ("Nova Bomb (Phase 6+)", "Vaporizes all non-boss hostiles"),
-            ("Upgrade Draft", "Press 1 / 2 / 3 on level-up"),
-            ("Aegis Barrier", "Shield blocks 1 fatal collision"),
-            ("Support Drones", "Orbiting drones auto-target foes"),
-        )
-        for i, (heading, desc) in enumerate(controls):
-            self._text(heading, col1_x, panel.y + 130 + i * 38, self.font_tiny, COLORS["xp"])
-            self._text(desc, col1_x, panel.y + 146 + i * 38, self.font_small, COLORS["text"])
-
-        # Column 2: In-Game Hotkeys
-        col2_x = panel.x + 375
-        self._text("UNIVERSAL HOTKEYS", col2_x, panel.y + 98, self.font_medium, COLORS["xp"])
-
-        hotkeys = (
-            ("[ C ]", "Cycle 5 Neon Ship Skins & Laser SFX"),
-            ("[ TAB ]", "Open 21-Tier Ship Build Panel"),
-            ("[ V ]", "Audio Volume Slider HUD"),
-            ("[ M ]", "Mute / Unmute Audio"),
-            ("[ P ]", "Pause / Resume Battle"),
-            ("[ R ]", "Instant Replay / Restart Current Seed"),
-            ("[ + / - ]", "Adjust AI Playback Speed"),
-            ("[ ESC / Q ]", "Return to Menu / Exit Mission"),
-        )
-        for i, (key, desc) in enumerate(hotkeys):
-            self._text(key, col2_x, panel.y + 130 + i * 38, self.font_tiny, COLORS["accent"])
-            self._text(desc, col2_x, panel.y + 146 + i * 38, self.font_small, COLORS["text"])
-
-        # Footer pill
-        hint_text = "CLICK ANYWHERE OR PRESS [ H ] / [ ESC ] TO CLOSE"
-        h_surf = self.font_tiny.render(hint_text, True, COLORS["accent"])
-        h_rect = pygame.Rect(panel.centerx - h_surf.get_width() // 2 - 16, panel.bottom - 40, h_surf.get_width() + 32, 26)
-        pygame.draw.rect(self.surface, (28, 43, 75), h_rect, border_radius=13)
-        pygame.draw.rect(self.surface, COLORS["accent"], h_rect, 1, border_radius=13)
-        self.surface.blit(h_surf, (h_rect.centerx - h_surf.get_width() // 2, h_rect.y + 5))
 
     def _draw_modal_footer(
         self, text: str, accent: tuple[int, int, int]

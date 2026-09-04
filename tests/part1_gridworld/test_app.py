@@ -267,6 +267,22 @@ def test_gridworld_help_overlay_toggle(monkeypatch):
         assert app.running is True
         assert app.scene == "menu"
 
+        # Verify clicking close button overlapping background buttons (e.g. Exit) does NOT exit
+        app._handle_key(event_h)
+        assert app.show_help_overlay is True
+        # Draw menu so Exit button is registered in app.buttons at (580..1170, 586..643)
+        app._draw()
+        assert any(b.action == ("quit",) for b in app.buttons)
+        # Click directly on the close pill / overlapping Exit button area (e.g. x=640, y=600)
+        pygame.event.clear()
+        pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=(640, 600)))
+        pygame.event.post(pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=(640, 600)))
+        app._poll_events()
+        assert app.show_help_overlay is False
+        # CRITICAL: App must still be running and scene must be 'menu', not exited!
+        assert app.running is True
+        assert app.scene == "menu"
+
         # Verify extraneous keys are swallowed while help overlay is active
         app._handle_key(event_h)
         assert app.show_help_overlay is True

@@ -341,10 +341,11 @@ class MasterLauncher:
         """Run the Master Hub event loop and return selected project ('1', '2', or 'quit')."""
         while True:
             mouse_pos = pygame.mouse.get_pos()
-            hover_p1 = self.card_p1.collidepoint(mouse_pos)
-            hover_p2 = self.card_p2.collidepoint(mouse_pos)
-            hover_vol_btn = self.volume_btn_rect.collidepoint(mouse_pos)
-            hover_help_btn = self.help_btn_rect.collidepoint(mouse_pos)
+            modals_open = self.show_help_overlay or self.show_volume_slider
+            hover_p1 = self.card_p1.collidepoint(mouse_pos) and not modals_open
+            hover_p2 = self.card_p2.collidepoint(mouse_pos) and not modals_open
+            hover_vol_btn = self.volume_btn_rect.collidepoint(mouse_pos) and not self.show_help_overlay
+            hover_help_btn = self.help_btn_rect.collidepoint(mouse_pos) and not self.show_volume_slider
 
             current_hover = "p1" if hover_p1 else ("p2" if hover_p2 else None)
             if current_hover != self.last_hover and current_hover is not None:
