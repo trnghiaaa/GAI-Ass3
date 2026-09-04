@@ -15,19 +15,35 @@ evidence, and presentation features are available from one launcher.
 
 Python 3.11 is recommended. From the repository root in Windows PowerShell:
 
+### First-Time Setup
 ```powershell
+# 1. Create and activate a virtual environment
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-.\.venv\Scripts\python.exe main.py
+.\.venv\Scripts\activate
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Launch the visual project hub
+python main.py
 ```
 
-`main.py` opens the visual project hub. Direct launch options are:
-
+### Subsequent Runs
+In any new terminal session, activate the environment and run:
 ```powershell
-.\.venv\Scripts\python.exe main.py --part 1
-.\.venv\Scripts\python.exe main.py --part 2
+.\.venv\Scripts\activate
+python main.py
 ```
+*(VS Code automatically activates `.venv` whenever you open a new terminal).*
+
+### Direct Launch Options
+```powershell
+python main.py --part 1
+python main.py --part 2
+```
+
+> [!NOTE]
+> If you choose to install dependencies into your global Python instead of a virtual environment, you can skip the `.venv` steps and simply run `pip install -r requirements.txt` followed by `python main.py`. If `.venv` is created but not activated, prefix commands with `.\.venv\Scripts\python.exe`.
 
 Windows users can also double-click:
 
@@ -89,18 +105,18 @@ used only for learning and never changes the environment reward.
 
 ### Part I commands
 
-```powershell
+```bash
 # Train one policy
-.\.venv\Scripts\python.exe -m gridworld.train --level 0 --agent qlearning
+python -m gridworld.train --level 0 --agent qlearning
 
 # Train the required Level 6 intrinsic policy
-.\.venv\Scripts\python.exe -m gridworld.train --level 6 --agent qlearning --intrinsic
+python -m gridworld.train --level 6 --agent qlearning --intrinsic
 
 # Watch a saved greedy policy
-.\.venv\Scripts\python.exe -m gridworld.evaluate --level 4 --agent sarsa
+python -m gridworld.evaluate --level 4 --agent sarsa
 
 # Rebuild all Part I models, comparisons and benchmark evidence
-.\.venv\Scripts\python.exe -m gridworld.build_evidence
+python -m gridworld.build_evidence
 ```
 
 The visual application adds a seven-level campaign, algorithm selection,
@@ -153,7 +169,7 @@ XP and ship upgrades remain separate from the RL reward.
 | `Tab` | Inspect the current ship build | Inspect the current ship build |
 | `C` | Cycle ship skins | Cycle ship skins |
 | `P` | Pause/resume | Pause/resume |
-| `H` | Quick help | Quick help |
+| `G` | Pilot Guide | Pilot Guide |
 | `V` / `M` | Volume panel / mute | Volume panel / mute |
 | `R` | Replay the current seed | Replay the current seed |
 
@@ -171,27 +187,27 @@ effects, AI pause/single-step controls and adjustable playback speed.
 
 ### Evaluate the submitted DQN models
 
-```powershell
+```bash
 # Visual deterministic evaluation
-.\.venv\Scripts\python.exe -m arena.evaluate_direct --episodes 3
-.\.venv\Scripts\python.exe -m arena.evaluate_rotation --episodes 3
+python -m arena.evaluate_direct --episodes 3
+python -m arena.evaluate_rotation --episodes 3
 
 # Headless benchmark
-.\.venv\Scripts\python.exe -m arena.evaluate --control-style direct --headless --episodes 12
+python -m arena.evaluate --control-style direct --headless --episodes 12
 ```
 
 ### Train and compare DQN agents
 
-```powershell
+```bash
 # Separate training runs
-.\.venv\Scripts\python.exe -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name my_direct
-.\.venv\Scripts\python.exe -m arena.train --control-style rotation --timesteps 300000 --profile balanced --run-name my_rotation
+python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name my_direct
+python -m arena.train --control-style rotation --timesteps 300000 --profile balanced --run-name my_rotation
 
 # Reproduce the three-profile hyperparameter comparison
-.\.venv\Scripts\python.exe -m arena.tune --control-style both --timesteps 40000
+python -m arena.tune --control-style both --timesteps 40000
 
 # Verify and rebuild report-ready Part II evidence
-.\.venv\Scripts\python.exe -m arena.build_evidence
+python -m arena.build_evidence
 ```
 
 Training uses Stable-Baselines3 DQN with an MLP, replay buffer, target network,
@@ -200,8 +216,8 @@ TensorBoard logging.
 
 ### TensorBoard
 
-```powershell
-.\.venv\Scripts\tensorboard.exe --logdir .\logs\arena\tensorboard --port 6006
+```bash
+tensorboard --logdir ./logs/arena/tensorboard --port 6006
 ```
 
 Open `http://localhost:6006`. For a clear presentation comparison, select only:
@@ -236,9 +252,9 @@ scripts/                   Windows launch and evidence helpers
 
 Install the development dependency and run the complete suite:
 
-```powershell
-.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m pytest
+```bash
+python -m pip install -r requirements-dev.txt
+python -m pytest
 ```
 
 Detailed rubric-to-code mappings and current numeric results are deliberately
