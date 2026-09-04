@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import math
 import random
 
 import pygame
@@ -64,15 +65,29 @@ def _draw_menu(
     screen.blit(nebula, (0, 0))
 
     guide_hover = GUIDE_RECT.collidepoint(mouse)
+    # Keep the guide discoverable even before the player happens to hover it.
+    # The restrained pulse reads as an actionable control without competing
+    # with the four primary mode cards below.
+    guide_pulse = 26 + int(12 * (0.5 + 0.5 * math.sin(elapsed * 3.2)))
+    guide_glow = pygame.Surface(
+        (GUIDE_RECT.width + 16, GUIDE_RECT.height + 16), pygame.SRCALPHA
+    )
+    pygame.draw.rect(
+        guide_glow,
+        (*CYAN, 68 if guide_hover else guide_pulse),
+        guide_glow.get_rect(),
+        border_radius=16,
+    )
+    screen.blit(guide_glow, (GUIDE_RECT.x - 8, GUIDE_RECT.y - 8))
     pygame.draw.rect(screen, (2, 5, 15), GUIDE_RECT.move(0, 3), border_radius=10)
     pygame.draw.rect(
         screen,
-        PANEL_HOVER if guide_hover else PANEL,
+        (25, 80, 105) if guide_hover else (17, 55, 78),
         GUIDE_RECT,
         border_radius=10,
     )
     pygame.draw.rect(
-        screen, CYAN if guide_hover else LINE, GUIDE_RECT, 1, border_radius=10
+        screen, TEXT if guide_hover else CYAN, GUIDE_RECT, 2, border_radius=10
     )
     # Tiny open-book mark keeps the entry recognizable without external art.
     pygame.draw.line(screen, CYAN, (637, 34), (637, 50), 2)
@@ -80,8 +95,13 @@ def _draw_menu(
     pygame.draw.line(screen, CYAN, (637, 34), (645, 31), 2)
     pygame.draw.line(screen, CYAN, (629, 31), (629, 47), 2)
     pygame.draw.line(screen, CYAN, (645, 31), (645, 47), 2)
-    guide = fonts["tiny"].render("PILOT GUIDE  G", True, TEXT)
+    guide = fonts["tiny"].render("PILOT GUIDE", True, TEXT)
     screen.blit(guide, (654, 34))
+    key_badge = pygame.Rect(GUIDE_RECT.right - 25, GUIDE_RECT.y + 9, 17, 20)
+    pygame.draw.rect(screen, (5, 22, 36), key_badge, border_radius=4)
+    pygame.draw.rect(screen, YELLOW, key_badge, 1, border_radius=4)
+    key = fonts["tiny"].render("G", True, YELLOW)
+    screen.blit(key, key.get_rect(center=key_badge.center))
 
     star_rng = random.Random(9042)
     for index in range(70):

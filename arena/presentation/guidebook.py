@@ -222,6 +222,40 @@ def _panel(
     pygame.draw.rect(surface, border, rect, 1, border_radius=radius)
 
 
+def _accent_fill(
+    color: tuple[int, int, int], *, hover: bool = False
+) -> tuple[int, int, int]:
+    """Return a dark saturated fill that preserves an action's accent color."""
+
+    strength = 0.34 if hover else 0.24
+    return tuple(
+        int(PANEL_DARK[i] * (1.0 - strength) + color[i] * strength)
+        for i in range(3)
+    )
+
+
+def _draw_navigation_button(
+    surface: pygame.Surface,
+    fonts: dict[str, pygame.font.Font],
+    rect: pygame.Rect,
+    label: str,
+    accent: tuple[int, int, int],
+    mouse: tuple[int, int],
+) -> None:
+    """Draw an always-prominent guide navigation action."""
+
+    hover = rect.collidepoint(mouse)
+    if hover:
+        glow = pygame.Surface((rect.width + 12, rect.height + 12), pygame.SRCALPHA)
+        pygame.draw.rect(glow, (*accent, 72), glow.get_rect(), border_radius=12)
+        surface.blit(glow, (rect.x - 6, rect.y - 6))
+    pygame.draw.rect(surface, (2, 5, 15), rect.move(0, 3), border_radius=7)
+    pygame.draw.rect(surface, _accent_fill(accent, hover=hover), rect, border_radius=7)
+    pygame.draw.rect(surface, TEXT if hover else accent, rect, 2, border_radius=7)
+    rendered = fonts["small_bold"].render(label, True, TEXT)
+    surface.blit(rendered, rendered.get_rect(center=rect.center))
+
+
 def _draw_background(surface: pygame.Surface, elapsed: float) -> None:
     surface.fill(BACKGROUND)
     haze = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
@@ -329,17 +363,13 @@ def _draw_chapter_frame(
     pygame.draw.line(surface, LINE, (228, 181), (758, 181))
 
     if page_index > 0:
-        fill = PANEL_HOVER if PREVIOUS_RECT.collidepoint(mouse) else PANEL_DARK
-        pygame.draw.rect(surface, fill, PREVIOUS_RECT, border_radius=7)
-        pygame.draw.rect(surface, LINE, PREVIOUS_RECT, 1, border_radius=7)
-        previous = fonts["small_bold"].render("‹  PREVIOUS", True, MUTED)
-        surface.blit(previous, previous.get_rect(center=PREVIOUS_RECT.center))
+        _draw_navigation_button(
+            surface, fonts, PREVIOUS_RECT, "‹  PREVIOUS", page.accent, mouse
+        )
     if page_index < len(PAGES) - 1:
-        fill = PANEL_HOVER if NEXT_RECT.collidepoint(mouse) else PANEL_DARK
-        pygame.draw.rect(surface, fill, NEXT_RECT, border_radius=7)
-        pygame.draw.rect(surface, page.accent, NEXT_RECT, 1, border_radius=7)
-        following = fonts["small_bold"].render("NEXT  ›", True, TEXT)
-        surface.blit(following, following.get_rect(center=NEXT_RECT.center))
+        _draw_navigation_button(
+            surface, fonts, NEXT_RECT, "NEXT  ›", page.accent, mouse
+        )
 
     return {"back": BACK_RECT, "previous": PREVIOUS_RECT, "next": NEXT_RECT, **tab_rects}
 
