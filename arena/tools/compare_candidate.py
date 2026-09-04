@@ -36,7 +36,15 @@ def main():
                         help='Explicit control-cadence ablation; defaults to saved metadata or 4')
     parser.add_argument('--start-phase', type=int, default=None,
                         help='Optional fixed initial phase for a focused benchmark')
+    parser.add_argument(
+        '--sentry-start-phase',
+        type=int,
+        default=None,
+        help='Start at a bootstrapped boss sentry wave for a missile-dodge benchmark',
+    )
     args = parser.parse_args()
+    if args.start_phase is not None and args.sentry_start_phase is not None:
+        parser.error('--start-phase and --sentry-start-phase are mutually exclusive')
     if args.output.with_suffix('.json').exists():
         raise FileExistsError('Choose a new output name; existing evaluations are protected')
     torch.set_num_threads(1)
@@ -64,6 +72,7 @@ def main():
         seed=args.seed,
         action_repeat=repeat,
         reset_options=reset_options,
+        sentry_start_phase=args.sentry_start_phase,
     )
     aggregate['environment_schema'] = ENVIRONMENT_SCHEMA_VERSION
     aggregate['model'] = str(args.model)

@@ -678,6 +678,24 @@ class ThreatTests(unittest.TestCase):
         self.assertEqual(rows[0]['simulation_steps'], 7)
         self.assertEqual(aggregate['phase_diagnostics']['1']['frames'], 7)
 
+    def test_benchmark_can_start_at_realistic_sentry_wave(self):
+        class Noop:
+            def predict(self, observation, deterministic=True):
+                return np.array(0), None
+
+        with patch('arena.benchmark.ArenaEnv', side_effect=lambda **kwargs: ArenaEnv(
+            **kwargs, config_override={'simulation': {'max_steps': 1}}
+        )):
+            _, aggregate = evaluate_model(
+                Noop(),
+                'rotation',
+                episodes=1,
+                sentry_start_phase=3,
+            )
+
+        self.assertEqual(aggregate['sentry_start_phase'], 3)
+        self.assertEqual(aggregate['phase_diagnostics']['3']['frames'], 1)
+
 
 if __name__ == '__main__':
     unittest.main()

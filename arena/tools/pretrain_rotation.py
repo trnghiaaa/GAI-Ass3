@@ -32,6 +32,7 @@ def _collect(
     seed: int,
     action_repeat: int,
     boss_starts: bool,
+    sentry_probability: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     observations: list[np.ndarray] = []
     actions: list[int] = []
@@ -43,7 +44,7 @@ def _collect(
                 probability=1.0,
                 phases=(3, 6),
                 seed=seed,
-                sentry_probability=0.45,
+                sentry_probability=sentry_probability,
             )
             if boss_starts
             else base
@@ -54,12 +55,17 @@ def _collect(
         try:
             while not (terminated or truncated):
                 action = teacher.action(observation)
-                observations.append(np.asarray(observation, dtype=np.float32).copy())
+                observations.append(
+                    np.asarray(observation, dtype=np.float32).copy()
+                )
                 actions.append(action)
                 observation, _, terminated, truncated, _ = env.step(action)
         finally:
             env.close()
-    return np.asarray(observations, dtype=np.float32), np.asarray(actions, dtype=np.int64)
+    return (
+        np.asarray(observations, dtype=np.float32),
+        np.asarray(actions, dtype=np.int64),
+    )
 
 
 def main() -> None:
@@ -75,21 +81,53 @@ def main() -> None:
     parser.add_argument(
         "--safety-threshold",
         type=float,
-        default=0.48,
+        default=0.56,
         help="Unified-pressure threshold; boss hazards and missiles still override it",
     )
+    parser.add_argument(
+        "--sentry-probability",
+        type=float,
+        default=0.45,
+        help="Fraction of boss demonstrations starting inside the Aegis sentry wave",
+    )
+    parser.add_argument(
+        "--missile-urgency-threshold",
+        type=float,
+        default=0.12,
+        help="Begin a sentry-missile escape above this observed collision risk",
+    )
+    parser.add_argument(
+        "--hazard-warning-threshold",
+        type=float,
+        default=0.90,
+        help="React once normalized boss-telegraph time drops below this value",
+    )
+    parser.add_argument(
+        "--escape-alignment-threshold",
+        type=float,
+        default=0.72,
+        help="Turn until heading alignment reaches this value, then thrust",
+    )
     args = parser.parse_args()
+    if not 0.0 <= args.sentry_probability <= 1.0:
+        parser.error("--sentry-probability must be between 0 and 1")
     if args.output.exists() or args.output.with_suffix(".metadata.json").exists():
         raise FileExistsError("Choose a new output path; artifacts are protected")
 
     torch.set_num_threads(1)
-    teacher = RotationTeacher(safety_threshold=args.safety_threshold)
+    teacher = RotationTeacher(
+        safety_threshold=args.safety_threshold,
+        missile_urgency_threshold=args.missile_urgency_threshold,
+        hazard_warning_threshold=args.hazard_warning_threshold,
+        escape_alignment_threshold=args.escape_alignment_threshold,
+    )
     normal_x, normal_y = _collect(
         teacher,
         episodes=args.normal_episodes,
         seed=args.seed,
         action_repeat=args.action_repeat,
         boss_starts=False,
+        sentry_probability=0.0,
     )
     boss_x, boss_y = _collect(
         teacher,
@@ -97,6 +135,7 @@ def main() -> None:
         seed=args.seed + 10000,
         action_repeat=args.action_repeat,
         boss_starts=True,
+        sentry_probability=args.sentry_probability,
     )
     features = np.concatenate((normal_x, boss_x))
     labels = np.concatenate((normal_y, boss_y))
@@ -170,6 +209,10 @@ def main() -> None:
         "validation_accuracy": validation_accuracy,
         "action_repeat": args.action_repeat,
         "safety_threshold": args.safety_threshold,
+        "sentry_probability": args.sentry_probability,
+        "missile_urgency_threshold": args.missile_urgency_threshold,
+        "hazard_warning_threshold": args.hazard_warning_threshold,
+        "escape_alignment_threshold": args.escape_alignment_threshold,
         "cooldown_mask": True,
         "observation_names": list(OBSERVATION_NAMES),
         "observation_size": len(OBSERVATION_NAMES),

@@ -17,6 +17,7 @@
     "seed_start": 440000,
     "deterministic": false,
     "reset_options": {},
+    "sentry_start_phase": null,
     "mean_reward": 21.413785,
     "reward_std": 95.057979,
     "mean_phase": 3.3333,

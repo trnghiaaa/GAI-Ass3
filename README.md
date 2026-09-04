@@ -395,6 +395,18 @@ The arena provides:
   paths, with NEW/current/next-rank previews on every card
 - Permanent, upgradable wingman squadrons plus five between-phase support choices
 - Strong post-boss relic drafts and automatic repair/Aegis miniboss caches
+- An eleven-chapter illustrated Pilot Guide, opened from the Part II launcher
+  with `G` or **PILOT GUIDE**. It covers both control schemes, HUD and phase
+  rules, boss telegraphs, the healing/invulnerability Aegis sentry sequence,
+  all 21 ship upgrades, all five phase rewards, and all four boss relics. The
+  chapter list, arrow keys, mouse wheel, and Previous/Next buttons navigate it;
+  `Esc` returns to the launcher.
+  Its Build & Style chapter demonstrates that `Tab` pauses and opens the live
+  weapon/upgrade/support summary, while `C` cycles five cosmetic palettes with
+  matching thrust colors and laser sound effects. A separate Other Features
+  chapter explains pause/resume, seeded replay and persistent mission summaries,
+  the procedural synthwave soundtrack and event sound palette, mixer controls,
+  quick help, and slow/step/fast trained-AI playback.
 
 ### Arena API
 
@@ -611,7 +623,7 @@ python -m arena.train --control-style rotation --timesteps 600000 --profile safe
 python -m arena.train --control-style rotation --timesteps 150000 --profile safety_adapter --seed 97100 --run-name unified_v12_rotation_150k_r2_s97100 --init-model models/arena/dqn_rotation.zip --new-inputs-only --adapt-input-start 119 --boss-curriculum 0.30 --sentry-curriculum 0.75 --curriculum-phases 3 --action-repeat 2
 
 # Optional Rotation demonstration initialisation; runtime remains an SB3 DQN
-python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 12 --boss-episodes 10 --epochs 18 --learning-rate 0.000025 --action-repeat 2 --safety-threshold 0.48
+python -m arena.tools.pretrain_rotation --source models/arena/dqn_rotation.zip --output models/arena/rotation_teacher_init.zip --normal-episodes 12 --boss-episodes 18 --epochs 14 --learning-rate 0.00001 --action-repeat 2 --safety-threshold 0.56
 
 # Generic from-scratch runs
 python -m arena.train --control-style direct --timesteps 300000 --profile balanced --run-name new_direct
@@ -628,16 +640,26 @@ curve and selected checkpoint), `tensorboard/`, and `tuning/`.
 
 On the final independent normal-start holdout, Direct retains 100% progression
 and its tactical targeting reaches mean phase 16.92. Rotation uses a finer
-two-frame decision cadence. Its final demonstration pass begins escaping while
-a boss attack is still telegraphing and treats a nearby closing enemy as an
-immediate interception threat, while continuing to attack through moderate
-ambient pressure. On 16 unseen seeds it keeps mean phase 4.00, raises boss
-clears from the previous combat pass's 0.50 to 0.625, cuts close approaches
-from 29.0% to 26.1%, raises resolved boss-skill dodging from 65.9% to 73.4%,
-and lowers boss-skill hits from 2.88 to 2.06 per run. Against the original
-safety baseline, enemy kills remain higher (36.8 versus 25.1) and wall contacts
-fall from 2.69 to 1.17 per 1,000 frames. The runtime remains a cooldown-aware
-SB3 DQN with no teacher or scripted steering.
+two-frame decision cadence. Its selective-pressure pass still prioritizes
+boss telegraphs, sentry missiles, and imminent closing enemies, but raises the ambient
+retreat threshold so moderate combined pressure no longer causes continuous
+flight. On 24 fresh identical seeds versus its prior checkpoint, mean phase
+rises 3.29 to 3.75, maximum phase 6 to 7, player-fired shots 106.0 to 146.0,
+player-projectile hits 81.8 to 115.8, enemy kills 29.6 to 42.5, and boss clears
+0.29 to 0.54. Close approaches fall 27.8% to 25.5%, damage per 1,000 frames
+37.7 to 32.9, wall contacts 2.08 to 1.60, and boss-skill hits 2.42 to 1.79.
+The runtime remains a cooldown-aware SB3 DQN with no teacher, hidden brake, or
+scripted steering.
+
+A dedicated forced-sentry holdout now guarantees that evaluation reaches the
+Aegis intermission instead of relying on a normal run to encounter it. Across
+12 unseen seeds, the submitted Rotation DQN averages 32.75 missiles evaded and
+0.75 missile hits (97.8% of resolved missiles evaded), while remaining the same
+unassisted saved policy. Reproduce it with:
+
+```bash
+python -m arena.tools.compare_candidate --model models/arena/dqn_rotation.zip --control-style rotation --episodes 12 --seed 650000 --action-repeat 2 --sentry-start-phase 3 --output logs/arena/evidence/my_rotation_sentry_check
+```
 
 ### Visual Evaluation
 

@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 from arena.core.environment import ArenaEnv
-from arena.learning.wrappers import ActionRepeatWrapper
+from arena.learning.wrappers import ActionRepeatWrapper, BossCurriculumWrapper
 
 
 ROW_FIELDS = (
@@ -58,16 +58,33 @@ def evaluate_model(
     seed: int = 9000,
     deterministic: bool = True,
     reset_options: dict[str, Any] | None = None,
+    sentry_start_phase: int | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Evaluate one model and return per-episode rows plus aggregate metrics."""
 
     if episodes < 1:
         raise ValueError("episodes must be at least 1")
+    if sentry_start_phase is not None and sentry_start_phase < 1:
+        raise ValueError("sentry_start_phase must be positive")
+    if sentry_start_phase is not None and reset_options:
+        raise ValueError("sentry_start_phase cannot be combined with reset_options")
     rows: list[dict[str, Any]] = []
 
     for episode in range(episodes):
+        base_env = ArenaEnv(control_style=control_style)
+        scenario_env = (
+            BossCurriculumWrapper(
+                base_env,
+                probability=1.0,
+                phases=(sentry_start_phase,),
+                seed=seed,
+                sentry_probability=1.0,
+            )
+            if sentry_start_phase is not None
+            else base_env
+        )
         env = ActionRepeatWrapper(
-            ArenaEnv(control_style=control_style), repeat=action_repeat
+            scenario_env, repeat=action_repeat
         )
         observation, _ = env.reset(seed=seed + episode, options=reset_options)
         episode_reward = 0.0
@@ -215,6 +232,7 @@ def evaluate_model(
         "seed_start": seed,
         "deterministic": deterministic,
         "reset_options": dict(reset_options or {}),
+        "sentry_start_phase": sentry_start_phase,
         "mean_reward": round(fmean(rewards), 6),
         "reward_std": round(pstdev(rewards), 6),
         "mean_phase": round(fmean(phases), 4),

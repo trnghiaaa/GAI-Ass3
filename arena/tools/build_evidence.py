@@ -25,6 +25,7 @@ from arena.core.environment import (
     OBSERVATION_NAMES,
 )
 from arena.presentation.renderer import ArenaRenderer
+from arena.presentation.guidebook import PAGES, draw_guidebook_page
 from arena.settings import (
     ARENA_EVIDENCE_DIR,
     ARENA_LOG_DIR,
@@ -88,6 +89,20 @@ def _boss_focus_paths(style: str) -> tuple[Path, Path] | None:
     return json_path.with_suffix(".csv"), json_path
 
 
+def _sentry_focus_paths(style: str) -> tuple[Path, Path] | None:
+    """Return the optional forced-sentry holdout recorded by final metadata."""
+
+    with metadata_path(style).open("r", encoding="utf-8") as source:
+        metadata = json.load(source)
+    recorded = metadata.get("sentry_focus_evaluation")
+    if not recorded:
+        return None
+    json_path = Path(str(recorded))
+    if not json_path.is_absolute():
+        json_path = PROJECT_ROOT / json_path
+    return json_path.with_suffix(".csv"), json_path
+
+
 def required_artifacts() -> list[Path]:
     paths: list[Path] = []
     for style in ("direct", "rotation"):
@@ -108,6 +123,9 @@ def required_artifacts() -> list[Path]:
         boss_focus = _boss_focus_paths(style)
         if boss_focus:
             paths.extend(boss_focus)
+        sentry_focus = _sentry_focus_paths(style)
+        if sentry_focus:
+            paths.extend(sentry_focus)
     paths.extend(
         [
             ARENA_LOG_DIR / "tuning" / "hyperparameter_results.csv",
@@ -518,6 +536,26 @@ def _capture_environment_preview() -> None:
         pygame.image.save(
             renderer.surface, ARENA_EVIDENCE_DIR / "ai_mission_summary_showcase.png"
         )
+        draw_guidebook_page(renderer.surface, 2)
+        pygame.image.save(
+            renderer.surface, ARENA_EVIDENCE_DIR / "pilot_guide_showcase.png"
+        )
+        build_page = next(
+            index for index, page in enumerate(PAGES) if page.key == "build_style"
+        )
+        draw_guidebook_page(renderer.surface, build_page)
+        pygame.image.save(
+            renderer.surface,
+            ARENA_EVIDENCE_DIR / "pilot_build_style_showcase.png",
+        )
+        other_page = next(
+            index for index, page in enumerate(PAGES) if page.key == "other_features"
+        )
+        draw_guidebook_page(renderer.surface, other_page)
+        pygame.image.save(
+            renderer.surface,
+            ARENA_EVIDENCE_DIR / "pilot_other_features_showcase.png",
+        )
     finally:
         renderer.close()
         env.close()
@@ -561,6 +599,9 @@ def build() -> None:
             "miniboss_showcase.png",
             "boss_reward_showcase.png",
             "ai_mission_summary_showcase.png",
+            "pilot_guide_showcase.png",
+            "pilot_build_style_showcase.png",
+            "pilot_other_features_showcase.png",
             "random_baseline_direct.csv",
             "random_baseline_direct.json",
             "random_baseline_rotation.csv",

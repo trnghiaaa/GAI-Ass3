@@ -26,6 +26,19 @@ caps. Early boss/minion health steps are regression-tested between 1.10x and
 1.50x so the rise is noticeable but adaptable. `boss_threat_tier` is exposed
 in `info` and the HUD.
 
+The launcher includes an eleven-chapter illustrated Pilot Guide for the video
+demonstration. It presents the two action sets, phase loop, boss/sentry target
+priority, reward cadence, all 21 ship upgrades, five phase caches, and four
+boss relics on-screen. Catalogue text is loaded from `arena/config.json`, so
+balance edits cannot silently make the manual inaccurate. A report-ready frame
+is saved as `logs/arena/evidence/pilot_guide_showcase.png`.
+Chapter 10 illustrates the live `Tab` build inspector and all five cosmetic
+`C`-key ship palettes with matching thrust and laser audio. Chapter 11 is a
+dedicated Other Features reference for pause/resume, seeded replay, persistent
+mission summaries, procedural music and event SFX, mixer/help controls, and
+trained-AI speed/single-step playback. Its report-ready frame is saved as
+`logs/arena/evidence/pilot_other_features_showcase.png`.
+
 ## H — Gym-style API and observation
 
 - `ArenaEnv.reset()` and `ArenaEnv.step()` use Gymnasium/SB3 return values;
@@ -84,22 +97,27 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
   action output is unchanged; its shared aim assist now protects against an
   immediate threat and otherwise attacks the damageable progression objective.
 - The final Rotation checkpoint uses action repeat 2 and cooldown-aware targets
-  for finer steering. Its anticipatory demonstration pass reacts during boss
-  telegraphs and intercepts nearby closing enemies, but attacks through moderate
-  ambient pressure. On 16 identical unseen seeds it keeps mean phase 4.00 while
-  raising boss clears from the previous combat pass's 0.50 to 0.625, reducing
-  close approaches 29.0% to 26.1%, raising resolved boss-skill dodging 65.9% to
-  73.4%, and reducing boss-skill hits 2.88 to 2.06 per run. Compared with the
-  original safety baseline, enemy kills remain higher (36.8 versus 25.1), boss
-  clears double (0.625 versus 0.31), and wall contacts fall 2.69 to 1.17 per
-  1,000 frames. Runtime is still the saved SB3 DQN—no teacher or scripted
-  steering is loaded.
+  for finer steering. Its selective-pressure pass keeps unconditional boss,
+  missile, and closing-enemy responses but does not flee from moderate ambient
+  pressure. On 24 fresh identical seeds versus the prior checkpoint, mean
+  phase rises 3.29 to 3.75, maximum phase 6 to 7, player shots 106.0 to 146.0,
+  player hits 81.8 to 115.8, enemy kills 29.6 to 42.5, and boss clears 0.29 to
+  0.54. Close approaches fall 27.8% to 25.5%, damage per 1,000 frames 37.7 to
+  32.9, wall contacts 2.08 to 1.60, and boss-skill hits 2.42 to 1.79. Runtime
+  is still the saved SB3 DQN—no teacher, hidden brake, or scripted steering is
+  loaded.
+- A forced-sentry holdout prevents a false pass caused by ordinary runs not
+  reaching the optional Aegis intermission. On 12 unseen seeds the submitted
+  Rotation DQN averages 32.75 sentry missiles evaded versus 0.75 hits (97.8%
+  of resolved missiles evaded). The same benchmark is reproducible with
+  `arena.tools.compare_candidate --sentry-start-phase 3`; no scripted action
+  override or easier runtime is used.
 - The final pre-boss build planner recognizes both an active boss and the phase
   immediately before one. It guarantees a visible Shield option, prioritizes
   that option for non-interactive playback, and keeps manual selection free.
-  Launcher seed 590002 provides a reproducible anticipatory-policy run that
-  reaches Phase 6, clears Boss 1, dodges 12 boss skills, and takes no missile
-  hits.
+  Launcher seed 590003 provides a reproducible selective-pressure run that
+  reaches Phase 6, clears Boss 1, fires 255 player shots with 207 hits, and
+  takes no missile hits.
 - A later fixed-seed assist ablation keeps the learned Rotation model and action
   set unchanged: 18 degrees raises maximum phase from 3 to 5, lowers damage
   from 68.3 to 54.3 per 1,000 frames, and raises mean boss dodges from 1.6 to
@@ -120,8 +138,16 @@ Phase-3 boss evaluation to make dodge behaviour auditable.
 - `logs/arena/evidence/rotation_refined_launcher_seed530005.{csv,json}`
 - `logs/arena/evidence/rotation_anticipatory18_{normal,boss}_holdout.{csv,json}`
 - `logs/arena/evidence/rotation_anticipatory18_launcher_seed590002.{csv,json}`
+- `logs/arena/evidence/rotation_selective_baseline610_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_selective056_validation610_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_selective056_boss_holdout.{csv,json}`
+- `logs/arena/evidence/rotation_selective056_launcher_seed590003.{csv,json}`
+- `logs/arena/evidence/rotation_selective056_sentry_holdout650.{csv,json}`
 - `logs/arena/evidence/*_showcase.png`
 - `logs/arena/evidence/ai_mission_summary_showcase.png`
+- `logs/arena/evidence/pilot_guide_showcase.png`
+- `logs/arena/evidence/pilot_build_style_showcase.png`
+- `logs/arena/evidence/pilot_other_features_showcase.png`
 - `logs/arena/evidence/evidence_manifest.json`
 - `logs/arena/training/final_direct/training_curve.png`
 - `logs/arena/training/final_rotation/training_curve.png`

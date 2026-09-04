@@ -18,8 +18,18 @@ from arena.core.environment import ObservationIndex as I, ROTATION_ACTIONS
 class RotationTeacher:
     """Provide safe, attacking demonstrations for rotation/thrust control."""
 
-    def __init__(self, safety_threshold: float = 0.48) -> None:
+    def __init__(
+        self,
+        safety_threshold: float = 0.56,
+        *,
+        missile_urgency_threshold: float = 0.12,
+        hazard_warning_threshold: float = 0.90,
+        escape_alignment_threshold: float = 0.72,
+    ) -> None:
         self.safety_threshold = float(safety_threshold)
+        self.missile_urgency_threshold = float(missile_urgency_threshold)
+        self.hazard_warning_threshold = float(hazard_warning_threshold)
+        self.escape_alignment_threshold = float(escape_alignment_threshold)
 
     @staticmethod
     def _turn_action(turn: float) -> int:
@@ -29,33 +39,48 @@ class RotationTeacher:
             else ROTATION_ACTIONS["ROTATE_LEFT"]
         )
 
-    def action(self, observation: np.ndarray) -> int:
+    def requires_escape(self, observation: np.ndarray) -> bool:
+        """Return whether observed pressure should interrupt the attack loop."""
+
         values = np.asarray(observation, dtype=np.float32).reshape(-1)
-        urgency = float(values[I.SAFETY_URGENCY])
-        # Boss telegraphs and guided sentry fire always deserve an early
-        # response. Ordinary crowd/wall pressure uses a deliberately higher
-        # threshold so the teacher does not demonstrate endless retreat in
-        # otherwise manageable combat.
-        missile_emergency = float(values[I.MISSILE_ESCAPE_URGENCY]) > 0.12
-        # HAZARD_ACTIVE becomes one only after the telegraph expires.  Use the
-        # positive distance-to-safety while the warning is still visible so a
-        # momentum-based ship starts turning before the damaging frame.
-        hazard_emergency = (
-            float(values[I.HAZARD_DISTANCE_TO_SAFETY]) > 0.01
-            and float(values[I.HAZARD_TIME_TO_IMPACT]) < 0.90
-        )
+        boss_emergency = self.requires_boss_escape(values)
         closing_emergency = (
             float(values[I.NEAREST_ENEMY_DISTANCE]) < 0.16
             and float(values[I.NEAREST_ENEMY_CLOSING]) > 0.04
         )
-        if (
-            missile_emergency
-            or hazard_emergency
+        return bool(
+            boss_emergency
             or closing_emergency
-            or urgency > self.safety_threshold
-        ):
+            or float(values[I.SAFETY_URGENCY]) > self.safety_threshold
+        )
+
+    def requires_boss_escape(self, observation: np.ndarray) -> bool:
+        """Return whether a boss lane or Aegis missile needs attention."""
+
+        values = np.asarray(observation, dtype=np.float32).reshape(-1)
+        missile_emergency = (
+            float(values[I.MISSILE_ESCAPE_URGENCY])
+            > self.missile_urgency_threshold
+        )
+        hazard_emergency = (
+            float(values[I.HAZARD_DISTANCE_TO_SAFETY]) > 0.01
+            and float(values[I.HAZARD_TIME_TO_IMPACT])
+            < self.hazard_warning_threshold
+        )
+        return bool(missile_emergency or hazard_emergency)
+
+    def action(self, observation: np.ndarray) -> int:
+        values = np.asarray(observation, dtype=np.float32).reshape(-1)
+        # Boss telegraphs and guided sentry fire always deserve an early
+        # response. Ordinary crowd/wall pressure uses a deliberately higher
+        # threshold so the teacher does not demonstrate endless retreat in
+        # otherwise manageable combat.
+        # HAZARD_ACTIVE becomes one only after the telegraph expires.  The
+        # helper also uses positive distance-to-safety during the warning so a
+        # momentum-based ship starts turning before the damaging frame.
+        if self.requires_escape(values):
             alignment = float(values[I.SAFETY_ESCAPE_ALIGNMENT])
-            if alignment < 0.72:
+            if alignment < self.escape_alignment_threshold:
                 return self._turn_action(float(values[I.SAFETY_ESCAPE_TURN]))
             return ROTATION_ACTIONS["THRUST"]
 

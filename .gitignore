@@ -195,7 +195,7 @@ Thumbs.db
 /logs/arena/tensorboard/rotation_teacher_700000/
 
 # Rejected anticipatory Rotation trials and intermediate checkpoints stay local.
-# The promoted model plus the anticipatory18 holdouts below are the deliverables.
+# The anticipatory18 holdouts remain the previous-policy comparison baseline.
 /logs/arena/evidence/rotation_anticipatory_normal_holdout.*
 /logs/arena/evidence/rotation_anticipatory_launcher_seed590009.*
 /logs/arena/evidence/rotation_anticipatory20_*
@@ -207,3 +207,36 @@ Thumbs.db
 /logs/arena/tensorboard/rotation_teacher_720000/
 /logs/arena/tensorboard/rotation_teacher_730000/
 /logs/arena/tensorboard/rotation_teacher_740000/
+
+# Rejected smooth-motion imitation trials: safer-looking movement was accepted
+# only if it also preserved firing and phase progression, which these did not.
+/logs/arena/evidence/rotation_fluid*_holdout.*
+/models/arena/rotation_fluid_s*.zip
+/models/arena/rotation_fluid_s*.metadata.json
+/logs/arena/tensorboard/rotation_teacher_760000/
+/logs/arena/tensorboard/rotation_teacher_770000/
+/logs/arena/tensorboard/rotation_teacher_780000/
+
+# Rejected physics-only Rotation ablations. They reduced contact in isolated
+# cases but changed the learned dynamics enough to lower completion rates.
+/logs/arena/evidence/rotation_drag*_holdout.*
+/logs/arena/evidence/rotation_grip*_holdout.*
+
+# Failed online refinement collapsed during exploration and was not promoted.
+/logs/arena/training/rotation_motion_rl120k_s80100/
+/logs/arena/tensorboard/rotation_motion_rl120k_s80100_*/
+/models/arena/rotation_motion_rl120k_s80100.zip
+/models/arena/rotation_motion_rl120k_s80100.metadata.json
+
+# Selective-pressure tournament: source checkpoints and rejected holdouts stay
+# local; baseline610, validation610, boss, and launcher evidence are retained.
+/models/arena/rotation_selective_s*.zip
+/models/arena/rotation_selective_s*.metadata.json
+/logs/arena/tensorboard/rotation_teacher_790000/
+/logs/arena/tensorboard/rotation_teacher_800000/
+/logs/arena/tensorboard/rotation_teacher_810000/
+/logs/arena/tensorboard/rotation_teacher_820000/
+/logs/arena/evidence/rotation_selective054_normal_holdout.*
+/logs/arena/evidence/rotation_selective056_normal_holdout.*
+/logs/arena/evidence/rotation_selective056_boss18a_normal_holdout.*
+/logs/arena/evidence/rotation_selective056_boss18b_normal_holdout.*

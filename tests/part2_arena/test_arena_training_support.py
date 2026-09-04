@@ -59,7 +59,7 @@ class ArenaTrainingSupportTests(unittest.TestCase):
         observation[ObservationIndex.SPAWNER_COUNT] = 1.0
         observation[ObservationIndex.WEAPON_READY] = 1.0
         observation[ObservationIndex.ACTIVE_TARGET_AIM_ALIGNMENT] = 0.96
-        observation[ObservationIndex.SAFETY_URGENCY] = 0.35
+        observation[ObservationIndex.SAFETY_URGENCY] = 0.52
 
         self.assertEqual(
             RotationTeacher().action(observation), ROTATION_ACTIONS["SHOOT"]
@@ -77,6 +77,40 @@ class ArenaTrainingSupportTests(unittest.TestCase):
 
         self.assertEqual(
             RotationTeacher().action(observation), ROTATION_ACTIONS["ROTATE_LEFT"]
+        )
+
+    def test_rotation_teacher_warning_thresholds_are_experiment_configurable(self) -> None:
+        observation = np.zeros(len(OBSERVATION_NAMES), dtype=np.float32)
+        observation[ObservationIndex.SPAWNER_COUNT] = 1.0
+        observation[ObservationIndex.WEAPON_READY] = 1.0
+        observation[ObservationIndex.ACTIVE_TARGET_AIM_ALIGNMENT] = 1.0
+        observation[ObservationIndex.HAZARD_DISTANCE_TO_SAFETY] = 0.5
+        observation[ObservationIndex.HAZARD_TIME_TO_IMPACT] = 0.95
+        observation[ObservationIndex.SAFETY_ESCAPE_ALIGNMENT] = -0.5
+        observation[ObservationIndex.SAFETY_ESCAPE_TURN] = 1.0
+
+        self.assertEqual(
+            RotationTeacher(hazard_warning_threshold=0.98).action(observation),
+            ROTATION_ACTIONS["ROTATE_RIGHT"],
+        )
+        self.assertEqual(
+            RotationTeacher(hazard_warning_threshold=0.90).action(observation),
+            ROTATION_ACTIONS["SHOOT"],
+        )
+        self.assertTrue(
+            RotationTeacher(hazard_warning_threshold=0.98).requires_escape(
+                observation
+            )
+        )
+        self.assertFalse(
+            RotationTeacher(hazard_warning_threshold=0.90).requires_escape(
+                observation
+            )
+        )
+        self.assertTrue(
+            RotationTeacher(hazard_warning_threshold=0.98).requires_boss_escape(
+                observation
+            )
         )
 
     def test_rotation_teacher_escapes_a_close_closing_enemy(self) -> None:

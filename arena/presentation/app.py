@@ -9,11 +9,12 @@ import pygame
 
 from arena.evaluation.evaluate import policy_readiness
 from arena.presentation.audio import ArenaAudio
+from arena.presentation.guidebook import open_guidebook
 from arena.presentation.play import play_manual
 
 
 WIDTH, HEIGHT = 800, 600
-DEMO_SEEDS = {"direct": 22003, "rotation": 590002}
+DEMO_SEEDS = {"direct": 22003, "rotation": 590003}
 BACKGROUND = (7, 10, 25)
 PANEL = (19, 29, 55)
 PANEL_HOVER = (28, 43, 75)
@@ -24,6 +25,7 @@ CYAN = (65, 210, 255)
 PURPLE = (181, 82, 255)
 GREEN = (63, 220, 135)
 YELLOW = (255, 205, 87)
+GUIDE_RECT = pygame.Rect(622, 22, 154, 38)
 
 
 @dataclass(frozen=True)
@@ -60,6 +62,26 @@ def _draw_menu(
     pygame.draw.ellipse(nebula, (30, 46, 92, 100), (-180, 140, 720, 540))
     pygame.draw.ellipse(nebula, (81, 30, 104, 65), (420, -180, 620, 540))
     screen.blit(nebula, (0, 0))
+
+    guide_hover = GUIDE_RECT.collidepoint(mouse)
+    pygame.draw.rect(screen, (2, 5, 15), GUIDE_RECT.move(0, 3), border_radius=10)
+    pygame.draw.rect(
+        screen,
+        PANEL_HOVER if guide_hover else PANEL,
+        GUIDE_RECT,
+        border_radius=10,
+    )
+    pygame.draw.rect(
+        screen, CYAN if guide_hover else LINE, GUIDE_RECT, 1, border_radius=10
+    )
+    # Tiny open-book mark keeps the entry recognizable without external art.
+    pygame.draw.line(screen, CYAN, (637, 34), (637, 50), 2)
+    pygame.draw.line(screen, CYAN, (637, 34), (629, 31), 2)
+    pygame.draw.line(screen, CYAN, (637, 34), (645, 31), 2)
+    pygame.draw.line(screen, CYAN, (629, 31), (629, 47), 2)
+    pygame.draw.line(screen, CYAN, (645, 31), (645, 47), 2)
+    guide = fonts["tiny"].render("PILOT GUIDE  G", True, TEXT)
+    screen.blit(guide, (654, 34))
 
     star_rng = random.Random(9042)
     for index in range(70):
@@ -114,7 +136,7 @@ def _draw_menu(
     tags = "21 BUILD PATHS   •   RIFT HUNTERS   •   BOSS BARRAGES   •   DEEP-RL AGENTS"
     tag_surface = fonts["tiny"].render(tags, True, MUTED)
     screen.blit(tag_surface, tag_surface.get_rect(center=(WIDTH // 2, 535)))
-    footer = notice or "Click a card to launch  •  H help  •  V audio  •  Esc exits"
+    footer = notice or "Click a card to launch  •  G pilot guide  •  H quick help  •  V audio"
     footer_color = YELLOW if notice else MUTED
     footer_surface = _fit_text(footer, fonts["body"], WIDTH - 70, footer_color)
     screen.blit(footer_surface, footer_surface.get_rect(center=(WIDTH // 2, 570)))
@@ -164,6 +186,7 @@ def _draw_menu_help_overlay(screen: pygame.Surface, fonts: dict[str, pygame.font
         ("[ M ]", "Mute / Unmute Audio"),
         ("[ P ]", "Pause / Resume Battle"),
         ("[ R ]", "Instant Replay / Restart Current Seed"),
+        ("[ G ]", "Open the Illustrated Pilot Guide"),
         ("[ ESC / Q ]", "Return to Menu / Exit Mission"),
     )
     for i, (key, desc) in enumerate(hotkeys):
@@ -260,6 +283,10 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                     else:
                         show_volume_slider = False
                         dragging_volume = False
+                if GUIDE_RECT.collidepoint(event.pos):
+                    audio.play("menu_select")
+                    open_guidebook(screen, clock, audio)
+                    continue
                 for card in cards:
                     if card.rect.collidepoint(event.pos):
                         audio.play("menu_select")
@@ -277,6 +304,10 @@ def _menu_selection(notice: str = "") -> tuple[str, str] | None:
                         show_help_overlay = False
                         if audio.available:
                             audio.play("click", minimum_interval_ms=50)
+                    continue
+                if event.key == pygame.K_g:
+                    audio.play("menu_select")
+                    open_guidebook(screen, clock, audio)
                     continue
                 if event.key in (pygame.K_h, pygame.K_SLASH):
                     show_help_overlay = not show_help_overlay
