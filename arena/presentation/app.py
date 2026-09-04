@@ -156,7 +156,7 @@ def _draw_menu(
     tags = "21 BUILD PATHS   •   RIFT HUNTERS   •   BOSS BARRAGES   •   DEEP-RL AGENTS"
     tag_surface = fonts["tiny"].render(tags, True, MUTED)
     screen.blit(tag_surface, tag_surface.get_rect(center=(WIDTH // 2, 535)))
-    footer = notice or "Click a card to launch  •  G pilot guide  •  H quick help  •  V audio"
+    footer = notice or "Click a card to launch  •  G pilot guide  •  V audio"
     footer_color = YELLOW if notice else MUTED
     footer_surface = _fit_text(footer, fonts["body"], WIDTH - 70, footer_color)
     screen.blit(footer_surface, footer_surface.get_rect(center=(WIDTH // 2, 570)))
